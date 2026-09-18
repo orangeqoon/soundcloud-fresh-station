@@ -9,7 +9,9 @@
                 type: 'SC_FRESH_STATION_POPUP_ACTION',
                 action: request.action,
                 targetType: request.targetType,
-                targetId: request.targetId
+                targetId: request.targetId,
+                mode: request.mode,
+                token: request.token
             }, '*');
 
             // Wait for response from window

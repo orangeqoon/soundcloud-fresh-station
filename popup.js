@@ -27,18 +27,50 @@ document.addEventListener('DOMContentLoaded', async function () {
     return;
   }
 
-  chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DATA' }, function (response) {
-    if (chrome.runtime.lastError || !response) {
-      document.getElementById('conn-badge').textContent = '1曲再生すると同期されます';
-      return;
-    }
-    renderData(tab.id, response);
-  });
+  // 1. chrome.cookies API から oauth_token を取得してタブへ注入
+  if (chrome.cookies) {
+    chrome.cookies.get({ url: 'https://soundcloud.com', name: 'oauth_token' }, function (cookie) {
+      if (cookie && cookie.value) {
+        const tok = cookie.value.startsWith('OAuth ') ? cookie.value : ('OAuth ' + cookie.value);
+        chrome.tabs.sendMessage(tab.id, {
+          target: 'SC_FRESH_STATION',
+          action: 'INJECT_AUTH_TOKEN',
+          token: tok
+        });
+      }
+    });
+  }
+
+  function requestData() {
+    chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DATA' }, function (response) {
+      if (chrome.runtime.lastError || !response) {
+        document.getElementById('conn-badge').textContent = 'SoundCloud読込中...';
+        return;
+      }
+      renderData(tab.id, response);
+    });
+  }
+
+  requestData();
+
+  // 同期ボタン
+  const syncBtn = document.getElementById('sync-btn');
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function () {
+      syncBtn.textContent = '⏳ 同期中...';
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'FORCE_SYNC' }, function () {
+        setTimeout(function () {
+          syncBtn.textContent = '🔄 今すぐ同期';
+          requestData();
+        }, 1500);
+      });
+    });
+  }
 });
 
 function renderData(tabId, data) {
   const badge = document.getElementById('conn-badge');
-  badge.textContent = data.isReady ? '稼働中' : '準備中 (1曲再生で同期)';
+  badge.textContent = data.isReady ? '稼働中 (完全除外ON)' : '同期中...';
   badge.style.color = data.isReady ? '#00e676' : '#ffb300';
 
   const modeSelect = document.getElementById('mode-select');
@@ -68,7 +100,7 @@ function renderData(tabId, data) {
   if (!data.myPlaylists || data.myPlaylists.length === 0) {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = '1曲再生すると同期されます';
+    opt.textContent = data.isReady ? '（プレイリストが見つかりません）' : '同期中... [🔄 今すぐ同期] を押してください';
     plSelect.appendChild(opt);
   } else {
     data.myPlaylists.forEach(function (pl) {

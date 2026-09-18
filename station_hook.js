@@ -105,13 +105,25 @@
         return null;
     }
 
-    window.addEventListener('message', function (event) {
+    window.addEventListener('message', async function (event) {
         if (event.data && event.data.type === 'SC_FRESH_STATION_POPUP_ACTION') {
             const action = event.data.action;
             const targetType = event.data.targetType;
             const targetId = event.data.targetId;
 
-            if (action === 'REMOVE') {
+            if (action === 'INJECT_AUTH_TOKEN') {
+                if (event.data.token) {
+                    state.oauthToken = event.data.token;
+                    console.log('[SC-FreshStation] Injected OAuth token from extension:', state.oauthToken.slice(0, 15) + '...');
+                    if (!state.isUserDataLoaded || state.myPlaylists.length === 0) {
+                        initUserData();
+                    }
+                }
+            } else if (action === 'FORCE_SYNC') {
+                console.log('[SC-FreshStation] Force sync requested from popup');
+                state.isUserDataLoaded = false;
+                await initUserData();
+            } else if (action === 'REMOVE') {
                 if (targetType === 'track') delete state.dislikedTracks[targetId];
                 if (targetType === 'artist') delete state.dislikedArtists[targetId];
                 if (targetType === 'genre') delete state.dislikedGenres[targetId];
@@ -131,7 +143,7 @@
             } else if (action === 'GET_DATA') {
                 loadCachedData();
                 extractAuthTokenFromCookie();
-                if (state.clientId && state.oauthToken && (!state.isUserDataLoaded || state.likedTrackIds.size === 0)) {
+                if (state.clientId && state.oauthToken && (!state.isUserDataLoaded || state.myPlaylists.length === 0)) {
                     initUserData();
                 }
                 window.postMessage({
@@ -155,7 +167,76 @@
     loadCachedData();
     extractAuthTokenFromCookie();
 
-    // 1. window.fetch Hook
+    // 積極的 client_id 発見ロジック
+    async function discoverClientId() {
+        if (state.clientId) return state.clientId;
+
+        // 1. window.__sc_hydration
+        try {
+            if (window.__sc_hydration && Array.isArray(window.__sc_hydration)) {
+                for (const item of window.__sc_hydration) {
+                    if (item.hydratable === 'user' && item.data && item.data.id) {
+                        state.myUserId = item.data.id;
+                    }
+                }
+            }
+        } catch (e) {}
+
+        // 2. DOM内のスクリプトタグを走査
+        try {
+            const scripts = Array.from(document.querySelectorAll('script[src*="sndcdn.com"]'));
+            for (const s of scripts) {
+                if (s.src && s.src.indexOf('assets/') !== -1) {
+                    const res = await originalFetch(s.src);
+                    const txt = await res.text();
+                    const m = txt.match(/client_id[:=]["']([a-zA-Z0-9]{32})["']/);
+                    if (m && m[1]) {
+                        state.clientId = m[1];
+                        localStorage.setItem(CACHE_CLIENT_ID_KEY, m[1]);
+                        console.log('[SC-FreshStation] Discovered client_id from script assets:', state.clientId);
+                        return state.clientId;
+                    }
+                }
+            }
+        } catch (e) {}
+
+        return state.clientId;
+    }
+
+    // 1. XMLHttpRequest Hook (SoundCloudの全XHR通信からclient_id/tokenを補足)
+    const origXhrOpen = XMLHttpRequest.prototype.open;
+    const origXhrSetRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+
+    XMLHttpRequest.prototype.open = function (method, url) {
+        this._scUrl = typeof url === 'string' ? url : '';
+        if (this._scUrl.indexOf('api-v2.soundcloud.com') !== -1) {
+            try {
+                const parsed = new URL(this._scUrl, window.location.origin);
+                if (parsed.searchParams.has('client_id')) {
+                    const cid = parsed.searchParams.get('client_id');
+                    if (cid && cid !== state.clientId) {
+                        state.clientId = cid;
+                        localStorage.setItem(CACHE_CLIENT_ID_KEY, cid);
+                    }
+                }
+            } catch (e) {}
+        }
+        return origXhrOpen.apply(this, arguments);
+    };
+
+    XMLHttpRequest.prototype.setRequestHeader = function (header, value) {
+        try {
+            if (header && header.toLowerCase() === 'authorization' && value && value.indexOf('OAuth ') === 0) {
+                state.oauthToken = value;
+                if (state.clientId && (!state.isUserDataLoaded || state.myPlaylists.length === 0)) {
+                    initUserData();
+                }
+            }
+        } catch (e) {}
+        return origXhrSetRequestHeader.apply(this, arguments);
+    };
+
+    // 2. window.fetch Hook
     const originalFetch = window.fetch;
 
     window.fetch = async function () {
@@ -324,25 +405,50 @@
     }
 
     async function initUserData() {
-        if (!state.clientId) return;
         extractAuthTokenFromCookie();
-        if (!state.oauthToken) return;
+        if (!state.clientId) {
+            await discoverClientId();
+        }
+        if (!state.clientId) {
+            console.warn('[SC-FreshStation] Still waiting for clientId...');
+            return;
+        }
 
         console.log('[SC-FreshStation] Syncing user profile, playlists, likes...');
 
         try {
-            const meRes = await originalFetch('https://api-v2.soundcloud.com/me?client_id=' + state.clientId, {
-                headers: { 'Authorization': state.oauthToken }
-            });
-            const meData = await meRes.json();
+            const authHeaders = state.oauthToken ? { 'Authorization': state.oauthToken } : {};
+
+            let meData = null;
+            try {
+                const meRes = await originalFetch('https://api-v2.soundcloud.com/me?client_id=' + state.clientId, {
+                    headers: authHeaders,
+                    credentials: 'include'
+                });
+                if (meRes.ok) {
+                    meData = await meRes.json();
+                }
+            } catch (e) {}
+
             if (meData && meData.id) {
                 state.myUserId = meData.id;
+            }
+
+            // myUserId がまだなければ hydration からフォールバック取得
+            if (!state.myUserId && window.__sc_hydration && Array.isArray(window.__sc_hydration)) {
+                for (const item of window.__sc_hydration) {
+                    if (item.hydratable === 'user' && item.data && item.data.id) {
+                        state.myUserId = item.data.id;
+                        break;
+                    }
+                }
             }
 
             if (state.myUserId) {
                 // プレイリスト一覧取得
                 const plRes = await originalFetch('https://api-v2.soundcloud.com/users/' + state.myUserId + '/playlists?limit=50&client_id=' + state.clientId, {
-                    headers: { 'Authorization': state.oauthToken }
+                    headers: authHeaders,
+                    credentials: 'include'
                 });
                 const plData = await plRes.json();
                 if (plData && plData.collection) {
@@ -363,7 +469,7 @@
                 // ライク一覧取得 (最大1000件)
                 let likesUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/track_likes?limit=200&client_id=' + state.clientId;
                 while (likesUrl && state.likedTrackIds.size < 1000) {
-                    const res = await originalFetch(likesUrl, { headers: { 'Authorization': state.oauthToken } });
+                    const res = await originalFetch(likesUrl, { headers: authHeaders, credentials: 'include' });
                     const d = await res.json();
                     if (d.collection) {
                         d.collection.forEach(function (item) {
@@ -377,7 +483,7 @@
                 // フォロー一覧取得 (最大1000件)
                 let followingsUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/followings?limit=200&client_id=' + state.clientId;
                 while (followingsUrl && state.followingUserIds.size < 1000) {
-                    const res = await originalFetch(followingsUrl, { headers: { 'Authorization': state.oauthToken } });
+                    const res = await originalFetch(followingsUrl, { headers: authHeaders, credentials: 'include' });
                     const d = await res.json();
                     if (d.collection) {
                         d.collection.forEach(function (u) {
@@ -389,7 +495,7 @@
 
                 state.isUserDataLoaded = true;
                 saveCacheData();
-                console.log('[SC-FreshStation] Full sync complete! ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.');
+                console.log('[SC-FreshStation] Full sync complete! ' + state.myPlaylists.length + ' playlists, ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.');
             }
         } catch (e) {
             console.error('[SC-FreshStation] Failed to sync user data:', e);

@@ -145,7 +145,7 @@
 </head>
 <body>
   <h2>
-    <span>🎧 SC Suite <small style="font-size:10px; color:#ff7700;">v1.1.1</small></span>
+    <span>🎧 SC Suite <small style="font-size:10px; color:#ff7700;">v1.1.2</small></span>
     <span class="badge" id="conn-badge">SoundCloud未接続</span>
   </h2>
 
@@ -160,7 +160,10 @@
 
   <!-- Target Playlist Selection -->
   <div class="playlist-select-box">
-    <label for="pl-select">➕ ワンクリック追加先プレイリスト：</label>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+      <label for="pl-select" style="margin-bottom: 0;">➕ ワンクリック追加先プレイリスト：</label>
+      <button id="sync-btn" style="background: #333; color: #ff5500; border: 1px solid #555; border-radius: 4px; padding: 1px 6px; font-size: 10px; cursor: pointer;">🔄 今すぐ同期</button>
+    </div>
     <select id="pl-select">
       <option value="">読み込み中...</option>
     </select>

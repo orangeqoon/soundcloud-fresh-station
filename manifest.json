@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SoundCloud Fresh Station & Follower Stream",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加",
   "permissions": [
     "storage",
     "tabs",
-    "activeTab"
+    "activeTab",
+    "cookies"
   ],
   "host_permissions": [
     "https://soundcloud.com/*",
