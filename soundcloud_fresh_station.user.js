@@ -1,0 +1,570 @@
+// ==UserScript==
+// @name         SoundCloud Fresh Station & Playlist Helper
+// @namespace    https://soundcloud.com/
+// @version      1.3
+// @description  ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加
+// @author       Antigravity
+// @match        https://soundcloud.com/*
+// @run-at       document-start
+// @grant        none
+// ==/UserScript==
+
+// SoundCloud Fresh Station & Follower Stream
+(function () {
+    'use strict';
+
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.1.0)');
+
+    const STORAGE_KEY = 'sc_fresh_station_data_v1';
+    const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
+    const PLAYBACK_MODE_KEY = 'sc_fresh_station_playback_mode';
+
+    const state = {
+        myUserId: null,
+        oauthToken: null,
+        clientId: null,
+        likedTrackIds: new Set(),
+        followingUserIds: new Set(),
+        isUserDataLoaded: false,
+        playbackMode: localStorage.getItem(PLAYBACK_MODE_KEY) || 'DISCOVERY', // 'DISCOVERY' or 'FOLLOWING_NEW'
+        dislikedTracks: {},
+        dislikedArtists: {},
+        dislikedGenres: {},
+        myPlaylists: [],
+        targetPlaylistId: localStorage.getItem(TARGET_PLAYLIST_KEY) || null,
+        currentTrack: null
+    };
+
+    function loadDislikeData() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                state.dislikedTracks = parsed.dislikedTracks || {};
+                state.dislikedArtists = parsed.dislikedArtists || {};
+                state.dislikedGenres = parsed.dislikedGenres || {};
+            }
+            state.targetPlaylistId = localStorage.getItem(TARGET_PLAYLIST_KEY) || null;
+            state.playbackMode = localStorage.getItem(PLAYBACK_MODE_KEY) || 'DISCOVERY';
+        } catch (e) {
+            console.error('[SC-FreshStation] Failed to load dislike data:', e);
+        }
+    }
+
+    function saveDislikeData() {
+        try {
+            const payload = {
+                dislikedTracks: state.dislikedTracks,
+                dislikedArtists: state.dislikedArtists,
+                dislikedGenres: state.dislikedGenres,
+                updatedAt: Date.now()
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {
+            console.error('[SC-FreshStation] Failed to save dislike data:', e);
+        }
+    }
+
+    window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'SC_FRESH_STATION_POPUP_ACTION') {
+            const action = event.data.action;
+            const targetType = event.data.targetType;
+            const targetId = event.data.targetId;
+
+            if (action === 'REMOVE') {
+                if (targetType === 'track') delete state.dislikedTracks[targetId];
+                if (targetType === 'artist') delete state.dislikedArtists[targetId];
+                if (targetType === 'genre') delete state.dislikedGenres[targetId];
+                saveDislikeData();
+            } else if (action === 'SET_TARGET_PLAYLIST') {
+                state.targetPlaylistId = targetId;
+                if (targetId) {
+                    localStorage.setItem(TARGET_PLAYLIST_KEY, targetId);
+                } else {
+                    localStorage.removeItem(TARGET_PLAYLIST_KEY);
+                }
+                updatePlaylistButtonUI();
+            } else if (action === 'SET_PLAYBACK_MODE') {
+                state.playbackMode = event.data.mode;
+                localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
+                console.log('[SC-FreshStation] Switched mode to:', state.playbackMode);
+            } else if (action === 'GET_DATA') {
+                loadDislikeData();
+                window.postMessage({
+                    type: 'SC_FRESH_STATION_DATA_RESPONSE',
+                    data: {
+                        dislikedTracks: state.dislikedTracks,
+                        dislikedArtists: state.dislikedArtists,
+                        dislikedGenres: state.dislikedGenres,
+                        myPlaylists: state.myPlaylists,
+                        targetPlaylistId: state.targetPlaylistId,
+                        playbackMode: state.playbackMode,
+                        likedCount: state.likedTrackIds.size,
+                        followingCount: state.followingUserIds.size,
+                        isReady: state.isUserDataLoaded
+                    }
+                }, '*');
+            }
+        }
+    });
+
+    loadDislikeData();
+
+    // 1. window.fetch Hook
+    const originalFetch = window.fetch;
+
+    window.fetch = async function () {
+        const args = Array.prototype.slice.call(arguments);
+        const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+
+        // A. Capture Auth Tokens & Client ID
+        if (url.indexOf('api-v2.soundcloud.com') !== -1) {
+            try {
+                const parsedUrl = new URL(url, window.location.origin);
+                if (parsedUrl.searchParams.has('client_id')) {
+                    state.clientId = parsedUrl.searchParams.get('client_id');
+                }
+                const options = args[1];
+                if (options && options.headers) {
+                    const headers = options.headers;
+                    const auth = (typeof headers.get === 'function' ? headers.get('Authorization') : headers.Authorization) || headers['authorization'];
+                    if (auth && auth.indexOf('OAuth ') === 0) {
+                        state.oauthToken = auth;
+                    }
+                }
+                if (state.clientId && state.oauthToken && !state.isUserDataLoaded) {
+                    initUserData();
+                }
+            } catch (e) {}
+        }
+
+        // B. Track current playing track info
+        if (url.indexOf('api-v2.soundcloud.com/tracks/') !== -1) {
+            const response = await originalFetch.apply(this, args);
+            try {
+                const clone = response.clone();
+                const trackData = await clone.json();
+                if (trackData && trackData.id && trackData.title) {
+                    updateCurrentTrackInfo(trackData);
+                }
+            } catch (e) {}
+            return response;
+        }
+
+        // C. Intercept Stream (タイムライン / Stream: フォロー中の新曲)
+        if (url.indexOf('api-v2.soundcloud.com/stream') !== -1) {
+            const response = await originalFetch.apply(this, args);
+            if (state.playbackMode === 'FOLLOWING_NEW') {
+                try {
+                    const clone = response.clone();
+                    let data = await clone.json();
+                    if (data && Array.isArray(data.collection)) {
+                        const originalCount = data.collection.length;
+                        // Streamアイテムから「本人の新曲ポスト（type === track）」のみを残し、リポストや除外対象をカット
+                        data.collection = data.collection.filter(function (item) {
+                            // 1. リポストは除外
+                            if (item.type !== 'track') return false;
+
+                            const track = item.track;
+                            if (!track) return false;
+
+                            const authorId = track.user ? track.user.id : track.user_id;
+
+                            // 2. 自分がフォローしている人本人による投稿であること
+                            if (!state.followingUserIds.has(authorId) && authorId !== state.myUserId) {
+                                return false;
+                            }
+
+                            // 3. Dislike除外
+                            if (state.dislikedTracks[track.id]) return false;
+                            if (authorId && state.dislikedArtists[authorId]) return false;
+                            const genre = (track.genre || '').trim().toLowerCase();
+                            if (genre && state.dislikedGenres[genre]) return false;
+
+                            return true;
+                        });
+                        console.log('[SC-FreshStation:FollowingMode] Stream filtered: ' + originalCount + ' -> ' + data.collection.length + ' tracks.');
+
+                        return new Response(JSON.stringify(data), {
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: response.headers
+                        });
+                    }
+                } catch (e) {
+                    console.error('[SC-FreshStation] Stream filter error:', e);
+                }
+            }
+            return response;
+        }
+
+        // D. Intercept Station (ステーション再生)
+        if (url.indexOf('/stations/') !== -1 && url.indexOf('/tracks') !== -1) {
+            console.log('[SC-FreshStation] Intercepted Station tracks request:', url);
+            const response = await originalFetch.apply(this, args);
+
+            if (!state.isUserDataLoaded) {
+                return response;
+            }
+
+            try {
+                const clone = response.clone();
+                let data = await clone.json();
+
+                if (data && Array.isArray(data.collection)) {
+                    const originalCount = data.collection.length;
+                    data.collection = filterStationTracks(data.collection);
+                    console.log('[SC-FreshStation] Filtered: ' + originalCount + ' -> ' + data.collection.length);
+
+                    let nextHref = data.next_href;
+                    while (data.collection.length < 10 && nextHref) {
+                        const nextUrl = nextHref.indexOf('client_id=') !== -1 ? nextHref : (nextHref + '&client_id=' + state.clientId);
+                        const nextRes = await originalFetch(nextUrl, {
+                            headers: { 'Authorization': state.oauthToken }
+                        });
+                        const nextData = await nextRes.json();
+                        if (nextData && Array.isArray(nextData.collection)) {
+                            const freshNext = filterStationTracks(nextData.collection);
+                            data.collection.push.apply(data.collection, freshNext);
+                            nextHref = nextData.next_href;
+                        } else {
+                            break;
+                        }
+                    }
+                    data.next_href = nextHref;
+
+                    return new Response(JSON.stringify(data), {
+                        status: response.status,
+                        statusText: response.statusText,
+                        headers: response.headers
+                    });
+                }
+            } catch (err) {
+                console.error('[SC-FreshStation] Error filtering station response:', err);
+                return response;
+            }
+        }
+
+        return originalFetch.apply(this, args);
+    };
+
+    function filterStationTracks(tracks) {
+        return tracks.filter(function (track) {
+            if (!track) return false;
+
+            const trackId = track.id;
+            const artistId = track.user ? track.user.id : track.user_id;
+            const genre = (track.genre || '').trim().toLowerCase();
+
+            // 共通除外: Dislike
+            if (state.dislikedTracks[trackId]) return false;
+            if (artistId && state.dislikedArtists[artistId]) return false;
+            if (genre && state.dislikedGenres[genre]) return false;
+            if (state.myUserId && artistId === state.myUserId) return false;
+
+            // モードによる分岐
+            if (state.playbackMode === 'FOLLOWING_NEW') {
+                // フォロー中アーティストのみ通過
+                if (!artistId || !state.followingUserIds.has(artistId)) {
+                    return false;
+                }
+            } else {
+                // 未知の曲発掘モード (DISCOVERY): 既知・フォローを除外
+                if (state.likedTrackIds.has(trackId)) return false;
+                if (artistId && state.followingUserIds.has(artistId)) return false;
+            }
+
+            return true;
+        });
+    }
+
+    async function initUserData() {
+        state.isUserDataLoaded = false;
+        console.log('[SC-FreshStation] Syncing user profile, playlists, likes...');
+
+        try {
+            const meRes = await originalFetch('https://api-v2.soundcloud.com/me?client_id=' + state.clientId, {
+                headers: { 'Authorization': state.oauthToken }
+            });
+            const meData = await meRes.json();
+            state.myUserId = meData.id;
+
+            const plRes = await originalFetch('https://api-v2.soundcloud.com/users/' + state.myUserId + '/playlists?limit=50&client_id=' + state.clientId, {
+                headers: { 'Authorization': state.oauthToken }
+            });
+            const plData = await plRes.json();
+            if (plData && plData.collection) {
+                state.myPlaylists = plData.collection.map(function (p) {
+                    return {
+                        id: p.id,
+                        title: p.title,
+                        trackCount: p.track_count || 0
+                    };
+                });
+                console.log('[SC-FreshStation] Loaded ' + state.myPlaylists.length + ' playlists');
+                if (!state.targetPlaylistId && state.myPlaylists.length > 0) {
+                    state.targetPlaylistId = String(state.myPlaylists[0].id);
+                    localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
+                }
+                updatePlaylistButtonUI();
+            }
+
+            let likesUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/track_likes?limit=200&client_id=' + state.clientId;
+            while (likesUrl && state.likedTrackIds.size < 1000) {
+                const res = await originalFetch(likesUrl, { headers: { 'Authorization': state.oauthToken } });
+                const d = await res.json();
+                if (d.collection) {
+                    d.collection.forEach(function (item) {
+                        const tId = item.track ? item.track.id : item.target?.id;
+                        if (tId) state.likedTrackIds.add(tId);
+                    });
+                }
+                likesUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
+            }
+
+            let followingsUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/followings?limit=200&client_id=' + state.clientId;
+            while (followingsUrl && state.followingUserIds.size < 1000) {
+                const res = await originalFetch(followingsUrl, { headers: { 'Authorization': state.oauthToken } });
+                const d = await res.json();
+                if (d.collection) {
+                    d.collection.forEach(function (u) {
+                        if (u.id) state.followingUserIds.add(u.id);
+                    });
+                }
+                followingsUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
+            }
+
+            state.isUserDataLoaded = true;
+            console.log('[SC-FreshStation] Ready! ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.');
+        } catch (e) {
+            console.error('[SC-FreshStation] Failed to sync user data:', e);
+        }
+    }
+
+    function updateCurrentTrackInfo(track) {
+        state.currentTrack = {
+            id: track.id,
+            title: track.title,
+            artistId: track.user ? track.user.id : track.user_id,
+            artistName: track.user ? track.user.username : 'Unknown',
+            genre: (track.genre || '').trim()
+        };
+    }
+
+    setInterval(function () {
+        injectButtons();
+        detectPlayingTrackFromDOM();
+    }, 1000);
+
+    function detectPlayingTrackFromDOM() {
+        const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
+        const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        if (titleEl && artistEl) {
+            const title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
+            const artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
+            if (state.currentTrack && state.currentTrack.title !== title) {
+                state.currentTrack.title = title;
+                state.currentTrack.artistName = artist;
+            }
+        }
+    }
+
+    function injectButtons() {
+        const actionGroup = document.querySelector('.playbackSoundBadge__actions');
+        if (actionGroup && !document.getElementById('sc-fresh-station-dislike-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'sc-fresh-station-dislike-btn';
+            btn.type = 'button';
+            btn.className = 'sc-button sc-button-small sc-button-responsive';
+            btn.title = 'Dislike (曲・作者・ジャンルを除外して次へスキップ)';
+            btn.style.cssText = 'margin-left: 6px; color: #ff5500; border-color: #ff5500; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;';
+            btn.innerHTML = '<span>👎</span><span style="font-size: 11px;">Dislike</span>';
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                handleDislikeClick();
+            });
+            actionGroup.appendChild(btn);
+        }
+
+        const queueContainer = document.querySelector('.playControls__queue') || 
+                               (document.querySelector('.playbackSoundBadge__queueCircle') ? document.querySelector('.playbackSoundBadge__queueCircle').parentElement : null) ||
+                               document.querySelector('.playControls__elements');
+
+        if (queueContainer && !document.getElementById('sc-fresh-station-playlist-btn')) {
+            const plBtn = document.createElement('button');
+            plBtn.id = 'sc-fresh-station-playlist-btn';
+            plBtn.type = 'button';
+            plBtn.className = 'sc-button sc-button-small sc-button-responsive';
+            plBtn.style.cssText = 'margin-right: 8px; background: #ff5500; color: #fff; border: none; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border-radius: 3px; padding: 2px 8px; height: 26px;';
+            plBtn.innerHTML = '<span>➕</span><span id="sc-pl-btn-label" style="font-size: 11px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">追加</span>';
+            plBtn.title = 'クリックで対象プレイリストに現在の曲を追加 (右クリックで保存先変更)';
+            
+            plBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                handleAddTrackToPlaylist();
+            });
+
+            plBtn.addEventListener('contextmenu', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                chooseTargetPlaylistPrompt();
+            });
+
+            if (queueContainer.firstChild) {
+                queueContainer.insertBefore(plBtn, queueContainer.firstChild);
+            } else {
+                queueContainer.appendChild(plBtn);
+            }
+            updatePlaylistButtonUI();
+        }
+    }
+
+    function updatePlaylistButtonUI() {
+        const label = document.getElementById('sc-pl-btn-label');
+        if (!label) return;
+        if (!state.targetPlaylistId) {
+            label.textContent = 'PL選択';
+            return;
+        }
+        const found = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
+        label.textContent = found ? found.title : 'PL追加';
+    }
+
+    function chooseTargetPlaylistPrompt() {
+        if (state.myPlaylists.length === 0) {
+            alert('プレイリストが見つかりませんでした。SoundCloudにログインしているか確認してください。');
+            return;
+        }
+        const listText = state.myPlaylists.map(function (p, idx) { return '[' + (idx + 1) + '] ' + p.title + ' (' + p.trackCount + '曲)'; }).join('\n');
+        const choice = prompt('ワンクリックで追加するプレイリストの番号を入力してください：\n\n' + listText);
+        if (!choice) return;
+        const num = parseInt(choice, 10);
+        if (!isNaN(num) && num >= 1 && num <= state.myPlaylists.length) {
+            const selected = state.myPlaylists[num - 1];
+            state.targetPlaylistId = String(selected.id);
+            localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
+            updatePlaylistButtonUI();
+            alert('保存先プレイリストを「' + selected.title + '」に設定しました！');
+        } else {
+            alert('無効な番号です。');
+        }
+    }
+
+    async function handleAddTrackToPlaylist() {
+        if (!state.currentTrack || !state.currentTrack.id) {
+            alert('現在再生中のトラック情報が取得できませんでした。');
+            return;
+        }
+        if (!state.targetPlaylistId) {
+            chooseTargetPlaylistPrompt();
+            if (!state.targetPlaylistId) return;
+        }
+
+        const playlist = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
+        const plTitle = playlist ? playlist.title : '指定プレイリスト';
+        const trackTitle = state.currentTrack.title;
+        const trackId = state.currentTrack.id;
+
+        const btn = document.getElementById('sc-fresh-station-playlist-btn');
+        const oldHtml = btn ? btn.innerHTML : '';
+        if (btn) btn.innerHTML = '<span>⏳</span><span style="font-size: 11px;">追加中...</span>';
+
+        try {
+            const plUrl = 'https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId;
+            const plRes = await originalFetch(plUrl, {
+                headers: { 'Authorization': state.oauthToken }
+            });
+            const plData = await plRes.json();
+
+            let currentTrackIds = (plData.tracks || []).map(function (t) { return t.id; });
+            if (currentTrackIds.indexOf(trackId) !== -1) {
+                alert('「' + trackTitle + '」はすでに「' + plTitle + '」に入っています。');
+                if (btn) btn.innerHTML = oldHtml;
+                return;
+            }
+
+            currentTrackIds.push(trackId);
+
+            const putRes = await originalFetch('https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': state.oauthToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    playlist: {
+                        tracks: currentTrackIds
+                    }
+                })
+            });
+
+            if (putRes.ok) {
+                console.log('[SC-FreshStation] Added track ' + trackId + ' to playlist ' + state.targetPlaylistId);
+                if (btn) {
+                    btn.innerHTML = '<span>✅</span><span style="font-size: 11px;">追加完了!</span>';
+                    btn.style.background = '#00c853';
+                    setTimeout(function () {
+                        btn.style.background = '#ff5500';
+                        updatePlaylistButtonUI();
+                    }, 2500);
+                }
+            } else {
+                throw new Error('Status ' + putRes.status);
+            }
+        } catch (err) {
+            console.error('[SC-FreshStation] Failed to add track to playlist:', err);
+            alert('プレイリストへの追加に失敗しました: ' + err.message);
+            if (btn) btn.innerHTML = oldHtml;
+        }
+    }
+
+    async function handleDislikeClick() {
+        if (!state.currentTrack || !state.currentTrack.id) {
+            alert('現在再生中のトラック情報が取得できませんでした。少し待ってから再度押してください。');
+            return;
+        }
+
+        const t = state.currentTrack;
+        const confirmMsg = '【Dislikeの登録】\n' +
+            '曲: "' + t.title + '"\n' +
+            '作者: ' + t.artistName + '\n' +
+            'ジャンル: ' + (t.genre || '未設定') + '\n\n' +
+            'この「曲」「作者」「ジャンル」をすべてブラックリストに登録し、次へスキップしますか？\n' +
+            '※ジャンルが未設定の場合は曲と作者のみ除外されます。';
+
+        if (!confirm(confirmMsg)) return;
+
+        state.dislikedTracks[t.id] = {
+            title: t.title,
+            artist: t.artistName,
+            genre: t.genre,
+            date: new Date().toLocaleDateString()
+        };
+
+        if (t.artistId) {
+            state.dislikedArtists[t.artistId] = {
+                name: t.artistName,
+                date: new Date().toLocaleDateString()
+            };
+        }
+
+        if (t.genre) {
+            const gLower = t.genre.toLowerCase();
+            state.dislikedGenres[gLower] = {
+                display: t.genre,
+                date: new Date().toLocaleDateString()
+            };
+        }
+
+        saveDislikeData();
+        console.log('[SC-FreshStation] Disliked track, artist, and genre. Skipping to next...');
+
+        const skipBtn = document.querySelector('.playControls__next');
+        if (skipBtn) {
+            skipBtn.click();
+        }
+    }
+
+})();

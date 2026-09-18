@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "SoundCloud Fresh Station & Follower Stream",
+  "version": "1.1.0",
+  "description": "ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加",
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://soundcloud.com/*",
+    "https://*.soundcloud.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SoundCloud Fresh Station 設定"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://soundcloud.com/*"],
+      "js": ["station_hook.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://soundcloud.com/*"],
+      "js": ["content_bridge.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

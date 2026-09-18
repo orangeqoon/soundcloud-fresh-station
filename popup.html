@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>SC Fresh Station</title>
+  <style>
+    body {
+      width: 380px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: #181818;
+      color: #eaeaea;
+      box-sizing: border-box;
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ff5500;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+    .badge {
+      font-size: 11px;
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 10px;
+      color: #bbb;
+    }
+    .status-box {
+      background: #242424;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-around;
+      border: 1px solid #333;
+    }
+    .status-item {
+      text-align: center;
+    }
+    .status-num {
+      font-size: 14px;
+      font-weight: bold;
+      color: #ff5500;
+    }
+    .playlist-select-box {
+      background: #222;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+    }
+    .playlist-select-box label {
+      font-size: 11px;
+      color: #aaa;
+      display: block;
+      margin-bottom: 4px;
+    }
+    select {
+      width: 100%;
+      background: #111;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 5px;
+      font-size: 12px;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #333;
+      margin-bottom: 8px;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 6px 0;
+      cursor: pointer;
+      font-size: 12px;
+      color: #888;
+      border-bottom: 2px solid transparent;
+    }
+    .tab.active {
+      color: #ff5500;
+      border-bottom-color: #ff5500;
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-bottom: 1px solid #282828;
+      font-size: 12px;
+      background: #202020;
+      margin-bottom: 4px;
+      border-radius: 4px;
+    }
+    .item-meta {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 280px;
+    }
+    .item-sub {
+      font-size: 10px;
+      color: #777;
+    }
+    .del-btn {
+      background: transparent;
+      border: none;
+      color: #ff4444;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .del-btn:hover {
+      background: #3a1c1c;
+    }
+    .empty {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <h2>
+    <span>🎧 SC Suite <small style="font-size:10px; color:#ff7700;">v1.1.0</small></span>
+    <span class="badge" id="conn-badge">SoundCloud未接続</span>
+  </h2>
+
+  <!-- Mode Selector -->
+  <div class="playlist-select-box" style="border-left: 3px solid #ff5500;">
+    <label for="mode-select">🎛️ 再生動作モード：</label>
+    <select id="mode-select" style="font-weight: bold; color: #ffaa00;">
+      <option value="DISCOVERY">🔍 未知の曲発掘 (既知/フォローを除外)</option>
+      <option value="FOLLOWING_NEW">👥 フォロー中の新曲のみ (リポスト完全除外)</option>
+    </select>
+  </div>
+
+  <!-- Target Playlist Selection -->
+  <div class="playlist-select-box">
+    <label for="pl-select">➕ ワンクリック追加先プレイリスト：</label>
+    <select id="pl-select">
+      <option value="">読み込み中...</option>
+    </select>
+  </div>
+
+  <div class="status-box">
+    <div class="status-item">
+      <div id="stat-label-1">除外Likes</div>
+      <div class="status-num" id="stat-likes">-</div>
+    </div>
+    <div class="status-item">
+      <div id="stat-label-2">除外Follow</div>
+      <div class="status-num" id="stat-followings">-</div>
+    </div>
+    <div class="status-item">
+      <div>Dislike総数</div>
+      <div class="status-num" id="stat-dislikes">-</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-target="tab-artists">除外アーティスト</div>
+    <div class="tab" data-target="tab-genres">除外ジャンル</div>
+    <div class="tab" data-target="tab-tracks">除外曲</div>
+  </div>
+
+  <div id="tab-artists" class="tab-content active">
+    <ul id="list-artists"></ul>
+  </div>
+  <div id="tab-genres" class="tab-content">
+    <ul id="list-genres"></ul>
+  </div>
+  <div id="tab-tracks" class="tab-content">
+    <ul id="list-tracks"></ul>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
