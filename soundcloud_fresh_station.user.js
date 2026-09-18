@@ -13,16 +13,20 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.1.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.1.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
     const PLAYBACK_MODE_KEY = 'sc_fresh_station_playback_mode';
+    const CACHE_LIKES_KEY = 'sc_fresh_station_cache_likes';
+    const CACHE_FOLLOWS_KEY = 'sc_fresh_station_cache_follows';
+    const CACHE_PLAYLISTS_KEY = 'sc_fresh_station_cache_playlists';
+    const CACHE_CLIENT_ID_KEY = 'sc_fresh_station_client_id';
 
     const state = {
         myUserId: null,
         oauthToken: null,
-        clientId: null,
+        clientId: localStorage.getItem(CACHE_CLIENT_ID_KEY) || null,
         likedTrackIds: new Set(),
         followingUserIds: new Set(),
         isUserDataLoaded: false,
@@ -32,10 +36,12 @@
         dislikedGenres: {},
         myPlaylists: [],
         targetPlaylistId: localStorage.getItem(TARGET_PLAYLIST_KEY) || null,
-        currentTrack: null
+        currentTrack: null,
+        lastSkippedTrackKey: null
     };
 
-    function loadDislikeData() {
+    // 1. キャッシュから即時復元（ページ表示0秒後から除外有効化）
+    function loadCachedData() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
@@ -46,8 +52,30 @@
             }
             state.targetPlaylistId = localStorage.getItem(TARGET_PLAYLIST_KEY) || null;
             state.playbackMode = localStorage.getItem(PLAYBACK_MODE_KEY) || 'DISCOVERY';
+
+            const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
+            if (cachedLikes) {
+                const arr = JSON.parse(cachedLikes);
+                state.likedTrackIds = new Set(arr);
+            }
+
+            const cachedFollows = localStorage.getItem(CACHE_FOLLOWS_KEY);
+            if (cachedFollows) {
+                const arr = JSON.parse(cachedFollows);
+                state.followingUserIds = new Set(arr);
+            }
+
+            const cachedPls = localStorage.getItem(CACHE_PLAYLISTS_KEY);
+            if (cachedPls) {
+                state.myPlaylists = JSON.parse(cachedPls);
+            }
+
+            if (state.likedTrackIds.size > 0 || state.followingUserIds.size > 0) {
+                state.isUserDataLoaded = true;
+                console.log('[SC-FreshStation] Loaded from cache: ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' follows');
+            }
         } catch (e) {
-            console.error('[SC-FreshStation] Failed to load dislike data:', e);
+            console.error('[SC-FreshStation] Cache load error:', e);
         }
     }
 
@@ -63,6 +91,29 @@
         } catch (e) {
             console.error('[SC-FreshStation] Failed to save dislike data:', e);
         }
+    }
+
+    function saveCacheData() {
+        try {
+            localStorage.setItem(CACHE_LIKES_KEY, JSON.stringify(Array.from(state.likedTrackIds)));
+            localStorage.setItem(CACHE_FOLLOWS_KEY, JSON.stringify(Array.from(state.followingUserIds)));
+            localStorage.setItem(CACHE_PLAYLISTS_KEY, JSON.stringify(state.myPlaylists));
+            if (state.clientId) {
+                localStorage.setItem(CACHE_CLIENT_ID_KEY, state.clientId);
+            }
+        } catch (e) {}
+    }
+
+    // Cookieから即座にトークンを抽出
+    function extractAuthTokenFromCookie() {
+        if (state.oauthToken) return state.oauthToken;
+        const match = document.cookie.match(/(?:^|;\s*)oauth_token=([^;]+)/);
+        if (match && match[1]) {
+            const tok = decodeURIComponent(match[1]);
+            state.oauthToken = tok.startsWith('OAuth ') ? tok : ('OAuth ' + tok);
+            return state.oauthToken;
+        }
+        return null;
     }
 
     window.addEventListener('message', function (event) {
@@ -89,7 +140,11 @@
                 localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
                 console.log('[SC-FreshStation] Switched mode to:', state.playbackMode);
             } else if (action === 'GET_DATA') {
-                loadDislikeData();
+                loadCachedData();
+                extractAuthTokenFromCookie();
+                if (state.clientId && state.oauthToken && (!state.isUserDataLoaded || state.likedTrackIds.size === 0)) {
+                    initUserData();
+                }
                 window.postMessage({
                     type: 'SC_FRESH_STATION_DATA_RESPONSE',
                     data: {
@@ -108,7 +163,8 @@
         }
     });
 
-    loadDislikeData();
+    loadCachedData();
+    extractAuthTokenFromCookie();
 
     // 1. window.fetch Hook
     const originalFetch = window.fetch;
@@ -279,7 +335,10 @@
     }
 
     async function initUserData() {
-        state.isUserDataLoaded = false;
+        if (!state.clientId) return;
+        extractAuthTokenFromCookie();
+        if (!state.oauthToken) return;
+
         console.log('[SC-FreshStation] Syncing user profile, playlists, likes...');
 
         try {
@@ -287,55 +346,62 @@
                 headers: { 'Authorization': state.oauthToken }
             });
             const meData = await meRes.json();
-            state.myUserId = meData.id;
+            if (meData && meData.id) {
+                state.myUserId = meData.id;
+            }
 
-            const plRes = await originalFetch('https://api-v2.soundcloud.com/users/' + state.myUserId + '/playlists?limit=50&client_id=' + state.clientId, {
-                headers: { 'Authorization': state.oauthToken }
-            });
-            const plData = await plRes.json();
-            if (plData && plData.collection) {
-                state.myPlaylists = plData.collection.map(function (p) {
-                    return {
-                        id: p.id,
-                        title: p.title,
-                        trackCount: p.track_count || 0
-                    };
+            if (state.myUserId) {
+                // プレイリスト一覧取得
+                const plRes = await originalFetch('https://api-v2.soundcloud.com/users/' + state.myUserId + '/playlists?limit=50&client_id=' + state.clientId, {
+                    headers: { 'Authorization': state.oauthToken }
                 });
-                console.log('[SC-FreshStation] Loaded ' + state.myPlaylists.length + ' playlists');
-                if (!state.targetPlaylistId && state.myPlaylists.length > 0) {
-                    state.targetPlaylistId = String(state.myPlaylists[0].id);
-                    localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
-                }
-                updatePlaylistButtonUI();
-            }
-
-            let likesUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/track_likes?limit=200&client_id=' + state.clientId;
-            while (likesUrl && state.likedTrackIds.size < 1000) {
-                const res = await originalFetch(likesUrl, { headers: { 'Authorization': state.oauthToken } });
-                const d = await res.json();
-                if (d.collection) {
-                    d.collection.forEach(function (item) {
-                        const tId = item.track ? item.track.id : item.target?.id;
-                        if (tId) state.likedTrackIds.add(tId);
+                const plData = await plRes.json();
+                if (plData && plData.collection) {
+                    state.myPlaylists = plData.collection.map(function (p) {
+                        return {
+                            id: p.id,
+                            title: p.title,
+                            trackCount: p.track_count || 0
+                        };
                     });
+                    if (!state.targetPlaylistId && state.myPlaylists.length > 0) {
+                        state.targetPlaylistId = String(state.myPlaylists[0].id);
+                        localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
+                    }
+                    updatePlaylistButtonUI();
                 }
-                likesUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
-            }
 
-            let followingsUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/followings?limit=200&client_id=' + state.clientId;
-            while (followingsUrl && state.followingUserIds.size < 1000) {
-                const res = await originalFetch(followingsUrl, { headers: { 'Authorization': state.oauthToken } });
-                const d = await res.json();
-                if (d.collection) {
-                    d.collection.forEach(function (u) {
-                        if (u.id) state.followingUserIds.add(u.id);
-                    });
+                // ライク一覧取得 (最大1000件)
+                let likesUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/track_likes?limit=200&client_id=' + state.clientId;
+                while (likesUrl && state.likedTrackIds.size < 1000) {
+                    const res = await originalFetch(likesUrl, { headers: { 'Authorization': state.oauthToken } });
+                    const d = await res.json();
+                    if (d.collection) {
+                        d.collection.forEach(function (item) {
+                            const tId = item.track ? item.track.id : (item.target ? item.target.id : item.id);
+                            if (tId) state.likedTrackIds.add(tId);
+                        });
+                    }
+                    likesUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
                 }
-                followingsUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
-            }
 
-            state.isUserDataLoaded = true;
-            console.log('[SC-FreshStation] Ready! ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.');
+                // フォロー一覧取得 (最大1000件)
+                let followingsUrl = 'https://api-v2.soundcloud.com/users/' + state.myUserId + '/followings?limit=200&client_id=' + state.clientId;
+                while (followingsUrl && state.followingUserIds.size < 1000) {
+                    const res = await originalFetch(followingsUrl, { headers: { 'Authorization': state.oauthToken } });
+                    const d = await res.json();
+                    if (d.collection) {
+                        d.collection.forEach(function (u) {
+                            if (u.id) state.followingUserIds.add(u.id);
+                        });
+                    }
+                    followingsUrl = d.next_href ? (d.next_href + '&client_id=' + state.clientId) : null;
+                }
+
+                state.isUserDataLoaded = true;
+                saveCacheData();
+                console.log('[SC-FreshStation] Full sync complete! ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.');
+            }
         } catch (e) {
             console.error('[SC-FreshStation] Failed to sync user data:', e);
         }
@@ -351,20 +417,79 @@
         };
     }
 
+    // 3. 定期監視タイマー（UIボタン挿入 ＆ 再生中トラックのリアルタイム除外ガード）
     setInterval(function () {
         injectButtons();
-        detectPlayingTrackFromDOM();
+        detectAndGuardPlayingTrack();
     }, 1000);
 
-    function detectPlayingTrackFromDOM() {
+    // 二重防壁: すり抜けて再生された曲をDOM＆IDから即座に検知してスキップ
+    function detectAndGuardPlayingTrack() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        const likeBtn = document.querySelector('.playbackSoundBadge__like');
+
+        let title = '';
+        let artist = '';
         if (titleEl && artistEl) {
-            const title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
-            const artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
+            title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
+            artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
             if (state.currentTrack && state.currentTrack.title !== title) {
                 state.currentTrack.title = title;
                 state.currentTrack.artistName = artist;
+            }
+        }
+
+        const currentTrackKey = title + '::' + artist;
+        if (!title || currentTrackKey === state.lastSkippedTrackKey) {
+            return;
+        }
+
+        // DISCOVERYモード時のガード判定
+        if (state.playbackMode === 'DISCOVERY') {
+            let shouldSkip = false;
+            let reason = '';
+
+            // A. DOMのライクボタンがすでに「選択中(ライク済み)」になっている場合 (100%確実)
+            if (likeBtn) {
+                const isSelected = likeBtn.classList.contains('sc-button-selected');
+                const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
+                const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
+                if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
+                    shouldSkip = true;
+                    reason = '再生中トラックはすでにLike済み (DOM検知)';
+                }
+            }
+
+            // B. トラックIDがLikesに含まれている場合
+            if (!shouldSkip && state.currentTrack && state.currentTrack.id) {
+                if (state.likedTrackIds.has(state.currentTrack.id)) {
+                    shouldSkip = true;
+                    reason = '再生中トラックIDがLikes一覧に一致';
+                } else if (state.currentTrack.artistId && state.followingUserIds.has(state.currentTrack.artistId)) {
+                    shouldSkip = true;
+                    reason = '再生中トラックの作者をフォロー中';
+                }
+            }
+
+            // C. Dislikeに登録されている場合
+            if (!shouldSkip) {
+                if (state.currentTrack && state.currentTrack.id && state.dislikedTracks[state.currentTrack.id]) {
+                    shouldSkip = true;
+                    reason = '再生中トラックはDislike登録済み';
+                } else if (state.currentTrack && state.currentTrack.artistId && state.dislikedArtists[state.currentTrack.artistId]) {
+                    shouldSkip = true;
+                    reason = '再生中アーティストはDislike登録済み';
+                }
+            }
+
+            if (shouldSkip) {
+                console.warn('[SC-FreshStation:Guard] 🚫 ' + reason + ' -> 自動スキップ実行: ' + title + ' (' + artist + ')');
+                state.lastSkippedTrackKey = currentTrackKey;
+                const skipBtn = document.querySelector('.playControls__next');
+                if (skipBtn) {
+                    skipBtn.click();
+                }
             }
         }
     }
