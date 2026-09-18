@@ -602,14 +602,17 @@
 
     function injectButtons() {
         const actionGroup = document.querySelector('.playbackSoundBadge__actions');
-        if (actionGroup && !document.getElementById('sc-fresh-station-dislike-btn')) {
+        if (!actionGroup) return;
+
+        // 1. Dislikeボタン (アイコン1個のみ: 👎)
+        if (!document.getElementById('sc-fresh-station-dislike-btn')) {
             const btn = document.createElement('button');
             btn.id = 'sc-fresh-station-dislike-btn';
             btn.type = 'button';
-            btn.className = 'sc-button sc-button-small sc-button-responsive';
-            btn.title = 'Dislike (曲・作者・ジャンルを除外して次へスキップ)';
-            btn.style.cssText = 'margin-left: 6px; color: #ff5500; border-color: #ff5500; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; cursor: pointer;';
-            btn.innerHTML = '<span>👎</span><span style="font-size: 11px;">Dislike</span>';
+            btn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            btn.title = '👎 Dislike (曲・作者・ジャンルを除外して次へスキップ)';
+            btn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; color: #ff5500; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
+            btn.innerHTML = '👎';
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -618,18 +621,14 @@
             actionGroup.appendChild(btn);
         }
 
-        const queueContainer = document.querySelector('.playControls__queue') || 
-                               (document.querySelector('.playbackSoundBadge__queueCircle') ? document.querySelector('.playbackSoundBadge__queueCircle').parentElement : null) ||
-                               document.querySelector('.playControls__elements');
-
-        if (queueContainer && !document.getElementById('sc-fresh-station-playlist-btn')) {
+        // 2. プレイリスト一発挿入ボタン (アイコン1個のみ: ➕) - Dislikeボタンのすぐ隣に配置！
+        if (!document.getElementById('sc-fresh-station-playlist-btn')) {
             const plBtn = document.createElement('button');
             plBtn.id = 'sc-fresh-station-playlist-btn';
             plBtn.type = 'button';
-            plBtn.className = 'sc-button sc-button-small sc-button-responsive';
-            plBtn.style.cssText = 'margin-right: 8px; background: #ff5500; color: #fff; border: none; font-weight: bold; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; border-radius: 3px; padding: 2px 8px; height: 26px;';
-            plBtn.innerHTML = '<span>➕</span><span id="sc-pl-btn-label" style="font-size: 11px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">追加</span>';
-            plBtn.title = 'クリックで対象プレイリストに現在の曲を追加 (右クリックで保存先変更)';
+            plBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            plBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; background: #ff5500; color: #fff; font-size: 13px; font-weight: bold; cursor: pointer; line-height: 1; vertical-align: middle;';
+            plBtn.innerHTML = '➕';
             
             plBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -643,24 +642,21 @@
                 chooseTargetPlaylistPrompt();
             });
 
-            if (queueContainer.firstChild) {
-                queueContainer.insertBefore(plBtn, queueContainer.firstChild);
-            } else {
-                queueContainer.appendChild(plBtn);
-            }
+            actionGroup.appendChild(plBtn);
             updatePlaylistButtonUI();
         }
     }
 
     function updatePlaylistButtonUI() {
-        const label = document.getElementById('sc-pl-btn-label');
-        if (!label) return;
+        const btn = document.getElementById('sc-fresh-station-playlist-btn');
+        if (!btn) return;
         if (!state.targetPlaylistId) {
-            label.textContent = 'PL選択';
+            btn.title = '➕ プレイリストに一発追加 (クリックで保存先選択)';
             return;
         }
         const found = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
-        label.textContent = found ? found.title : 'PL追加';
+        const name = found ? found.title : '保存先';
+        btn.title = '➕ 「' + name + '」に一発追加 (右クリックで保存先変更)';
     }
 
     function chooseTargetPlaylistPrompt() {
@@ -684,13 +680,44 @@
     }
 
     async function handleAddTrackToPlaylist() {
+        const btn = document.getElementById('sc-fresh-station-playlist-btn');
         if (!state.currentTrack || !state.currentTrack.id) {
-            alert('現在再生中のトラック情報が取得できませんでした。');
+            // DOMからトラック情報の解決を試みる
+            const titleLink = document.querySelector('.playbackSoundBadge__titleLink');
+            if (titleLink && titleLink.getAttribute('href') && state.clientId) {
+                try {
+                    if (btn) btn.innerHTML = '⏳';
+                    const href = titleLink.getAttribute('href');
+                    const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent('https://soundcloud.com' + href) + '&client_id=' + state.clientId;
+                    const rRes = await originalFetch(resolveUrl, {
+                        headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
+                        credentials: 'include'
+                    });
+                    const rData = await rRes.json();
+                    if (rData && rData.id) {
+                        state.currentTrack = {
+                            id: rData.id,
+                            title: rData.title,
+                            artistId: rData.user ? rData.user.id : rData.user_id,
+                            artistName: rData.user ? rData.user.username : 'Unknown',
+                            genre: (rData.genre || '').trim()
+                        };
+                    }
+                } catch (e) {}
+            }
+        }
+
+        if (!state.currentTrack || !state.currentTrack.id) {
+            alert('現在再生中のトラック情報が取得できませんでした。曲を再生してから押してください。');
+            if (btn) btn.innerHTML = '➕';
             return;
         }
         if (!state.targetPlaylistId) {
             chooseTargetPlaylistPrompt();
-            if (!state.targetPlaylistId) return;
+            if (!state.targetPlaylistId) {
+                if (btn) btn.innerHTML = '➕';
+                return;
+            }
         }
 
         const playlist = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
@@ -698,21 +725,20 @@
         const trackTitle = state.currentTrack.title;
         const trackId = state.currentTrack.id;
 
-        const btn = document.getElementById('sc-fresh-station-playlist-btn');
-        const oldHtml = btn ? btn.innerHTML : '';
-        if (btn) btn.innerHTML = '<span>⏳</span><span style="font-size: 11px;">追加中...</span>';
+        if (btn) btn.innerHTML = '⏳';
 
         try {
             const plUrl = 'https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId;
             const plRes = await originalFetch(plUrl, {
-                headers: { 'Authorization': state.oauthToken }
+                headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
+                credentials: 'include'
             });
             const plData = await plRes.json();
 
             let currentTrackIds = (plData.tracks || []).map(function (t) { return t.id; });
             if (currentTrackIds.indexOf(trackId) !== -1) {
                 alert('「' + trackTitle + '」はすでに「' + plTitle + '」に入っています。');
-                if (btn) btn.innerHTML = oldHtml;
+                if (btn) btn.innerHTML = '➕';
                 return;
             }
 
@@ -721,9 +747,10 @@
             const putRes = await originalFetch('https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': state.oauthToken,
+                    ...(state.oauthToken ? { 'Authorization': state.oauthToken } : {}),
                     'Content-Type': 'application/json'
                 },
+                credentials: 'include',
                 body: JSON.stringify({
                     playlist: {
                         tracks: currentTrackIds
@@ -734,12 +761,15 @@
             if (putRes.ok) {
                 console.log('[SC-FreshStation] Added track ' + trackId + ' to playlist ' + state.targetPlaylistId);
                 if (btn) {
-                    btn.innerHTML = '<span>✅</span><span style="font-size: 11px;">追加完了!</span>';
+                    btn.innerHTML = '✅';
                     btn.style.background = '#00c853';
+                    btn.style.borderColor = '#00c853';
                     setTimeout(function () {
+                        btn.innerHTML = '➕';
                         btn.style.background = '#ff5500';
+                        btn.style.borderColor = '#ff5500';
                         updatePlaylistButtonUI();
-                    }, 2500);
+                    }, 1500);
                 }
             } else {
                 throw new Error('Status ' + putRes.status);
@@ -747,7 +777,10 @@
         } catch (err) {
             console.error('[SC-FreshStation] Failed to add track to playlist:', err);
             alert('プレイリストへの追加に失敗しました: ' + err.message);
-            if (btn) btn.innerHTML = oldHtml;
+            if (btn) {
+                btn.innerHTML = '➕';
+                btn.style.background = '#ff5500';
+            }
         }
     }
 
