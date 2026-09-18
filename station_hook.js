@@ -63,6 +63,26 @@
                 state.isUserDataLoaded = true;
                 console.log('[SC-FreshStation] Loaded from cache: ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' follows');
             }
+
+            // 無効なゴミキーの完全クリーンアップ（全スキップバグの防止）
+            const invalidKeys = ['undefined', 'null', 'unknown', 'title_unknown', 'artist_unknown', ''];
+            let cleaned = false;
+            Object.keys(state.dislikedTracks).forEach(function (k) {
+                if (!k || invalidKeys.includes(k.toLowerCase().trim())) {
+                    delete state.dislikedTracks[k];
+                    cleaned = true;
+                }
+            });
+            Object.keys(state.dislikedArtists).forEach(function (k) {
+                if (!k || invalidKeys.includes(k.toLowerCase().trim())) {
+                    delete state.dislikedArtists[k];
+                    cleaned = true;
+                }
+            });
+            if (cleaned) {
+                saveDislikeData();
+                console.log('[SC-FreshStation] Cleaned up invalid blacklist keys.');
+            }
         } catch (e) {
             console.error('[SC-FreshStation] Cache load error:', e);
         }
@@ -512,78 +532,26 @@
         };
     }
 
-    // 3. 定期監視タイマー（UIボタン挿入 ＆ 再生中トラックのリアルタイム除外ガード）
+    // 3. 定期監視タイマー（UIボタン挿入 ＆ 再生中トラック情報の安全な取得）
     setInterval(function () {
         injectButtons();
-        detectAndGuardPlayingTrack();
+        detectPlayingTrackFromDOM();
     }, 1000);
 
-    // 二重防壁: すり抜けて再生された曲をDOM＆IDから即座に検知してスキップ
-    function detectAndGuardPlayingTrack() {
+    // 再生中トラックのDOM情報更新（勝手なスキップは行わない安全設計）
+    function detectPlayingTrackFromDOM() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
-        const likeBtn = document.querySelector('.playbackSoundBadge__like');
 
-        let title = '';
-        let artist = '';
         if (titleEl && artistEl) {
-            title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
-            artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
-            if (state.currentTrack && state.currentTrack.title !== title) {
-                state.currentTrack.title = title;
-                state.currentTrack.artistName = artist;
-            }
-        }
-
-        const currentTrackKey = title + '::' + artist;
-        if (!title || currentTrackKey === state.lastSkippedTrackKey) {
-            return;
-        }
-
-        // DISCOVERYモード時のガード判定
-        if (state.playbackMode === 'DISCOVERY') {
-            let shouldSkip = false;
-            let reason = '';
-
-            // A. DOMのライクボタンがすでに「選択中(ライク済み)」になっている場合 (100%確実)
-            if (likeBtn) {
-                const isSelected = likeBtn.classList.contains('sc-button-selected');
-                const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
-                const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
-                if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
-                    shouldSkip = true;
-                    reason = '再生中トラックはすでにLike済み (DOM検知)';
-                }
-            }
-
-            // B. トラックIDがLikesに含まれている場合
-            if (!shouldSkip && state.currentTrack && state.currentTrack.id) {
-                if (state.likedTrackIds.has(state.currentTrack.id)) {
-                    shouldSkip = true;
-                    reason = '再生中トラックIDがLikes一覧に一致';
-                } else if (state.currentTrack.artistId && state.followingUserIds.has(state.currentTrack.artistId)) {
-                    shouldSkip = true;
-                    reason = '再生中トラックの作者をフォロー中';
-                }
-            }
-
-            // C. Dislikeに登録されている場合
-            if (!shouldSkip) {
-                if (state.currentTrack && state.currentTrack.id && state.dislikedTracks[state.currentTrack.id]) {
-                    shouldSkip = true;
-                    reason = '再生中トラックはDislike登録済み';
-                } else if (state.currentTrack && state.currentTrack.artistId && state.dislikedArtists[state.currentTrack.artistId]) {
-                    shouldSkip = true;
-                    reason = '再生中アーティストはDislike登録済み';
-                }
-            }
-
-            if (shouldSkip) {
-                console.warn('[SC-FreshStation:Guard] 🚫 ' + reason + ' -> 自動スキップ実行: ' + title + ' (' + artist + ')');
-                state.lastSkippedTrackKey = currentTrackKey;
-                const skipBtn = document.querySelector('.playControls__next');
-                if (skipBtn) {
-                    skipBtn.click();
+            const title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
+            const artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
+            if (title && (!state.currentTrack || state.currentTrack.title !== title)) {
+                if (!state.currentTrack) {
+                    state.currentTrack = { id: null, title: title, artistName: artist, artistId: null, genre: '' };
+                } else {
+                    state.currentTrack.title = title;
+                    state.currentTrack.artistName = artist;
                 }
             }
         }
@@ -794,7 +762,7 @@
         if (state.currentTrack && (state.currentTrack.id || state.currentTrack.title)) {
             return state.currentTrack;
         }
-        detectAndGuardPlayingTrack();
+        detectPlayingTrackFromDOM();
         const titleLink = document.querySelector('.playbackSoundBadge__titleLink');
         if (titleLink && titleLink.getAttribute('href') && state.clientId) {
             try {
