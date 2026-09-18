@@ -1031,30 +1031,30 @@ const hookCode = `// SoundCloud Fresh Station & Follower Stream
     }
 
     async function handleDislikeClick() {
-        const t = await ensureCurrentTrackInfo();
-        if (!t || (!t.id && !t.title)) {
-            alert('現在再生中のトラック情報が取得できませんでした。少し待ってから再度押してください。');
-            return;
+        const btn = document.getElementById('sc-fresh-station-dislike-btn');
+        if (btn) {
+            btn.style.background = '#ff5500';
+            btn.style.color = '#fff';
+            setTimeout(function () {
+                btn.style.background = 'transparent';
+                btn.style.color = '#ff5500';
+            }, 500);
         }
 
-        const confirmMsg = '【👎 Dislike: この曲のみ除外】\\n\\n' +
-            '曲名: "' + t.title + '"\\n' +
-            '作者: ' + t.artistName + '\\n\\n' +
-            'この曲を二度と流れないよう除外して、次へスキップしますか？\\n' +
-            '（※この作者の他の曲は今後も再生されます）';
+        const t = await ensureCurrentTrackInfo();
+        const title = (t && t.title) ? t.title : (document.querySelector('.playbackSoundBadge__titleLink')?.getAttribute('title') || 'Unknown');
+        const artist = (t && t.artistName) ? t.artistName : (document.querySelector('.playbackSoundBadge__lightLink')?.getAttribute('title') || 'Unknown');
+        const trackKey = (t && t.id) ? t.id : ('title_' + encodeURIComponent(title));
 
-        if (!confirm(confirmMsg)) return;
-
-        const trackKey = t.id || ('title_' + encodeURIComponent(t.title));
         state.dislikedTracks[trackKey] = {
-            title: t.title,
-            artist: t.artistName,
-            genre: t.genre,
+            title: title,
+            artist: artist,
+            genre: (t && t.genre) ? t.genre : '',
             date: new Date().toLocaleDateString()
         };
 
         saveDislikeData();
-        console.log('[SC-FreshStation] Disliked track only: ' + t.title + '. Skipping...');
+        console.log('[SC-FreshStation] 👎 1-Click Dislike! Track only: "' + title + '" (' + artist + '). Skipping immediately...');
 
         const skipBtn = document.querySelector('.playControls__next');
         if (skipBtn) {
@@ -1063,28 +1063,27 @@ const hookCode = `// SoundCloud Fresh Station & Follower Stream
     }
 
     async function handleHateClick() {
-        const t = await ensureCurrentTrackInfo();
-        if (!t || (!t.id && !t.title)) {
-            alert('現在再生中のトラック情報が取得できませんでした。少し待ってから再度押してください。');
-            return;
+        const btn = document.getElementById('sc-fresh-station-hate-btn');
+        if (btn) {
+            btn.style.background = '#e53935';
+            btn.style.color = '#fff';
+            setTimeout(function () {
+                btn.style.background = 'transparent';
+                btn.style.color = '#e53935';
+            }, 500);
         }
 
-        const confirmMsg = '【🚫 Hate: この作者の全曲を除外】\\n\\n' +
-            '作者: ' + t.artistName + '\\n' +
-            '再生中: "' + t.title + '"\\n\\n' +
-            'この作者「' + t.artistName + '」の全楽曲を今後一切流さないよう除外して、次へスキップしますか？\\n' +
-            '（※この作者のすべての曲がステーション再生から完全排除されます）';
+        const t = await ensureCurrentTrackInfo();
+        const artist = (t && t.artistName) ? t.artistName : (document.querySelector('.playbackSoundBadge__lightLink')?.getAttribute('title') || 'Unknown');
+        const artistKey = (t && t.artistId) ? t.artistId : ('artist_' + encodeURIComponent(artist));
 
-        if (!confirm(confirmMsg)) return;
-
-        const artistKey = t.artistId || ('artist_' + encodeURIComponent(t.artistName));
         state.dislikedArtists[artistKey] = {
-            name: t.artistName,
+            name: artist,
             date: new Date().toLocaleDateString()
         };
 
         saveDislikeData();
-        console.log('[SC-FreshStation] Hated artist completely: ' + t.artistName + '. Skipping...');
+        console.log('[SC-FreshStation] 🚫 1-Click Hate! Artist completely: "' + artist + '". Skipping immediately...');
 
         const skipBtn = document.querySelector('.playControls__next');
         if (skipBtn) {
@@ -1101,7 +1100,7 @@ fs.writeFileSync('c:\\scripts\\soundcloud_fresh_station\\station_hook.js', hookC
 const userJsHeader = `// ==UserScript==
 // @name         SoundCloud Fresh Station & Playlist Helper
 // @namespace    https://soundcloud.com/
-// @version      1.3
+// @version      1.1.5
 // @description  ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -1112,4 +1111,4 @@ const userJsHeader = `// ==UserScript==
 `;
 fs.writeFileSync('c:\\scripts\\soundcloud_fresh_station\\soundcloud_fresh_station.user.js', userJsHeader + hookCode, 'utf8');
 
-console.log('All files regenerated cleanly for v1.1.4!');
+console.log('All files regenerated cleanly for v1.1.5!');
