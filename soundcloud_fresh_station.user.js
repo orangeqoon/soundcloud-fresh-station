@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SoundCloud Fresh Station & Playlist Helper
 // @namespace    https://soundcloud.com/
-// @version      1.1.6
+// @version      1.1.7
 // @description  ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -543,27 +543,142 @@
         };
     }
 
-    // 3. 定期監視タイマー（UIボタン挿入 ＆ 再生中トラック情報の安全な取得）
+    // マージン制御用の状態管理
+    const marginGuard = {
+        lastTrackHref: '',
+        loadStartTime: 0,
+        hasChecked: false,
+        lastSkipTime: 0,
+        consecutiveSkips: 0
+    };
+
+    // 3. 定期監視タイマー (500ms おきに実行)
     setInterval(function () {
         injectButtons();
-        detectPlayingTrackFromDOM();
-    }, 1000);
+        monitorPlaybackWithMargin();
+    }, 500);
 
-    // 再生中トラックのDOM情報更新（勝手なスキップは行わない安全設計）
-    function detectPlayingTrackFromDOM() {
+    // マージン付き再生監視＆安全自動スキップ
+    function monitorPlaybackWithMargin() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        const likeBtn = document.querySelector('.playbackSoundBadge__like');
 
-        if (titleEl && artistEl) {
-            const title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
-            const artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
-            if (title && (!state.currentTrack || state.currentTrack.title !== title)) {
-                if (!state.currentTrack) {
-                    state.currentTrack = { id: null, title: title, artistName: artist, artistId: null, genre: '' };
-                } else {
-                    state.currentTrack.title = title;
-                    state.currentTrack.artistName = artist;
+        if (!titleEl || !artistEl) return;
+
+        const currentHref = titleEl.getAttribute('href') || '';
+        const title = titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '');
+        const artist = artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '');
+
+        if (!currentHref || !title) return;
+
+        const now = Date.now();
+
+        // 1. 新しい曲に切り替わったことを検知！
+        if (currentHref !== marginGuard.lastTrackHref) {
+            marginGuard.lastTrackHref = currentHref;
+            marginGuard.loadStartTime = now;
+            marginGuard.hasChecked = false;
+
+            // 新しい曲情報で初期化
+            state.currentTrack = {
+                id: null,
+                title: title,
+                artistName: artist,
+                artistId: null,
+                href: currentHref,
+                genre: ''
+            };
+            return;
+        }
+
+        // 2. この曲ですでに判定完了していればスキップ（1曲につき1回判定ルール）
+        if (marginGuard.hasChecked) {
+            return;
+        }
+
+        // 3. マージン待機：曲が始まってから 1.2秒（1200ms）経過するまで DOM や再生が安定するのを待つ！
+        if (now - marginGuard.loadStartTime < 1200) {
+            return;
+        }
+
+        // 4. 安全クールダウン：前回スキップから 2.0秒未満なら待つ（連続連打ループ防止）
+        if (now - marginGuard.lastSkipTime < 2000) {
+            return;
+        }
+
+        // 5. 連続スキップ防止ブレーキ（万が一の無限ループ防止）
+        if (marginGuard.consecutiveSkips >= 10) {
+            console.warn('[SC-FreshStation] ⚠️ 連続スキップが10曲に達したため、安全のため自動スキップを一時停止しました。');
+            marginGuard.hasChecked = true;
+            return;
+        }
+
+        // --- ここからマージン経過後の正確な除外判定 ---
+        marginGuard.hasChecked = true; // この曲の判定を完了済みにマーク
+
+        // 未知の曲発掘モード（DISCOVERY）の場合に除外スキップ
+        if (state.playbackMode === 'DISCOVERY') {
+            let shouldSkip = false;
+            let skipReason = '';
+
+            // A. DOMのLikeボタンの確認（1.2秒経過しているのでDOMは100%正確）
+            if (likeBtn) {
+                const isSelected = likeBtn.classList.contains('sc-button-selected');
+                const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
+                const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
+                if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
+                    shouldSkip = true;
+                    skipReason = 'ライク済みの曲 (DOM検知)';
                 }
+            }
+
+            // B. Dislike (曲) の確認
+            if (!shouldSkip) {
+                const trackKey = (state.currentTrack && state.currentTrack.id) ? state.currentTrack.id : ('title_' + encodeURIComponent(title));
+                if (state.dislikedTracks[trackKey] || state.dislikedTracks[title]) {
+                    shouldSkip = true;
+                    skipReason = 'Dislike登録された曲';
+                }
+            }
+
+            // C. Hate / Dislike (作者) の確認
+            if (!shouldSkip) {
+                const artistKey = (state.currentTrack && state.currentTrack.artistId) ? state.currentTrack.artistId : ('artist_' + encodeURIComponent(artist));
+                if (state.dislikedArtists[artistKey] || state.dislikedArtists[artist]) {
+                    shouldSkip = true;
+                    skipReason = 'Hate登録された作者';
+                }
+            }
+
+            // D. フォロー中アーティストの確認 (DISCOVERY除外)
+            if (!shouldSkip && state.currentTrack && state.currentTrack.artistId) {
+                if (state.followingUserIds.has(state.currentTrack.artistId)) {
+                    shouldSkip = true;
+                    skipReason = 'フォロー中のアーティスト';
+                }
+            }
+
+            // E. 登録Likes一覧の確認
+            if (!shouldSkip && state.currentTrack && state.currentTrack.id) {
+                if (state.likedTrackIds.has(state.currentTrack.id)) {
+                    shouldSkip = true;
+                    skipReason = 'ライク済みID一覧に一致';
+                }
+            }
+
+            // スキップ実行
+            if (shouldSkip) {
+                console.log('[SC-FreshStation] ⏩ [' + skipReason + '] を検知！1.2秒マージン後にスキップ実行: "' + title + '" (' + artist + ')');
+                marginGuard.lastSkipTime = Date.now();
+                marginGuard.consecutiveSkips++;
+
+                const skipBtn = document.querySelector('.playControls__next');
+                if (skipBtn) {
+                    skipBtn.click();
+                }
+            } else {
+                marginGuard.consecutiveSkips = 0;
             }
         }
     }
