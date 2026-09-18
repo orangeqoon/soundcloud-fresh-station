@@ -604,13 +604,13 @@
         const actionGroup = document.querySelector('.playbackSoundBadge__actions');
         if (!actionGroup) return;
 
-        // 1. Dislikeボタン (アイコン1個のみ: 👎)
+        // 1. Dislikeボタン (アイコン1個: 👎) - この曲だけ除外
         if (!document.getElementById('sc-fresh-station-dislike-btn')) {
             const btn = document.createElement('button');
             btn.id = 'sc-fresh-station-dislike-btn';
             btn.type = 'button';
             btn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            btn.title = '👎 Dislike (曲・作者・ジャンルを除外して次へスキップ)';
+            btn.title = '👎 Dislike (この曲だけ二度と流さない＆スキップ)';
             btn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; color: #ff5500; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
             btn.innerHTML = '👎';
             btn.addEventListener('click', function (e) {
@@ -621,7 +621,24 @@
             actionGroup.appendChild(btn);
         }
 
-        // 2. プレイリスト一発挿入ボタン (アイコン1個のみ: ➕) - Dislikeボタンのすぐ隣に配置！
+        // 2. Hateボタン (アイコン1個: 🚫) - この作者の曲すべてを除外
+        if (!document.getElementById('sc-fresh-station-hate-btn')) {
+            const hateBtn = document.createElement('button');
+            hateBtn.id = 'sc-fresh-station-hate-btn';
+            hateBtn.type = 'button';
+            hateBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            hateBtn.title = '🚫 Hate (この作者の曲すべてを二度と流さない＆スキップ)';
+            hateBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #e53935; color: #e53935; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
+            hateBtn.innerHTML = '🚫';
+            hateBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                handleHateClick();
+            });
+            actionGroup.appendChild(hateBtn);
+        }
+
+        // 3. プレイリスト一発挿入ボタン (アイコン1個: ➕)
         if (!document.getElementById('sc-fresh-station-playlist-btn')) {
             const plBtn = document.createElement('button');
             plBtn.id = 'sc-fresh-station-playlist-btn';
@@ -784,46 +801,90 @@
         }
     }
 
+    async function ensureCurrentTrackInfo() {
+        if (state.currentTrack && (state.currentTrack.id || state.currentTrack.title)) {
+            return state.currentTrack;
+        }
+        detectAndGuardPlayingTrack();
+        const titleLink = document.querySelector('.playbackSoundBadge__titleLink');
+        if (titleLink && titleLink.getAttribute('href') && state.clientId) {
+            try {
+                const href = titleLink.getAttribute('href');
+                const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent('https://soundcloud.com' + href) + '&client_id=' + state.clientId;
+                const rRes = await originalFetch(resolveUrl, {
+                    headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
+                    credentials: 'include'
+                });
+                const rData = await rRes.json();
+                if (rData && rData.id) {
+                    state.currentTrack = {
+                        id: rData.id,
+                        title: rData.title,
+                        artistId: rData.user ? rData.user.id : rData.user_id,
+                        artistName: rData.user ? rData.user.username : 'Unknown',
+                        genre: (rData.genre || '').trim()
+                    };
+                }
+            } catch (e) {}
+        }
+        return state.currentTrack;
+    }
+
     async function handleDislikeClick() {
-        if (!state.currentTrack || !state.currentTrack.id) {
+        const t = await ensureCurrentTrackInfo();
+        if (!t || (!t.id && !t.title)) {
             alert('現在再生中のトラック情報が取得できませんでした。少し待ってから再度押してください。');
             return;
         }
 
-        const t = state.currentTrack;
-        const confirmMsg = '【Dislikeの登録】\n' +
-            '曲: "' + t.title + '"\n' +
-            '作者: ' + t.artistName + '\n' +
-            'ジャンル: ' + (t.genre || '未設定') + '\n\n' +
-            'この「曲」「作者」「ジャンル」をすべてブラックリストに登録し、次へスキップしますか？\n' +
-            '※ジャンルが未設定の場合は曲と作者のみ除外されます。';
+        const confirmMsg = '【👎 Dislike: この曲のみ除外】\n\n' +
+            '曲名: "' + t.title + '"\n' +
+            '作者: ' + t.artistName + '\n\n' +
+            'この曲を二度と流れないよう除外して、次へスキップしますか？\n' +
+            '（※この作者の他の曲は今後も再生されます）';
 
         if (!confirm(confirmMsg)) return;
 
-        state.dislikedTracks[t.id] = {
+        const trackKey = t.id || ('title_' + encodeURIComponent(t.title));
+        state.dislikedTracks[trackKey] = {
             title: t.title,
             artist: t.artistName,
             genre: t.genre,
             date: new Date().toLocaleDateString()
         };
 
-        if (t.artistId) {
-            state.dislikedArtists[t.artistId] = {
-                name: t.artistName,
-                date: new Date().toLocaleDateString()
-            };
+        saveDislikeData();
+        console.log('[SC-FreshStation] Disliked track only: ' + t.title + '. Skipping...');
+
+        const skipBtn = document.querySelector('.playControls__next');
+        if (skipBtn) {
+            skipBtn.click();
+        }
+    }
+
+    async function handleHateClick() {
+        const t = await ensureCurrentTrackInfo();
+        if (!t || (!t.id && !t.title)) {
+            alert('現在再生中のトラック情報が取得できませんでした。少し待ってから再度押してください。');
+            return;
         }
 
-        if (t.genre) {
-            const gLower = t.genre.toLowerCase();
-            state.dislikedGenres[gLower] = {
-                display: t.genre,
-                date: new Date().toLocaleDateString()
-            };
-        }
+        const confirmMsg = '【🚫 Hate: この作者の全曲を除外】\n\n' +
+            '作者: ' + t.artistName + '\n' +
+            '再生中: "' + t.title + '"\n\n' +
+            'この作者「' + t.artistName + '」の全楽曲を今後一切流さないよう除外して、次へスキップしますか？\n' +
+            '（※この作者のすべての曲がステーション再生から完全排除されます）';
+
+        if (!confirm(confirmMsg)) return;
+
+        const artistKey = t.artistId || ('artist_' + encodeURIComponent(t.artistName));
+        state.dislikedArtists[artistKey] = {
+            name: t.artistName,
+            date: new Date().toLocaleDateString()
+        };
 
         saveDislikeData();
-        console.log('[SC-FreshStation] Disliked track, artist, and genre. Skipping to next...');
+        console.log('[SC-FreshStation] Hated artist completely: ' + t.artistName + '. Skipping...');
 
         const skipBtn = document.querySelector('.playControls__next');
         if (skipBtn) {
