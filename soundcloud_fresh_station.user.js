@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.4.1
+// @version      1.5.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.4.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.5.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1073,14 +1073,14 @@
         try {
             if ('documentPictureInPicture' in window) {
                 miniPlayerWindow = await window.documentPictureInPicture.requestWindow({
-                    width: 380,
-                    height: 215
+                    width: 350,
+                    height: 170
                 });
             } else {
                 miniPlayerWindow = window.open(
                     '',
                     'SCFreshMiniPlayer',
-                    'width=380,height=215,menubar=no,toolbar=no,location=no,status=no,resizable=no'
+                    'width=350,height=170,menubar=no,toolbar=no,location=no,status=no,resizable=no'
                 );
             }
 
@@ -1105,6 +1105,8 @@
         }
     }
 
+    let isSeekingInMiniPlayer = false;
+
     function setupMiniPlayerUI(doc) {
         doc.title = 'FreshDig - アーティスト発掘ミニプレイヤー';
         doc.body.innerHTML = `
@@ -1113,7 +1115,7 @@
                 body {
                     background: #141414;
                     color: #fff;
-                    padding: 12px;
+                    padding: 8px 10px 6px;
                     display: flex;
                     flex-direction: column;
                     justify-content: space-between;
@@ -1123,12 +1125,12 @@
                 .track-info-row {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    gap: 10px;
                 }
                 .artwork {
-                    width: 60px;
-                    height: 60px;
-                    min-width: 60px;
+                    width: 50px;
+                    height: 50px;
+                    min-width: 50px;
                     border-radius: 8px;
                     background: #252525 url('https://a-v2.sndcdn.com/assets/images/default/avatar--large-3b8c34f249.png') center/cover no-repeat;
                     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -1144,6 +1146,7 @@
                     overflow: hidden;
                     text-overflow: ellipsis;
                     color: #f2f2f2;
+                    line-height: 1.2;
                 }
                 .artist {
                     font-size: 11px;
@@ -1151,38 +1154,39 @@
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    margin-top: 2px;
+                    margin-top: 1px;
+                    line-height: 1.2;
                 }
                 .badge-row {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
-                    margin-top: 4px;
+                    gap: 5px;
+                    margin-top: 3px;
                 }
                 .status-badge {
                     display: inline-block;
-                    font-size: 10px;
-                    padding: 2px 6px;
-                    border-radius: 4px;
+                    font-size: 9px;
+                    padding: 1px 5px;
+                    border-radius: 3px;
                     background: rgba(255, 85, 0, 0.2);
                     color: #ff5500;
                     white-space: nowrap;
                 }
                 .btn-follow {
-                    background: #2a2a2a;
+                    background: #222;
                     border: 1px solid #444;
-                    color: #bbb;
-                    font-size: 10px;
-                    padding: 2px 7px;
-                    border-radius: 12px;
+                    color: #aaa;
+                    font-size: 9px;
+                    padding: 1px 6px;
+                    border-radius: 10px;
                     cursor: pointer;
                     display: inline-flex;
                     align-items: center;
-                    gap: 3px;
+                    gap: 2px;
                     transition: all 0.15s ease;
                 }
                 .btn-follow:hover {
-                    background: #383838;
+                    background: #333;
                     color: #fff;
                 }
                 .btn-follow.following {
@@ -1190,76 +1194,109 @@
                     border-color: #00e676;
                     color: #00e676;
                 }
+
+                /* シークバーエリア */
+                .timeline-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin: 4px 0 2px;
+                }
+                .time-text {
+                    font-size: 9px;
+                    color: #777;
+                    min-width: 26px;
+                    text-align: center;
+                    font-variant-numeric: tabular-nums;
+                }
+                .seekbar-container {
+                    flex: 1;
+                    position: relative;
+                    height: 12px;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                }
+                .seekbar-bg {
+                    width: 100%;
+                    height: 4px;
+                    background: #2a2a2a;
+                    border-radius: 2px;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .seekbar-fill {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    height: 100%;
+                    width: 0%;
+                    background: linear-gradient(90deg, #ff7700, #ff5500);
+                    border-radius: 2px;
+                    transition: width 0.1s linear;
+                }
+                .seekbar-input {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    opacity: 0;
+                    cursor: pointer;
+                    margin: 0;
+                    z-index: 10;
+                }
+
+                /* 一列にきれいに収まるコントロールボタン群 */
                 .controls-row {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    margin-top: 8px;
-                    padding-top: 8px;
-                    border-top: 1px solid #282828;
-                }
-                .media-btns, .action-btns {
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
+                    gap: 3px;
+                    padding-top: 2px;
                 }
                 button {
                     border: none;
-                    background: #282828;
-                    color: #eee;
-                    font-size: 13px;
-                    border-radius: 6px;
+                    background: #222;
+                    color: #ddd;
+                    font-size: 12px;
+                    border-radius: 5px;
                     cursor: pointer;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
                     transition: all 0.15s ease;
+                    flex: 1;
+                    height: 30px;
+                    padding: 0;
+                    min-width: 0;
                 }
                 button:hover {
-                    background: #383838;
+                    background: #333;
                     color: #fff;
-                    transform: scale(1.05);
+                    transform: translateY(-1px);
                 }
                 button:active {
-                    transform: scale(0.95);
-                }
-                .btn-media {
-                    width: 32px;
-                    height: 32px;
-                    font-size: 14px;
+                    transform: translateY(0);
                 }
                 .btn-play {
-                    width: 36px;
-                    height: 36px;
+                    flex: 1.25;
                     background: #ff5500;
                     color: #fff;
-                    font-size: 16px;
+                    font-size: 15px;
                 }
                 .btn-play:hover {
                     background: #ff7700;
                 }
-                .btn-action {
-                    width: 29px;
-                    height: 29px;
-                    font-size: 12px;
-                }
-                .btn-like {
-                    color: #aaa;
-                    border: 1px solid #3a3a3a;
-                }
                 .btn-like.liked {
                     color: #ff3344;
-                    border-color: #ff3344;
-                    background: rgba(255, 51, 68, 0.15);
-                }
-                .btn-repost {
-                    color: #aaa;
-                    border: 1px solid #3a3a3a;
+                    background: rgba(255, 51, 68, 0.2);
+                    border: 1px solid #ff3344;
                 }
                 .btn-repost.reposted {
                     color: #00e676;
-                    border-color: #00e676;
-                    background: rgba(0, 230, 118, 0.15);
+                    background: rgba(0, 230, 118, 0.2);
+                    border: 1px solid #00e676;
                 }
                 .btn-pl {
                     border: 1px solid #ff5500;
@@ -1281,15 +1318,15 @@
                 }
                 .toast {
                     position: fixed;
-                    bottom: 6px;
+                    bottom: 4px;
                     left: 50%;
                     transform: translateX(-50%);
                     background: rgba(0,0,0,0.85);
                     border: 1px solid #ff5500;
                     color: #fff;
-                    font-size: 11px;
-                    padding: 4px 10px;
-                    border-radius: 20px;
+                    font-size: 10px;
+                    padding: 3px 8px;
+                    border-radius: 15px;
                     pointer-events: none;
                     opacity: 0;
                     transition: opacity 0.2s;
@@ -1311,19 +1348,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- シークバーエリア -->
+            <div class="timeline-row">
+                <span class="time-text" id="mp-time-passed">0:00</span>
+                <div class="seekbar-container">
+                    <div class="seekbar-bg">
+                        <div class="seekbar-fill" id="mp-seekbar-fill"></div>
+                    </div>
+                    <input type="range" min="0" max="100" value="0" step="0.1" class="seekbar-input" id="mp-seekbar-input">
+                </div>
+                <span class="time-text" id="mp-time-duration">0:00</span>
+            </div>
+
+            <!-- コントロールボタン列 -->
             <div class="controls-row">
-                <div class="media-btns">
-                    <button class="btn-media" id="mp-prev" title="前の曲">⏮</button>
-                    <button class="btn-play" id="mp-play" title="再生 / 一時停止">⏯</button>
-                    <button class="btn-media" id="mp-next" title="次の曲">⏭</button>
-                </div>
-                <div class="action-btns">
-                    <button class="btn-action btn-like" id="mp-like" title="いいね (Like)">🤍</button>
-                    <button class="btn-action btn-repost" id="mp-repost" title="リポスト (Repost)">🔁</button>
-                    <button class="btn-action btn-pl" id="mp-add-pl" title="プレイリストに追加">➕</button>
-                    <button class="btn-action btn-dislike" id="mp-dislike" title="この曲だけ除外＆スキップ">👎</button>
-                    <button class="btn-action btn-hate" id="mp-hate" title="この作者の曲全除外＆スキップ">🚫</button>
-                </div>
+                <button id="mp-prev" title="前の曲">⏮</button>
+                <button class="btn-play" id="mp-play" title="再生 / 一時停止">⏯</button>
+                <button id="mp-next" title="次の曲">⏭</button>
+                <button class="btn-like" id="mp-like" title="いいね (Like)">🤍</button>
+                <button class="btn-repost" id="mp-repost" title="リポスト (Repost)">🔁</button>
+                <button class="btn-pl" id="mp-add-pl" title="プレイリストに追加">➕</button>
+                <button class="btn-dislike" id="mp-dislike" title="この曲だけ除外＆スキップ">👎</button>
+                <button class="btn-hate" id="mp-hate" title="この作者の曲全除外＆スキップ">🚫</button>
             </div>
             <div class="toast" id="mp-toast"></div>
         `;
@@ -1351,7 +1398,34 @@
             if (btn) btn.click();
         });
 
-        // いいね (Like) 操作
+        // シーク操作
+        const seekInput = doc.getElementById('mp-seekbar-input');
+        const seekFill = doc.getElementById('mp-seekbar-fill');
+
+        seekInput?.addEventListener('input', function (e) {
+            isSeekingInMiniPlayer = true;
+            const val = parseFloat(e.target.value);
+            if (seekFill) seekFill.style.width = val + '%';
+        });
+
+        seekInput?.addEventListener('change', function (e) {
+            const ratio = parseFloat(e.target.value) / 100;
+            seekToSoundCloudRatio(ratio);
+            setTimeout(() => { isSeekingInMiniPlayer = false; }, 300);
+        });
+
+        function seekToSoundCloudRatio(ratio) {
+            const progressWrapper = document.querySelector('.playbackTimeline__progressWrapper');
+            if (progressWrapper) {
+                const rect = progressWrapper.getBoundingClientRect();
+                const clientX = rect.left + rect.width * ratio;
+                const clientY = rect.top + rect.height / 2;
+                progressWrapper.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX, clientY }));
+                progressWrapper.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX, clientY }));
+            }
+        }
+
+        // いいね (Like)
         doc.getElementById('mp-like')?.addEventListener('click', function () {
             const likeBtn = document.querySelector('.playbackSoundBadge__like');
             if (likeBtn) {
@@ -1364,9 +1438,8 @@
             }
         });
 
-        // リポスト (Repost) 操作 (DOM優先 + APIハイブリッド)
+        // リポスト (Repost) (DOM優先 + APIハイブリッド)
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
-            // 1. DOM上のボタン（再生バーまたはページ全体）を検索
             const repostBtn = document.querySelector('.playbackSoundBadge button.sc-button-repost, .playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .soundActions button.sc-button-repost, button.sc-button-repost');
             if (repostBtn) {
                 repostBtn.click();
@@ -1376,7 +1449,6 @@
                 return;
             }
 
-            // 2. DOM上にない場合は SoundCloud API 経由で直接リポスト
             const t = await ensureCurrentTrackInfo();
             const trackId = t && t.id;
             if (!trackId) {
@@ -1423,7 +1495,7 @@
             }
         });
 
-        // フォロー (Follow) 操作
+        // フォロー (Follow)
         doc.getElementById('mp-follow')?.addEventListener('click', async function () {
             const t = await ensureCurrentTrackInfo();
             const artistId = t && t.artistId;
@@ -1473,11 +1545,11 @@
             }
         });
 
-        // プレイリスト追加・除外操作
+        // プレイリスト追加 & 除外
         doc.getElementById('mp-add-pl')?.addEventListener('click', async function () {
             showToast('➕ 追加中...');
             await handleAddTrackToPlaylist();
-            showToast('✅ プレイリストに追加しました！');
+            showToast('✅ 追加完了！');
         });
         doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
             showToast('👎 曲を除外してスキップ');
@@ -1531,7 +1603,7 @@
             mpPlay.textContent = isPlaying ? '⏸' : '▶';
         }
 
-        // Like 状態の同期
+        // Like 状態
         if (mpLike && likeBtn) {
             const isLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
             if (isLiked) {
@@ -1543,7 +1615,7 @@
             }
         }
 
-        // Repost 状態の同期
+        // Repost 状態
         if (mpRepost) {
             const trackId = state.currentTrack && state.currentTrack.id;
             let isReposted = false;
@@ -1560,7 +1632,7 @@
             }
         }
 
-        // Follow 状態の同期
+        // Follow 状態
         if (mpFollow && state.currentTrack && state.currentTrack.artistId) {
             const isFollowing = state.followingUserIds.has(state.currentTrack.artistId);
             if (isFollowing) {
@@ -1574,6 +1646,35 @@
 
         if (mpStatus) {
             mpStatus.textContent = state.playbackMode === 'DISCOVERY' ? '🔍 発掘モード' : '👥 フォロー新曲';
+        }
+
+        // シークバーの同期
+        if (!isSeekingInMiniPlayer) {
+            const timePassedEl = document.querySelector('.playbackTimeline__timePassed span[aria-hidden="true"]');
+            const durationEl = document.querySelector('.playbackTimeline__duration span[aria-hidden="true"]');
+            const progressBar = document.querySelector('.playbackTimeline__progressWrapper');
+
+            const passedText = timePassedEl ? timePassedEl.textContent.trim() : '0:00';
+            const durationText = durationEl ? durationEl.textContent.trim() : '0:00';
+
+            let ratio = 0;
+            if (progressBar) {
+                const ariaVal = parseFloat(progressBar.getAttribute('aria-valuenow'));
+                const ariaMax = parseFloat(progressBar.getAttribute('aria-valuemax')) || 1;
+                if (!isNaN(ariaVal) && ariaMax > 0) {
+                    ratio = Math.min(1, Math.max(0, ariaVal / ariaMax));
+                }
+            }
+
+            const mpPassed = doc.getElementById('mp-time-passed');
+            const mpDuration = doc.getElementById('mp-time-duration');
+            const mpFill = doc.getElementById('mp-seekbar-fill');
+            const mpInput = doc.getElementById('mp-seekbar-input');
+
+            if (mpPassed && mpPassed.textContent !== passedText) mpPassed.textContent = passedText;
+            if (mpDuration && mpDuration.textContent !== durationText) mpDuration.textContent = durationText;
+            if (mpFill) mpFill.style.width = (ratio * 100) + '%';
+            if (mpInput && !isSeekingInMiniPlayer) mpInput.value = (ratio * 100);
         }
     }
 
