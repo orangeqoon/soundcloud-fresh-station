@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         SoundCloud Fresh Station & Playlist Helper
 // @namespace    https://soundcloud.com/
-// @version      1.1.7
+// @version      1.3.0
 // @description  ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.1.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.3.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1072,14 +1072,14 @@
         try {
             if ('documentPictureInPicture' in window) {
                 miniPlayerWindow = await window.documentPictureInPicture.requestWindow({
-                    width: 350,
-                    height: 200
+                    width: 380,
+                    height: 215
                 });
             } else {
                 miniPlayerWindow = window.open(
                     '',
                     'SCFreshMiniPlayer',
-                    'width=350,height=200,menubar=no,toolbar=no,location=no,status=no,resizable=no'
+                    'width=380,height=215,menubar=no,toolbar=no,location=no,status=no,resizable=no'
                 );
             }
 
@@ -1125,9 +1125,9 @@
                     gap: 12px;
                 }
                 .artwork {
-                    width: 58px;
-                    height: 58px;
-                    min-width: 58px;
+                    width: 60px;
+                    height: 60px;
+                    min-width: 60px;
                     border-radius: 8px;
                     background: #252525 url('https://a-v2.sndcdn.com/assets/images/default/avatar--large-3b8c34f249.png') center/cover no-repeat;
                     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
@@ -1150,7 +1150,13 @@
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                    margin-top: 3px;
+                    margin-top: 2px;
+                }
+                .badge-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin-top: 4px;
                 }
                 .status-badge {
                     display: inline-block;
@@ -1159,7 +1165,29 @@
                     border-radius: 4px;
                     background: rgba(255, 85, 0, 0.2);
                     color: #ff5500;
-                    margin-top: 4px;
+                    white-space: nowrap;
+                }
+                .btn-follow {
+                    background: #2a2a2a;
+                    border: 1px solid #444;
+                    color: #bbb;
+                    font-size: 10px;
+                    padding: 2px 7px;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 3px;
+                    transition: all 0.15s ease;
+                }
+                .btn-follow:hover {
+                    background: #383838;
+                    color: #fff;
+                }
+                .btn-follow.following {
+                    background: rgba(0, 230, 118, 0.15);
+                    border-color: #00e676;
+                    color: #00e676;
                 }
                 .controls-row {
                     display: flex;
@@ -1172,7 +1200,7 @@
                 .media-btns, .action-btns {
                     display: flex;
                     align-items: center;
-                    gap: 6px;
+                    gap: 5px;
                 }
                 button {
                     border: none;
@@ -1210,9 +1238,27 @@
                     background: #ff7700;
                 }
                 .btn-action {
-                    width: 30px;
-                    height: 30px;
+                    width: 29px;
+                    height: 29px;
                     font-size: 12px;
+                }
+                .btn-like {
+                    color: #aaa;
+                    border: 1px solid #3a3a3a;
+                }
+                .btn-like.liked {
+                    color: #ff3344;
+                    border-color: #ff3344;
+                    background: rgba(255, 51, 68, 0.15);
+                }
+                .btn-repost {
+                    color: #aaa;
+                    border: 1px solid #3a3a3a;
+                }
+                .btn-repost.reposted {
+                    color: #00e676;
+                    border-color: #00e676;
+                    background: rgba(0, 230, 118, 0.15);
                 }
                 .btn-pl {
                     border: 1px solid #ff5500;
@@ -1246,6 +1292,8 @@
                     pointer-events: none;
                     opacity: 0;
                     transition: opacity 0.2s;
+                    white-space: nowrap;
+                    z-index: 100;
                 }
                 .toast.show {
                     opacity: 1;
@@ -1256,7 +1304,10 @@
                 <div class="meta">
                     <div class="title" id="mp-title">曲を読み込み中...</div>
                     <div class="artist" id="mp-artist">SoundCloud</div>
-                    <span class="status-badge" id="mp-status">ステーション再生中</span>
+                    <div class="badge-row">
+                        <span class="status-badge" id="mp-status">再生待機中</span>
+                        <button class="btn-follow" id="mp-follow" title="アーティストをフォロー">👤＋ フォロー</button>
+                    </div>
                 </div>
             </div>
             <div class="controls-row">
@@ -1266,6 +1317,8 @@
                     <button class="btn-media" id="mp-next" title="次の曲">⏭</button>
                 </div>
                 <div class="action-btns">
+                    <button class="btn-action btn-like" id="mp-like" title="いいね (Like)">🤍</button>
+                    <button class="btn-action btn-repost" id="mp-repost" title="リポスト (Repost)">🔁</button>
                     <button class="btn-action btn-pl" id="mp-add-pl" title="プレイリストに追加">➕</button>
                     <button class="btn-action btn-dislike" id="mp-dislike" title="この曲だけ除外＆スキップ">👎</button>
                     <button class="btn-action btn-hate" id="mp-hate" title="この作者の曲全除外＆スキップ">🚫</button>
@@ -1283,6 +1336,7 @@
             }
         }
 
+        // 基本メディア操作
         doc.getElementById('mp-prev')?.addEventListener('click', function () {
             const btn = document.querySelector('.playControls__prev');
             if (btn) btn.click();
@@ -1295,10 +1349,88 @@
             const btn = document.querySelector('.playControls__next');
             if (btn) btn.click();
         });
+
+        // いいね (Like) 操作
+        doc.getElementById('mp-like')?.addEventListener('click', function () {
+            const likeBtn = document.querySelector('.playbackSoundBadge__like');
+            if (likeBtn) {
+                likeBtn.click();
+                const wasLiked = likeBtn.classList.contains('sc-button-selected');
+                showToast(wasLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
+                setTimeout(syncMiniPlayerUI, 300);
+            } else {
+                showToast('⚠️ Likeボタンが見つかりません');
+            }
+        });
+
+        // リポスト (Repost) 操作
+        doc.getElementById('mp-repost')?.addEventListener('click', function () {
+            const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+            if (repostBtn) {
+                repostBtn.click();
+                const wasReposted = repostBtn.classList.contains('sc-button-selected');
+                showToast(wasReposted ? '🔁 リポストを解除しました' : '🔁 リポストしました！');
+                setTimeout(syncMiniPlayerUI, 300);
+            } else {
+                showToast('⚠️ Repostボタンが見つかりません');
+            }
+        });
+
+        // フォロー (Follow) 操作
+        doc.getElementById('mp-follow')?.addEventListener('click', async function () {
+            const t = await ensureCurrentTrackInfo();
+            const artistId = t && t.artistId;
+            const artistName = (t && t.artistName) || 'アーティスト';
+
+            if (!artistId) {
+                showToast('⚠️ アーティストIDを確認中...');
+                return;
+            }
+
+            const isFollowing = state.followingUserIds.has(artistId);
+            showToast(isFollowing ? '👤 フォロー解除中...' : '👤 フォロー中...');
+
+            try {
+                extractAuthTokenFromCookie();
+                if (!state.oauthToken || !state.clientId) {
+                    showToast('⚠️ ログイン認証が必要です');
+                    return;
+                }
+
+                const method = isFollowing ? 'DELETE' : 'PUT';
+                const url = 'https://api-v2.soundcloud.com/me/followings/' + artistId + '?client_id=' + state.clientId;
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': state.oauthToken,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
+                    if (isFollowing) {
+                        state.followingUserIds.delete(artistId);
+                        showToast('👤 ' + artistName + ' のフォローを解除しました');
+                    } else {
+                        state.followingUserIds.add(artistId);
+                        showToast('👤 ' + artistName + ' をフォローしました！');
+                    }
+                    saveCacheData();
+                    syncMiniPlayerUI();
+                } else {
+                    showToast('⚠️ フォロー通信失敗 (' + res.status + ')');
+                }
+            } catch (e) {
+                console.error('[SC-FreshStation] Follow error:', e);
+                showToast('⚠️ 通信エラーが発生しました');
+            }
+        });
+
+        // プレイリスト追加・除外操作
         doc.getElementById('mp-add-pl')?.addEventListener('click', async function () {
             showToast('➕ 追加中...');
             await handleAddTrackToPlaylist();
-            showToast('✅ 追加完了！');
+            showToast('✅ プレイリストに追加しました！');
         });
         doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
             showToast('👎 曲を除外してスキップ');
@@ -1317,6 +1449,8 @@
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
         const playBtn = document.querySelector('.playControls__play');
+        const likeBtn = document.querySelector('.playbackSoundBadge__like');
+        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
 
         const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || '未再生';
         const artist = (state.currentTrack && state.currentTrack.artistName) || (artistEl ? (artistEl.getAttribute('title') || artistEl.textContent) : '') || 'SoundCloud';
@@ -1335,6 +1469,10 @@
         const mpArtist = doc.getElementById('mp-artist');
         const mpArt = doc.getElementById('mp-art');
         const mpPlay = doc.getElementById('mp-play');
+        const mpLike = doc.getElementById('mp-like');
+        const mpRepost = doc.getElementById('mp-repost');
+        const mpFollow = doc.getElementById('mp-follow');
+        const mpStatus = doc.getElementById('mp-status');
 
         if (mpTitle && mpTitle.textContent !== title) mpTitle.textContent = title;
         if (mpArtist && mpArtist.textContent !== artist) mpArtist.textContent = artist;
@@ -1344,6 +1482,44 @@
         if (mpPlay && playBtn) {
             const isPlaying = playBtn.classList.contains('playing');
             mpPlay.textContent = isPlaying ? '⏸' : '▶';
+        }
+
+        // Like 状態の同期
+        if (mpLike && likeBtn) {
+            const isLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
+            if (isLiked) {
+                mpLike.textContent = '❤️';
+                mpLike.classList.add('liked');
+            } else {
+                mpLike.textContent = '🤍';
+                mpLike.classList.remove('liked');
+            }
+        }
+
+        // Repost 状態の同期
+        if (mpRepost && repostBtn) {
+            const isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
+            if (isReposted) {
+                mpRepost.classList.add('reposted');
+            } else {
+                mpRepost.classList.remove('reposted');
+            }
+        }
+
+        // Follow 状態の同期
+        if (mpFollow && state.currentTrack && state.currentTrack.artistId) {
+            const isFollowing = state.followingUserIds.has(state.currentTrack.artistId);
+            if (isFollowing) {
+                mpFollow.textContent = '👤✓ フォロー中';
+                mpFollow.classList.add('following');
+            } else {
+                mpFollow.textContent = '👤＋ フォロー';
+                mpFollow.classList.remove('following');
+            }
+        }
+
+        if (mpStatus) {
+            mpStatus.textContent = state.playbackMode === 'DISCOVERY' ? '🔍 発掘モード' : '👥 フォロー新曲';
         }
     }
 
