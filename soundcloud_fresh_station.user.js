@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.5.0
+// @version      1.5.1
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.5.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.5.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -555,14 +555,37 @@
         consecutiveSkips: 0
     };
 
-    // 3. 定期監視タイマー (500ms おきに実行)
+    // 3. 定期監視タイマー (500ms おきに実行 / try-catchでエラー落ち完全防止)
     setInterval(function () {
-        injectButtons();
-        monitorPlaybackWithMargin();
-        syncMiniPlayerUI();
+        try {
+            injectButtons();
+        } catch (e) {
+            console.warn('[SC-FreshStation] injectButtons exception:', e);
+        }
+        try {
+            monitorPlaybackWithMargin();
+        } catch (e) {
+            console.warn('[SC-FreshStation] monitorPlayback exception:', e);
+        }
+        try {
+            syncMiniPlayerUI();
+        } catch (e) {
+            console.warn('[SC-FreshStation] syncMiniPlayer exception:', e);
+        }
     }, 500);
 
     // マージン付き再生監視＆安全自動スキップ
+    // ユーザー自身が意図して開いているライブラリ・Likes一覧・自作プレイリストページかを判定
+    function isExplicitLibraryPage() {
+        try {
+            const path = window.location.pathname.toLowerCase();
+            if (path.includes('/you/likes') || path.includes('/you/sets') || path.includes('/you/history')) {
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
     function monitorPlaybackWithMargin() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
@@ -627,8 +650,8 @@
             let shouldSkip = false;
             let skipReason = '';
 
-            // A. DOMのLikeボタンの確認（1.2秒経過しているのでDOMは100%正確）
-            if (likeBtn) {
+            // A. DOMのLikeボタンの確認（※自発的にLikesページ等を再生している時はスキップしない！）
+            if (!isExplicitLibraryPage() && likeBtn) {
                 const isSelected = likeBtn.classList.contains('sc-button-selected');
                 const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
                 const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
@@ -664,8 +687,8 @@
                 }
             }
 
-            // E. 登録Likes一覧の確認
-            if (!shouldSkip && state.currentTrack && state.currentTrack.id) {
+            // E. 登録Likes一覧の確認（※自発的にLikesページ等を再生している時はスキップしない！）
+            if (!isExplicitLibraryPage() && !shouldSkip && state.currentTrack && state.currentTrack.id) {
                 if (state.likedTrackIds.has(state.currentTrack.id)) {
                     shouldSkip = true;
                     skipReason = 'ライク済みID一覧に一致';
@@ -1562,8 +1585,24 @@
     }
 
     function syncMiniPlayerUI() {
-        if (!miniPlayerWindow || miniPlayerWindow.closed) return;
-        const doc = miniPlayerWindow.document;
+        if (!miniPlayerWindow) return;
+        try {
+            if (miniPlayerWindow.closed) {
+                miniPlayerWindow = null;
+                return;
+            }
+        } catch (e) {
+            miniPlayerWindow = null;
+            return;
+        }
+
+        let doc;
+        try {
+            doc = miniPlayerWindow.document;
+            if (!doc || !doc.body) return;
+        } catch (e) {
+            return;
+        }
 
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
