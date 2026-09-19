@@ -66,6 +66,18 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     });
   }
+
+  // ミニプレイヤー起動ボタン
+  const mpBtn = document.getElementById('btn-miniplayer');
+  if (mpBtn) {
+    mpBtn.addEventListener('click', function () {
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'TOGGLE_MINI_PLAYER'
+      });
+      window.close();
+    });
+  }
 });
 
 function renderData(tabId, data) {

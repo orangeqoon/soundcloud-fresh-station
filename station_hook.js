@@ -160,6 +160,8 @@
                 state.playbackMode = event.data.mode;
                 localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
                 console.log('[SC-FreshStation] Switched mode to:', state.playbackMode);
+            } else if (action === 'TOGGLE_MINI_PLAYER') {
+                toggleMiniPlayer();
             } else if (action === 'GET_DATA') {
                 loadCachedData();
                 extractAuthTokenFromCookie();
@@ -545,6 +547,7 @@
     setInterval(function () {
         injectButtons();
         monitorPlaybackWithMargin();
+        syncMiniPlayerUI();
     }, 500);
 
     // マージン付き再生監視＆安全自動スキップ
@@ -578,6 +581,7 @@
                 href: currentHref,
                 genre: ''
             };
+            updateMediaSessionMetadata(title, artist);
             return;
         }
 
@@ -733,6 +737,23 @@
 
             actionGroup.appendChild(plBtn);
             updatePlaylistButtonUI();
+        }
+
+        // 4. ミニプレイヤー起動ボタン (アイコン1個: 🪟)
+        if (!document.getElementById('sc-fresh-station-miniplayer-btn')) {
+            const mpBtn = document.createElement('button');
+            mpBtn.id = 'sc-fresh-station-miniplayer-btn';
+            mpBtn.type = 'button';
+            mpBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            mpBtn.title = '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)';
+            mpBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #777; background: transparent; color: #ccc; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
+            mpBtn.innerHTML = '🪟';
+            mpBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                toggleMiniPlayer();
+            });
+            actionGroup.appendChild(mpBtn);
         }
     }
 
@@ -962,5 +983,360 @@
             skipBtn.click();
         }
     }
+
+    // =========================================================================
+    // 🎵 Windows タスクバー / メディアキー / 音量フライアウト連携 (Media Session API)
+    // =========================================================================
+    function initMediaSessionHandlers() {
+        if (!('mediaSession' in navigator)) return;
+        try {
+            navigator.mediaSession.setActionHandler('play', function () {
+                const btn = document.querySelector('.playControls__play');
+                if (btn) btn.click();
+            });
+            navigator.mediaSession.setActionHandler('pause', function () {
+                const btn = document.querySelector('.playControls__play');
+                if (btn) btn.click();
+            });
+            navigator.mediaSession.setActionHandler('previoustrack', function () {
+                const btn = document.querySelector('.playControls__prev');
+                if (btn) btn.click();
+            });
+            navigator.mediaSession.setActionHandler('nexttrack', function () {
+                const btn = document.querySelector('.playControls__next');
+                if (btn) btn.click();
+            });
+            console.log('[SC-FreshStation] 🎵 Windows Taskbar & Media Keys (MediaSession) handlers connected!');
+        } catch (e) {
+            console.warn('[SC-FreshStation] MediaSession registration warning:', e);
+        }
+    }
+
+    function updateMediaSessionMetadata(title, artist, artworkUrl) {
+        if (!('mediaSession' in navigator) || !window.MediaMetadata) return;
+
+        let art = artworkUrl || '';
+        if (!art) {
+            const badgeImg = document.querySelector('.playbackSoundBadge__avatar span.sc-artwork');
+            if (badgeImg && badgeImg.style.backgroundImage) {
+                const m = badgeImg.style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
+                if (m) art = m[1];
+            }
+        }
+        if (art) {
+            art = art.replace(/-t(50|120|200)x(50|120|200)\./, '-t500x500.').replace(/-large\./, '-t500x500.');
+        }
+
+        try {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: title || 'SoundCloud Track',
+                artist: artist || 'Unknown Artist',
+                album: 'Fresh Station for SoundCloud',
+                artwork: art ? [
+                    { src: art, sizes: '500x500', type: 'image/jpeg' },
+                    { src: art, sizes: '256x256', type: 'image/jpeg' },
+                    { src: art, sizes: '128x128', type: 'image/jpeg' }
+                ] : []
+            });
+        } catch (e) {
+            console.warn('[SC-FreshStation] MediaSession metadata update warning:', e);
+        }
+    }
+
+    // =========================================================================
+    // 🪟 浮遊ミニプレイヤー (Document Picture-in-Picture & Fallback)
+    // =========================================================================
+    let miniPlayerWindow = null;
+
+    async function toggleMiniPlayer() {
+        if (miniPlayerWindow && !miniPlayerWindow.closed) {
+            miniPlayerWindow.close();
+            miniPlayerWindow = null;
+            return;
+        }
+        await openMiniPlayer();
+    }
+
+    async function openMiniPlayer() {
+        try {
+            if ('documentPictureInPicture' in window) {
+                miniPlayerWindow = await window.documentPictureInPicture.requestWindow({
+                    width: 350,
+                    height: 200
+                });
+            } else {
+                miniPlayerWindow = window.open(
+                    '',
+                    'SCFreshMiniPlayer',
+                    'width=350,height=200,menubar=no,toolbar=no,location=no,status=no,resizable=no'
+                );
+            }
+
+            if (!miniPlayerWindow) {
+                alert('ミニプレイヤーの表示がブロックされました。ブラウザのポップアップ許可をご確認ください。');
+                return;
+            }
+
+            setupMiniPlayerUI(miniPlayerWindow.document);
+
+            miniPlayerWindow.addEventListener('pagehide', function () {
+                miniPlayerWindow = null;
+            });
+            miniPlayerWindow.addEventListener('beforeunload', function () {
+                miniPlayerWindow = null;
+            });
+
+            syncMiniPlayerUI();
+            console.log('[SC-FreshStation] 🪟 Mini Player opened successfully');
+        } catch (err) {
+            console.error('[SC-FreshStation] Failed to open Mini Player:', err);
+        }
+    }
+
+    function setupMiniPlayerUI(doc) {
+        doc.title = 'SoundCloud Mini Player';
+        doc.body.innerHTML = `
+            <style>
+                * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+                body {
+                    background: #141414;
+                    color: #fff;
+                    padding: 12px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                    height: 100vh;
+                    overflow: hidden;
+                }
+                .track-info-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                .artwork {
+                    width: 58px;
+                    height: 58px;
+                    min-width: 58px;
+                    border-radius: 8px;
+                    background: #252525 url('https://a-v2.sndcdn.com/assets/images/default/avatar--large-3b8c34f249.png') center/cover no-repeat;
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                }
+                .meta {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .title {
+                    font-size: 13px;
+                    font-weight: bold;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    color: #f2f2f2;
+                }
+                .artist {
+                    font-size: 11px;
+                    color: #999;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    margin-top: 3px;
+                }
+                .status-badge {
+                    display: inline-block;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    background: rgba(255, 85, 0, 0.2);
+                    color: #ff5500;
+                    margin-top: 4px;
+                }
+                .controls-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid #282828;
+                }
+                .media-btns, .action-btns {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                }
+                button {
+                    border: none;
+                    background: #282828;
+                    color: #eee;
+                    font-size: 13px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.15s ease;
+                }
+                button:hover {
+                    background: #383838;
+                    color: #fff;
+                    transform: scale(1.05);
+                }
+                button:active {
+                    transform: scale(0.95);
+                }
+                .btn-media {
+                    width: 32px;
+                    height: 32px;
+                    font-size: 14px;
+                }
+                .btn-play {
+                    width: 36px;
+                    height: 36px;
+                    background: #ff5500;
+                    color: #fff;
+                    font-size: 16px;
+                }
+                .btn-play:hover {
+                    background: #ff7700;
+                }
+                .btn-action {
+                    width: 30px;
+                    height: 30px;
+                    font-size: 12px;
+                }
+                .btn-pl {
+                    border: 1px solid #ff5500;
+                    color: #ff5500;
+                    background: rgba(255,85,0,0.1);
+                    font-weight: bold;
+                }
+                .btn-pl:hover {
+                    background: #ff5500;
+                    color: #fff;
+                }
+                .btn-dislike {
+                    border: 1px solid #ff5500;
+                    color: #ff5500;
+                }
+                .btn-hate {
+                    border: 1px solid #e53935;
+                    color: #e53935;
+                }
+                .toast {
+                    position: fixed;
+                    bottom: 6px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0,0,0,0.85);
+                    border: 1px solid #ff5500;
+                    color: #fff;
+                    font-size: 11px;
+                    padding: 4px 10px;
+                    border-radius: 20px;
+                    pointer-events: none;
+                    opacity: 0;
+                    transition: opacity 0.2s;
+                }
+                .toast.show {
+                    opacity: 1;
+                }
+            </style>
+            <div class="track-info-row">
+                <div class="artwork" id="mp-art"></div>
+                <div class="meta">
+                    <div class="title" id="mp-title">曲を読み込み中...</div>
+                    <div class="artist" id="mp-artist">SoundCloud</div>
+                    <span class="status-badge" id="mp-status">ステーション再生中</span>
+                </div>
+            </div>
+            <div class="controls-row">
+                <div class="media-btns">
+                    <button class="btn-media" id="mp-prev" title="前の曲">⏮</button>
+                    <button class="btn-play" id="mp-play" title="再生 / 一時停止">⏯</button>
+                    <button class="btn-media" id="mp-next" title="次の曲">⏭</button>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-action btn-pl" id="mp-add-pl" title="プレイリストに追加">➕</button>
+                    <button class="btn-action btn-dislike" id="mp-dislike" title="この曲だけ除外＆スキップ">👎</button>
+                    <button class="btn-action btn-hate" id="mp-hate" title="この作者の曲全除外＆スキップ">🚫</button>
+                </div>
+            </div>
+            <div class="toast" id="mp-toast"></div>
+        `;
+
+        function showToast(msg) {
+            const toast = doc.getElementById('mp-toast');
+            if (toast) {
+                toast.textContent = msg;
+                toast.classList.add('show');
+                setTimeout(function () { toast.classList.remove('show'); }, 1500);
+            }
+        }
+
+        doc.getElementById('mp-prev')?.addEventListener('click', function () {
+            const btn = document.querySelector('.playControls__prev');
+            if (btn) btn.click();
+        });
+        doc.getElementById('mp-play')?.addEventListener('click', function () {
+            const btn = document.querySelector('.playControls__play');
+            if (btn) btn.click();
+        });
+        doc.getElementById('mp-next')?.addEventListener('click', function () {
+            const btn = document.querySelector('.playControls__next');
+            if (btn) btn.click();
+        });
+        doc.getElementById('mp-add-pl')?.addEventListener('click', async function () {
+            showToast('➕ 追加中...');
+            await handleAddTrackToPlaylist();
+            showToast('✅ 追加完了！');
+        });
+        doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
+            showToast('👎 曲を除外してスキップ');
+            await handleDislikeClick();
+        });
+        doc.getElementById('mp-hate')?.addEventListener('click', async function () {
+            showToast('🚫 作者を除外してスキップ');
+            await handleHateClick();
+        });
+    }
+
+    function syncMiniPlayerUI() {
+        if (!miniPlayerWindow || miniPlayerWindow.closed) return;
+        const doc = miniPlayerWindow.document;
+
+        const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
+        const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        const playBtn = document.querySelector('.playControls__play');
+
+        const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || '未再生';
+        const artist = (state.currentTrack && state.currentTrack.artistName) || (artistEl ? (artistEl.getAttribute('title') || artistEl.textContent) : '') || 'SoundCloud';
+
+        let art = '';
+        const badgeImg = document.querySelector('.playbackSoundBadge__avatar span.sc-artwork');
+        if (badgeImg && badgeImg.style.backgroundImage) {
+            const m = badgeImg.style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
+            if (m) art = m[1];
+        }
+        if (art) {
+            art = art.replace(/-t(50|120|200)x(50|120|200)\./, '-t200x200.').replace(/-large\./, '-t200x200.');
+        }
+
+        const mpTitle = doc.getElementById('mp-title');
+        const mpArtist = doc.getElementById('mp-artist');
+        const mpArt = doc.getElementById('mp-art');
+        const mpPlay = doc.getElementById('mp-play');
+
+        if (mpTitle && mpTitle.textContent !== title) mpTitle.textContent = title;
+        if (mpArtist && mpArtist.textContent !== artist) mpArtist.textContent = artist;
+        if (mpArt && art) {
+            mpArt.style.backgroundImage = 'url("' + art + '")';
+        }
+        if (mpPlay && playBtn) {
+            const isPlaying = playBtn.classList.contains('playing');
+            mpPlay.textContent = isPlaying ? '⏸' : '▶';
+        }
+    }
+
+    // 初期化実行: タスクバー MediaSession 登録
+    initMediaSessionHandlers();
 
 })();
