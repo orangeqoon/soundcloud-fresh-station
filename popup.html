@@ -2,226 +2,193 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>SC Fresh Station</title>
+  <title>FreshDig for SoundCloud</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      width: 380px;
+      width: 320px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
       padding: 12px;
       background: #181818;
       color: #eaeaea;
-      box-sizing: border-box;
     }
-    h2 {
-      margin: 0 0 10px;
-      font-size: 15px;
+    .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      color: #ff5500;
-      border-bottom: 1px solid #333;
+      margin-bottom: 10px;
       padding-bottom: 6px;
+      border-bottom: 1px solid #2e2e2e;
     }
-    .badge {
-      font-size: 11px;
-      background: #333;
-      padding: 2px 6px;
-      border-radius: 10px;
-      color: #bbb;
-    }
-    .status-box {
-      background: #242424;
-      border-radius: 6px;
-      padding: 8px 10px;
-      font-size: 12px;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: space-around;
-      border: 1px solid #333;
-    }
-    .status-item {
-      text-align: center;
-    }
-    .status-num {
+    .header-title {
       font-size: 14px;
       font-weight: bold;
       color: #ff5500;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
-    .playlist-select-box {
-      background: #222;
-      border: 1px solid #3a3a3a;
+    .badge {
+      font-size: 10px;
+      background: #282828;
+      padding: 2px 6px;
+      border-radius: 10px;
+      color: #888;
+    }
+    .btn-primary {
+      width: 100%;
+      padding: 8px;
+      background: #242424;
+      border: 1px solid #ff5500;
+      color: #ff5500;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary:hover {
+      background: #ff5500;
+      color: #fff;
+    }
+    .card {
+      background: #202020;
+      border: 1px solid #333;
       border-radius: 6px;
       padding: 8px 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
-    .playlist-select-box label {
+    .card-label {
       font-size: 11px;
       color: #aaa;
-      display: block;
-      margin-bottom: 4px;
+      margin-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     select {
       width: 100%;
-      background: #111;
+      background: #141414;
       color: #fff;
       border: 1px solid #444;
       border-radius: 4px;
-      padding: 5px;
-      font-size: 12px;
+      padding: 5px 6px;
+      font-size: 11px;
+      outline: none;
     }
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid #333;
-      margin-bottom: 8px;
-    }
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 6px 0;
+    .sync-sub-btn {
+      background: #2a2a2a;
+      color: #ff7700;
+      border: 1px solid #555;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
       cursor: pointer;
-      font-size: 12px;
-      color: #888;
-      border-bottom: 2px solid transparent;
     }
-    .tab.active {
-      color: #ff5500;
-      border-bottom-color: #ff5500;
-      font-weight: bold;
+    .sync-card {
+      border-left: 3px solid #e53935;
+      background: #1d1515;
     }
-    .tab-content {
-      display: none;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .tab-content.active {
-      display: block;
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    li {
+    .sync-btn-group {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 8px;
-      border-bottom: 1px solid #282828;
-      font-size: 12px;
-      background: #202020;
-      margin-bottom: 4px;
+      gap: 6px;
+    }
+    .sync-btn {
+      flex: 1;
+      padding: 6px 4px;
+      background: #2a1818;
+      border: 1px solid #e53935;
+      color: #ff8a80;
       border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.15s;
     }
-    .item-meta {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      max-width: 280px;
+    .sync-btn:hover {
+      background: #e53935;
+      color: #fff;
     }
-    .item-sub {
+    .sync-msg {
+      font-size: 10px;
+      color: #bbb;
+      margin-top: 6px;
+      display: none;
+      line-height: 1.3;
+    }
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
       font-size: 10px;
       color: #777;
-    }
-    .del-btn {
-      background: transparent;
-      border: none;
-      color: #ff4444;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 2px 6px;
+      padding: 4px 8px;
+      background: #141414;
       border-radius: 4px;
+      border: 1px solid #282828;
     }
-    .del-btn:hover {
-      background: #3a1c1c;
-    }
-    .empty {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-      font-size: 12px;
+    .status-bar strong {
+      color: #ddd;
     }
   </style>
 </head>
 <body>
-  <h2>
-    <span>🎧 FreshDig <small style="font-size:10px; color:#ff7700;">v1.6.0</small></span>
-    <span class="badge" id="conn-badge">SoundCloud未接続</span>
-  </h2>
-  <div style="font-size: 11px; color: #888; margin-bottom: 8px;">✨ 未知のアーティスト発掘アシスタント</div>
-
-  <!-- Quick Launch Mini Player -->
-  <div style="margin-bottom: 10px;">
-    <button id="btn-miniplayer" style="width: 100%; padding: 7px; background: #242424; border: 1px solid #ff5500; color: #ff5500; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease;">
-      🪟 浮遊ミニプレイヤーを開く (最前面)
-    </button>
+  <div class="header">
+    <div class="header-title">
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.6.1</span>
+    </div>
+    <div class="badge" id="conn-badge">SoundCloud未接続</div>
   </div>
 
-  <!-- Mode Selector -->
-  <div class="playlist-select-box" style="border-left: 3px solid #ff5500;">
-    <label for="mode-select">🎛️ 再生動作モード：</label>
-    <select id="mode-select" style="font-weight: bold; color: #ffaa00;">
-      <option value="DISCOVERY">🔍 未知のアーティスト発掘 (既知/フォローを除外)</option>
-      <option value="FOLLOWING_NEW">👥 フォロー中の新曲のみ (リポスト完全除外)</option>
+  <!-- 浮遊ミニプレイヤー起動 -->
+  <button id="btn-miniplayer" class="btn-primary">
+    🪟 浮遊ミニプレイヤーを開く (最前面)
+  </button>
+
+  <!-- 再生モード -->
+  <div class="card" style="border-left: 3px solid #ff5500;">
+    <div class="card-label" style="color: #ffaa00; font-weight: bold;">
+      <span>🎛️ 再生動作モード</span>
+    </div>
+    <select id="mode-select">
+      <option value="DISCOVERY">🔍 未知のアーティスト発掘 (既知/フォロー除外)</option>
+      <option value="FOLLOWING_NEW">👥 フォロー新曲のみ (リポスト完全除外)</option>
     </select>
   </div>
 
-  <!-- Target Playlist Selection -->
-  <div class="playlist-select-box">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-      <label for="pl-select" style="margin-bottom: 0;">➕ ワンクリック追加先プレイリスト：</label>
-      <button id="sync-btn" style="background: #333; color: #ff5500; border: 1px solid #555; border-radius: 4px; padding: 1px 6px; font-size: 10px; cursor: pointer;">🔄 今すぐ同期</button>
+  <!-- 追加先プレイリスト -->
+  <div class="card">
+    <div class="card-label">
+      <span>➕ ワンクリック追加先プレイリスト</span>
+      <button id="sync-btn" class="sync-sub-btn">🔄 同期</button>
     </div>
     <select id="pl-select">
       <option value="">読み込み中...</option>
     </select>
   </div>
 
-  <!-- Dislike Playlist Sync -->
-  <div class="playlist-select-box" style="border-left: 3px solid #e53935; background: #1c1414;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-      <label style="margin-bottom: 0; color: #ff8a80; font-weight: bold;">🚫 Dislike曲のプレイリスト連携：</label>
+  <!-- Dislike プレイリスト連携 (エクスポート & インポート) -->
+  <div class="card sync-card">
+    <div class="card-label" style="color: #ff8a80; font-weight: bold;">
+      <span>🚫 Dislike曲のプレイリスト連携</span>
     </div>
-    <div style="display: flex; gap: 6px;">
-      <button id="btn-export-dislikes" style="flex: 1; padding: 5px 3px; background: #2b1818; border: 1px solid #e53935; color: #ff8a80; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.15s;">
-        📤 SCへ書き出し
-      </button>
-      <button id="btn-import-dislikes" style="flex: 1; padding: 5px 3px; background: #2b1818; border: 1px solid #e53935; color: #ff8a80; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.15s;">
-        📥 SCから読み込み
-      </button>
+    <div class="sync-btn-group">
+      <button id="btn-export-dislikes" class="sync-btn">📤 SCへ書き出し</button>
+      <button id="btn-import-dislikes" class="sync-btn">📥 SCから読み込み</button>
     </div>
-    <div id="dislike-sync-msg" style="font-size: 10px; color: #bbb; margin-top: 5px; display: none; line-height: 1.3;"></div>
+    <div id="dislike-sync-msg" class="sync-msg"></div>
   </div>
 
-  <div class="status-box">
-    <div class="status-item">
-      <div id="stat-label-1">除外Likes</div>
-      <div class="status-num" id="stat-likes">-</div>
-    </div>
-    <div class="status-item">
-      <div id="stat-label-2">除外Follow</div>
-      <div class="status-num" id="stat-followings">-</div>
-    </div>
-    <div class="status-item">
-      <div>Dislike総数</div>
-      <div class="status-num" id="stat-dislikes">-</div>
-    </div>
-  </div>
-
-  <div class="tabs">
-    <div class="tab active" data-target="tab-artists">除外アーティスト</div>
-    <div class="tab" data-target="tab-genres">除外ジャンル</div>
-    <div class="tab" data-target="tab-tracks">除外曲</div>
-  </div>
-
-  <div id="tab-artists" class="tab-content active">
-    <ul id="list-artists"></ul>
-  </div>
-  <div id="tab-genres" class="tab-content">
-    <ul id="list-genres"></ul>
-  </div>
-  <div id="tab-tracks" class="tab-content">
-    <ul id="list-tracks"></ul>
+  <!-- 最小限のステータス情報 -->
+  <div class="status-bar">
+    <span>除外Likes: <strong id="stat-likes">-</strong></span>
+    <span>除外Follow: <strong id="stat-followings">-</strong></span>
+    <span>Dislike: <strong id="stat-dislikes">-</strong></span>
   </div>
 
   <script src="popup.js"></script>
