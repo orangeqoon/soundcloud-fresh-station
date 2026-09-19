@@ -145,7 +145,7 @@
 </head>
 <body>
   <h2>
-    <span>🎧 FreshDig <small style="font-size:10px; color:#ff7700;">v1.5.1</small></span>
+    <span>🎧 FreshDig <small style="font-size:10px; color:#ff7700;">v1.6.0</small></span>
     <span class="badge" id="conn-badge">SoundCloud未接続</span>
   </h2>
   <div style="font-size: 11px; color: #888; margin-bottom: 8px;">✨ 未知のアーティスト発掘アシスタント</div>
@@ -175,6 +175,22 @@
     <select id="pl-select">
       <option value="">読み込み中...</option>
     </select>
+  </div>
+
+  <!-- Dislike Playlist Sync -->
+  <div class="playlist-select-box" style="border-left: 3px solid #e53935; background: #1c1414;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+      <label style="margin-bottom: 0; color: #ff8a80; font-weight: bold;">🚫 Dislike曲のプレイリスト連携：</label>
+    </div>
+    <div style="display: flex; gap: 6px;">
+      <button id="btn-export-dislikes" style="flex: 1; padding: 5px 3px; background: #2b1818; border: 1px solid #e53935; color: #ff8a80; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.15s;">
+        📤 SCへ書き出し
+      </button>
+      <button id="btn-import-dislikes" style="flex: 1; padding: 5px 3px; background: #2b1818; border: 1px solid #e53935; color: #ff8a80; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: all 0.15s;">
+        📥 SCから読み込み
+      </button>
+    </div>
+    <div id="dislike-sync-msg" style="font-size: 10px; color: #bbb; margin-top: 5px; display: none; line-height: 1.3;"></div>
   </div>
 
   <div class="status-box">

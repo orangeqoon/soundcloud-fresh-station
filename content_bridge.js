@@ -16,9 +16,9 @@
 
             // Wait for response from window
             const handler = (event) => {
-                if (event.data && event.data.type === 'SC_FRESH_STATION_DATA_RESPONSE') {
+                if (event.data && (event.data.type === 'SC_FRESH_STATION_DATA_RESPONSE' || event.data.type === 'SC_FRESH_STATION_ACTION_RESULT')) {
                     window.removeEventListener('message', handler);
-                    sendResponse(event.data.data);
+                    sendResponse(event.data.data || event.data.result);
                 }
             };
             window.addEventListener('message', handler);

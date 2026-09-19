@@ -67,6 +67,54 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
 
+  // Dislike エクスポート / インポートボタン
+  const exportBtn = document.getElementById('btn-export-dislikes');
+  const importBtn = document.getElementById('btn-import-dislikes');
+  const syncMsg = document.getElementById('dislike-sync-msg');
+
+  function showSyncMsg(text, isError) {
+    if (!syncMsg) return;
+    syncMsg.style.display = 'block';
+    syncMsg.textContent = text;
+    syncMsg.style.color = isError ? '#ff5252' : '#69f0ae';
+  }
+
+  if (exportBtn) {
+    exportBtn.addEventListener('click', function () {
+      exportBtn.disabled = true;
+      exportBtn.textContent = '⏳ 書き出し中...';
+      showSyncMsg('SoundCloudへプレイリストを作成/更新しています...', false);
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'EXPORT_DISLIKES' }, function (res) {
+        exportBtn.disabled = false;
+        exportBtn.textContent = '📤 SCへ書き出し';
+        if (chrome.runtime.lastError || !res) {
+          showSyncMsg('SoundCloudとの通信に失敗しました。ページを再読み込みしてください。', true);
+        } else {
+          showSyncMsg(res.message, !res.success);
+          requestData();
+        }
+      });
+    });
+  }
+
+  if (importBtn) {
+    importBtn.addEventListener('click', function () {
+      importBtn.disabled = true;
+      importBtn.textContent = '⏳ 読み込み中...';
+      showSyncMsg('SoundCloudプレイリストからDislike曲を取得中...', false);
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'IMPORT_DISLIKES' }, function (res) {
+        importBtn.disabled = false;
+        importBtn.textContent = '📥 SCから読み込み';
+        if (chrome.runtime.lastError || !res) {
+          showSyncMsg('SoundCloudとの通信に失敗しました。ページを再読み込みしてください。', true);
+        } else {
+          showSyncMsg(res.message, !res.success);
+          requestData();
+        }
+      });
+    });
+  }
+
   // ミニプレイヤー起動ボタン
   const mpBtn = document.getElementById('btn-miniplayer');
   if (mpBtn) {

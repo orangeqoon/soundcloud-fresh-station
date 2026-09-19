@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FreshDig for SoundCloud - 新アーティスト自動発掘",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー",
   "permissions": [
     "storage",

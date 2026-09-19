@@ -1,7 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.5.1
+// @version      1.6.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -13,7 +12,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.5.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.6.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -172,6 +171,22 @@
                 state.playbackMode = event.data.mode;
                 localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
                 console.log('[SC-FreshStation] Switched mode to:', state.playbackMode);
+            } else if (action === 'EXPORT_DISLIKES') {
+                exportDislikesToPlaylist().then(function (result) {
+                    window.postMessage({
+                        type: 'SC_FRESH_STATION_ACTION_RESULT',
+                        action: 'EXPORT_DISLIKES',
+                        result: result
+                    }, '*');
+                });
+            } else if (action === 'IMPORT_DISLIKES') {
+                importDislikesFromPlaylist().then(function (result) {
+                    window.postMessage({
+                        type: 'SC_FRESH_STATION_ACTION_RESULT',
+                        action: 'IMPORT_DISLIKES',
+                        result: result
+                    }, '*');
+                });
             } else if (action === 'TOGGLE_MINI_PLAYER') {
                 toggleMiniPlayer();
             } else if (action === 'GET_DATA') {
@@ -956,6 +971,147 @@
             } catch (e) {}
         }
         return state.currentTrack;
+    }
+
+    const DISLIKE_PLAYLIST_TITLE = '[FreshDig] Disliked Tracks';
+
+    // Dislike 曲を SoundCloud プレイリストにエクスポート
+    async function exportDislikesToPlaylist() {
+        extractAuthTokenFromCookie();
+        if (!state.oauthToken || !state.clientId) {
+            return { success: false, message: 'SoundCloudのログイン情報が取得できませんでした。ログインをご確認ください。' };
+        }
+
+        // 数値トラックIDを収集
+        const trackIds = [];
+        for (const key of Object.keys(state.dislikedTracks)) {
+            const numId = parseInt(key, 10);
+            if (!isNaN(numId) && numId > 0) {
+                trackIds.push(numId);
+            }
+        }
+
+        if (trackIds.length === 0) {
+            return { success: false, message: 'エクスポートするDislike曲が登録されていません。' };
+        }
+
+        try {
+            await initUserData();
+            const existingPl = state.myPlaylists.find(p => p.title.toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase());
+
+            if (existingPl) {
+                const plUrl = 'https://api-v2.soundcloud.com/playlists/' + existingPl.id + '?client_id=' + state.clientId;
+                const plRes = await originalFetch(plUrl, {
+                    headers: { 'Authorization': state.oauthToken },
+                    credentials: 'include'
+                });
+                const plData = await plRes.json();
+                const currentIds = (plData.tracks || []).map(t => t.id);
+                const mergedIds = Array.from(new Set([...currentIds, ...trackIds]));
+
+                const putRes = await originalFetch('https://api-v2.soundcloud.com/playlists/' + existingPl.id + '?client_id=' + state.clientId, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': state.oauthToken,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        playlist: { tracks: mergedIds }
+                    })
+                });
+
+                if (putRes.ok) {
+                    return { success: true, message: `プレイリスト「${DISLIKE_PLAYLIST_TITLE}」に ${trackIds.length} 曲をエクスポートしました！（合計 ${mergedIds.length} 曲）` };
+                } else {
+                    return { success: false, message: 'エクスポート更新に失敗しました (HTTP ' + putRes.status + ')' };
+                }
+            } else {
+                const postRes = await originalFetch('https://api-v2.soundcloud.com/playlists?client_id=' + state.clientId, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': state.oauthToken,
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        playlist: {
+                            title: DISLIKE_PLAYLIST_TITLE,
+                            sharing: 'private',
+                            tracks: trackIds
+                        }
+                    })
+                });
+
+                if (postRes.ok) {
+                    await initUserData();
+                    return { success: true, message: `新しい非公開プレイリスト「${DISLIKE_PLAYLIST_TITLE}」を作成し、${trackIds.length} 曲をエクスポートしました！` };
+                } else {
+                    return { success: false, message: 'プレイリスト新規作成に失敗しました (HTTP ' + postRes.status + ')' };
+                }
+            }
+        } catch (e) {
+            console.error('[SC-FreshStation] Export dislikes error:', e);
+            return { success: false, message: 'エラーが発生しました: ' + e.message };
+        }
+    }
+
+    // SoundCloud プレイリストから Dislike 曲をインポート
+    async function importDislikesFromPlaylist() {
+        extractAuthTokenFromCookie();
+        if (!state.oauthToken || !state.clientId) {
+            return { success: false, message: 'SoundCloudのログイン情報が取得できませんでした。ログインをご確認ください。' };
+        }
+
+        try {
+            await initUserData();
+            let targetPl = state.myPlaylists.find(p => p.title.toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase());
+            if (!targetPl) {
+                targetPl = state.myPlaylists.find(p => p.title.toLowerCase().includes('dislike'));
+            }
+
+            if (!targetPl) {
+                return { success: false, message: `「${DISLIKE_PLAYLIST_TITLE}」という名前のプレイリストが見つかりませんでした。先にエクスポートするか、プレイリストを作成してください。` };
+            }
+
+            const plUrl = 'https://api-v2.soundcloud.com/playlists/' + targetPl.id + '?client_id=' + state.clientId;
+            const res = await originalFetch(plUrl, {
+                headers: { 'Authorization': state.oauthToken },
+                credentials: 'include'
+            });
+
+            if (!res.ok) {
+                return { success: false, message: 'プレイリスト取得失敗 (HTTP ' + res.status + ')' };
+            }
+
+            const plData = await res.json();
+            const tracks = plData.tracks || [];
+            if (tracks.length === 0) {
+                return { success: false, message: `プレイリスト「${targetPl.title}」には曲がありませんでした。` };
+            }
+
+            let importedCount = 0;
+            tracks.forEach(track => {
+                if (track && track.id) {
+                    const key = String(track.id);
+                    if (!state.dislikedTracks[key]) {
+                        importedCount++;
+                    }
+                    state.dislikedTracks[key] = {
+                        title: track.title || 'Unknown',
+                        artist: track.user ? track.user.username : 'Unknown',
+                        genre: track.genre || '',
+                        date: new Date().toLocaleDateString()
+                    };
+                }
+            });
+
+            saveDislikeData();
+            return { success: true, message: `プレイリスト「${targetPl.title}」から ${tracks.length} 曲を読み込み、${importedCount} 件をDislikeリストに反映しました！` };
+        } catch (e) {
+            console.error('[SC-FreshStation] Import dislikes error:', e);
+            return { success: false, message: 'エラーが発生しました: ' + e.message };
+        }
     }
 
     async function handleDislikeClick() {
