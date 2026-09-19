@@ -145,14 +145,15 @@
 </head>
 <body>
   <h2>
-    <span>🎧 SC Suite <small style="font-size:10px; color:#ff7700;">v1.3.0</small></span>
+    <span>🎧 FreshDig <small style="font-size:10px; color:#ff7700;">v1.4.0</small></span>
     <span class="badge" id="conn-badge">SoundCloud未接続</span>
   </h2>
+  <div style="font-size: 11px; color: #888; margin-bottom: 8px;">✨ 未知のアーティスト発掘アシスタント</div>
 
   <!-- Quick Launch Mini Player -->
   <div style="margin-bottom: 10px;">
     <button id="btn-miniplayer" style="width: 100%; padding: 7px; background: #242424; border: 1px solid #ff5500; color: #ff5500; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.15s ease;">
-      🪟 浮遊ミニプレイヤーを開く
+      🪟 浮遊ミニプレイヤーを開く (最前面)
     </button>
   </div>
 
@@ -160,7 +161,7 @@
   <div class="playlist-select-box" style="border-left: 3px solid #ff5500;">
     <label for="mode-select">🎛️ 再生動作モード：</label>
     <select id="mode-select" style="font-weight: bold; color: #ffaa00;">
-      <option value="DISCOVERY">🔍 未知の曲発掘 (既知/フォローを除外)</option>
+      <option value="DISCOVERY">🔍 未知のアーティスト発掘 (既知/フォローを除外)</option>
       <option value="FOLLOWING_NEW">👥 フォロー中の新曲のみ (リポスト完全除外)</option>
     </select>
   </div>

@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         SoundCloud Fresh Station & Playlist Helper
-// @namespace    https://soundcloud.com/
-// @version      1.3.0
-// @description  ステーション未知曲発掘＆フォロー中アーティスト新曲オンリー再生・Dislike除外・ワンクリックプレイリスト追加
+// @name         FreshDig for SoundCloud - 新アーティスト自動発掘
+// @name         FreshDig for SoundCloud - 新アーティスト自動発掘
+// @version      1.4.0
+// @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
 // @run-at       document-start
@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (v1.3.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.4.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1042,7 +1042,7 @@
             navigator.mediaSession.metadata = new MediaMetadata({
                 title: title || 'SoundCloud Track',
                 artist: artist || 'Unknown Artist',
-                album: 'Fresh Station for SoundCloud',
+                album: 'FreshDig for SoundCloud',
                 artwork: art ? [
                     { src: art, sizes: '500x500', type: 'image/jpeg' },
                     { src: art, sizes: '256x256', type: 'image/jpeg' },
@@ -1105,7 +1105,7 @@
     }
 
     function setupMiniPlayerUI(doc) {
-        doc.title = 'SoundCloud Mini Player';
+        doc.title = 'FreshDig - アーティスト発掘ミニプレイヤー';
         doc.body.innerHTML = `
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
