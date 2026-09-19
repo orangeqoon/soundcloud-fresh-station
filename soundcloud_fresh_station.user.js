@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.4.0
+// @version      1.4.1
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -13,7 +13,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.4.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.4.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -37,7 +37,8 @@
         myPlaylists: [],
         targetPlaylistId: localStorage.getItem(TARGET_PLAYLIST_KEY) || null,
         currentTrack: null,
-        lastSkippedTrackKey: null
+        lastSkippedTrackKey: null,
+        repostedTrackIds: new Set()
     };
 
     // 1. キャッシュから即時復元（ページ表示0秒後から除外有効化）
@@ -1363,16 +1364,62 @@
             }
         });
 
-        // リポスト (Repost) 操作
-        doc.getElementById('mp-repost')?.addEventListener('click', function () {
-            const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+        // リポスト (Repost) 操作 (DOM優先 + APIハイブリッド)
+        doc.getElementById('mp-repost')?.addEventListener('click', async function () {
+            // 1. DOM上のボタン（再生バーまたはページ全体）を検索
+            const repostBtn = document.querySelector('.playbackSoundBadge button.sc-button-repost, .playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .soundActions button.sc-button-repost, button.sc-button-repost');
             if (repostBtn) {
                 repostBtn.click();
                 const wasReposted = repostBtn.classList.contains('sc-button-selected');
                 showToast(wasReposted ? '🔁 リポストを解除しました' : '🔁 リポストしました！');
-                setTimeout(syncMiniPlayerUI, 300);
-            } else {
-                showToast('⚠️ Repostボタンが見つかりません');
+                setTimeout(syncMiniPlayerUI, 400);
+                return;
+            }
+
+            // 2. DOM上にない場合は SoundCloud API 経由で直接リポスト
+            const t = await ensureCurrentTrackInfo();
+            const trackId = t && t.id;
+            if (!trackId) {
+                showToast('⚠️ トラック情報を取得中...');
+                return;
+            }
+
+            extractAuthTokenFromCookie();
+            if (!state.oauthToken || !state.clientId) {
+                showToast('⚠️ ログイン認証が必要です');
+                return;
+            }
+
+            if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
+            const isCurrentlyReposted = state.repostedTrackIds.has(trackId);
+            showToast(isCurrentlyReposted ? '🔁 リポスト解除中...' : '🔁 リポスト中...');
+
+            try {
+                const method = isCurrentlyReposted ? 'DELETE' : 'PUT';
+                const url = 'https://api-v2.soundcloud.com/me/track_reposts/' + trackId + '?client_id=' + state.clientId;
+                const res = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Authorization': state.oauthToken,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
+                    if (isCurrentlyReposted) {
+                        state.repostedTrackIds.delete(trackId);
+                        showToast('🔁 リポストを解除しました');
+                    } else {
+                        state.repostedTrackIds.add(trackId);
+                        showToast('🔁 リポストしました！');
+                    }
+                    syncMiniPlayerUI();
+                } else {
+                    showToast('⚠️ リポスト通信失敗 (' + res.status + ')');
+                }
+            } catch (err) {
+                console.error('[SC-FreshStation] Repost error:', err);
+                showToast('⚠️ 通信エラーが発生しました');
             }
         });
 
@@ -1497,8 +1544,15 @@
         }
 
         // Repost 状態の同期
-        if (mpRepost && repostBtn) {
-            const isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
+        if (mpRepost) {
+            const trackId = state.currentTrack && state.currentTrack.id;
+            let isReposted = false;
+            if (repostBtn) {
+                isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
+            } else if (trackId && state.repostedTrackIds && state.repostedTrackIds.has(trackId)) {
+                isReposted = true;
+            }
+
             if (isReposted) {
                 mpRepost.classList.add('reposted');
             } else {
