@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.6.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -174,6 +174,14 @@
                     window.postMessage({
                         type: 'SC_FRESH_STATION_ACTION_RESULT',
                         action: 'IMPORT_DISLIKES',
+                        result: result
+                    }, '*');
+                });
+            } else if (action === 'START_STATION') {
+                startTrackStation().then(function (result) {
+                    window.postMessage({
+                        type: 'SC_FRESH_STATION_ACTION_RESULT',
+                        action: 'START_STATION',
                         result: result
                     }, '*');
                 });
@@ -720,7 +728,40 @@
         const actionGroup = document.querySelector('.playbackSoundBadge__actions');
         if (!actionGroup) return;
 
-        // 1. Dislikeボタン (アイコン1個: 👎) - この曲だけ除外
+        // 0. 発掘モード切替ボタン (アイコン: 🔍 または 👥)
+        if (!document.getElementById('sc-fresh-station-mode-btn')) {
+            const modeBtn = document.createElement('button');
+            modeBtn.id = 'sc-fresh-station-mode-btn';
+            modeBtn.type = 'button';
+            modeBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            modeBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle; transition: all 0.15s ease;';
+            modeBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                togglePlaybackMode();
+            });
+            actionGroup.appendChild(modeBtn);
+        }
+        updateModeButtonUI();
+
+        // 1. ステーション開始ボタン (アイコン: 📻)
+        if (!document.getElementById('sc-fresh-station-station-btn')) {
+            const stBtn = document.createElement('button');
+            stBtn.id = 'sc-fresh-station-station-btn';
+            stBtn.type = 'button';
+            stBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            stBtn.title = '📻 この曲のステーションを開始';
+            stBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #00e676; background: transparent; color: #00e676; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle; transition: all 0.15s ease;';
+            stBtn.innerHTML = '📻';
+            stBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                startTrackStation();
+            });
+            actionGroup.appendChild(stBtn);
+        }
+
+        // 2. Dislikeボタン (アイコン1個: 👎) - この曲だけ除外
         if (!document.getElementById('sc-fresh-station-dislike-btn')) {
             const btn = document.createElement('button');
             btn.id = 'sc-fresh-station-dislike-btn';
@@ -737,7 +778,7 @@
             actionGroup.appendChild(btn);
         }
 
-        // 2. Hateボタン (アイコン1個: 🚫) - この作者の曲すべてを除外
+        // 3. Hateボタン (アイコン1個: 🚫) - この作者の曲すべてを除外
         if (!document.getElementById('sc-fresh-station-hate-btn')) {
             const hateBtn = document.createElement('button');
             hateBtn.id = 'sc-fresh-station-hate-btn';
@@ -754,7 +795,7 @@
             actionGroup.appendChild(hateBtn);
         }
 
-        // 3. プレイリスト一発挿入ボタン (アイコン1個: ➕)
+        // 4. プレイリスト一発挿入ボタン (アイコン1個: ➕)
         if (!document.getElementById('sc-fresh-station-playlist-btn')) {
             const plBtn = document.createElement('button');
             plBtn.id = 'sc-fresh-station-playlist-btn';
@@ -779,7 +820,7 @@
             updatePlaylistButtonUI();
         }
 
-        // 4. ミニプレイヤー起動ボタン (アイコン1個: 🪟)
+        // 5. ミニプレイヤー起動ボタン (アイコン1個: 🪟)
         if (!document.getElementById('sc-fresh-station-miniplayer-btn')) {
             const mpBtn = document.createElement('button');
             mpBtn.id = 'sc-fresh-station-miniplayer-btn';
@@ -794,6 +835,24 @@
                 toggleMiniPlayer();
             });
             actionGroup.appendChild(mpBtn);
+        }
+    }
+
+    function updateModeButtonUI() {
+        const btn = document.getElementById('sc-fresh-station-mode-btn');
+        if (!btn) return;
+        if (state.playbackMode === 'DISCOVERY') {
+            btn.innerHTML = '🔍';
+            btn.style.borderColor = '#ff5500';
+            btn.style.color = '#ffaa00';
+            btn.style.background = 'rgba(255, 85, 0, 0.15)';
+            btn.title = '🔍 発掘モード (クリックで「フォロー新曲のみ」へ切替)';
+        } else {
+            btn.innerHTML = '👥';
+            btn.style.borderColor = '#29b6f6';
+            btn.style.color = '#4fc3f7';
+            btn.style.background = 'rgba(41, 182, 246, 0.15)';
+            btn.title = '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)';
         }
     }
 
@@ -1165,6 +1224,178 @@
         }
     }
 
+    function showGlobalToast(msg) {
+        // 1. Mini player toast if open
+        if (miniPlayerWindow && !miniPlayerWindow.closed) {
+            try {
+                const mpToast = miniPlayerWindow.document.getElementById('mp-toast');
+                if (mpToast) {
+                    mpToast.textContent = msg;
+                    mpToast.classList.add('show');
+                    clearTimeout(mpToast._timer);
+                    mpToast._timer = setTimeout(function () { mpToast.classList.remove('show'); }, 1800);
+                    return;
+                }
+            } catch (e) {}
+        }
+        // 2. Main SoundCloud window floating toast
+        try {
+            let toast = document.getElementById('sc-fresh-station-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'sc-fresh-station-toast';
+                toast.style.cssText = 'position: fixed; bottom: 65px; left: 50%; transform: translateX(-50%); background: rgba(20,20,20,0.92); border: 1px solid #ff5500; color: #fff; font-size: 13px; font-weight: bold; padding: 7px 18px; border-radius: 20px; z-index: 100000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); pointer-events: none; transition: opacity 0.25s ease; opacity: 0;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(function () {
+                toast.style.opacity = '0';
+            }, 2000);
+        } catch (e) {}
+    }
+
+    function togglePlaybackMode() {
+        const newMode = state.playbackMode === 'DISCOVERY' ? 'FOLLOWING_NEW' : 'DISCOVERY';
+        state.playbackMode = newMode;
+        localStorage.setItem(PLAYBACK_MODE_KEY, newMode);
+        console.log('[SC-FreshStation] Toggled mode to:', newMode);
+
+        const msg = newMode === 'DISCOVERY'
+            ? '🔍 発掘モード（未知のアーティスト）に切替'
+            : '👥 フォロー新曲モード（新曲のみ）に切替';
+        showGlobalToast(msg);
+
+        updateModeButtonUI();
+        syncMiniPlayerUI();
+    }
+
+    async function startTrackStation() {
+        console.log('[SC-FreshStation] startTrackStation called');
+
+        // Step 0: トラック情報の取得を保証
+        let currentTrackId = state.currentTrack && state.currentTrack.id;
+        if (!currentTrackId) {
+            const t = await ensureCurrentTrackInfo();
+            if (t && t.id) currentTrackId = t.id;
+        }
+
+        // Step 1: DOM上のステーションボタンがあれば最優先で直接クリック
+        const directStationSelectors = [
+            '.playbackSoundBadge button.sc-button-station',
+            '.playbackSoundBadge__actions button[title*="Station" i]',
+            '.playbackSoundBadge__actions button[aria-label*="Station" i]',
+            '.playbackSoundBadge__actions button[title*="ステーション"]',
+            '.playbackSoundBadge__actions button[aria-label*="ステーション"]',
+            'button.sc-button-station'
+        ];
+        for (const sel of directStationSelectors) {
+            const btn = document.querySelector(sel);
+            if (btn && btn.id !== 'mp-station' && btn.id !== 'sc-fresh-station-station-btn' && btn.offsetParent !== null) {
+                btn.click();
+                showGlobalToast('📻 ステーションを開始しました！');
+                return { success: true, message: 'ステーションを開始しました' };
+            }
+        }
+
+        // Step 2: プレイヤーバーの「... (More / その他)」メニューを開いてステーションを探索
+        const moreBtnSelectors = [
+            '.playbackSoundBadge button.sc-button-more',
+            '.playbackSoundBadge__actions button.sc-button-more',
+            '.playbackSoundBadge button[aria-haspopup="menu"]',
+            '.playbackSoundBadge button[aria-haspopup="true"]',
+            '.playbackSoundBadge__actions button[title*="More" i]',
+            '.playbackSoundBadge__actions button[aria-label*="More" i]',
+            '.playbackSoundBadge__actions button[title*="その他"]',
+            '.playbackSoundBadge__actions button[aria-label*="その他"]',
+            '.playControls button.sc-button-more',
+            'button.sc-button-more'
+        ];
+
+        let moreBtn = null;
+        for (const sel of moreBtnSelectors) {
+            const el = document.querySelector(sel);
+            if (el && el.offsetParent !== null) {
+                moreBtn = el;
+                break;
+            }
+        }
+
+        if (moreBtn) {
+            moreBtn.click();
+            let foundStationItem = null;
+            for (let i = 0; i < 12; i++) {
+                await new Promise(r => setTimeout(r, 35));
+                const items = document.querySelectorAll('.moreActions button, .dropdownMenu button, [role="menu"] button, [role="menuitem"], .sc-popper button, .moreActions__group button, button.sc-button-station');
+                for (const item of items) {
+                    const text = ((item.textContent || '') + ' ' + (item.title || '') + ' ' + (item.getAttribute('aria-label') || '') + ' ' + item.className).toLowerCase();
+                    if (text.includes('station') || text.includes('ステーション')) {
+                        foundStationItem = item;
+                        break;
+                    }
+                }
+                if (foundStationItem) break;
+            }
+
+            if (foundStationItem) {
+                foundStationItem.click();
+                showGlobalToast('📻 ステーションを開始しました！');
+                return { success: true, message: 'ステーションを開始しました' };
+            } else {
+                moreBtn.click(); // メニューを閉じる
+            }
+        }
+
+        // Step 3: 現在再生中のトラックカードからステーション開始ボタンを探索
+        const trackCards = document.querySelectorAll('.sound.playing, .soundList__item.active, .soundList__item.playing');
+        for (const card of trackCards) {
+            const cardStation = card.querySelector('button.sc-button-station, button[title*="Station" i], button[title*="ステーション"]');
+            if (cardStation) {
+                cardStation.click();
+                showGlobalToast('📻 ステーションを開始しました！');
+                return { success: true, message: 'ステーションを開始しました' };
+            }
+        }
+
+        // Step 4: トラックIDによるSPAナビゲーション + 自動再生
+        if (currentTrackId) {
+            showGlobalToast('📻 ステーションを読込中...');
+            const stationUrl = '/discover/sets/track-stations:' + currentTrackId;
+
+            try {
+                window.history.pushState({}, '', stationUrl);
+                window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+            } catch (e) {
+                window.location.href = 'https://soundcloud.com' + stationUrl;
+                return { success: true, message: 'ステーションへ移動中...' };
+            }
+
+            // ステーション画面の再生ボタン出現を待機して自動クリック
+            let playStarted = false;
+            for (let i = 0; i < 25; i++) {
+                await new Promise(r => setTimeout(r, 150));
+                const playBtn = document.querySelector('.heroSoundTitle button.playButton, .soundTitle__playButton button, .listenSection button.sc-button-play, .sound__coverArt button.playButton, .trackItem button.sc-button-play');
+                if (playBtn) {
+                    playBtn.click();
+                    playStarted = true;
+                    showGlobalToast('📻 ステーションを再生開始しました！');
+                    break;
+                }
+            }
+            if (!playStarted) {
+                const mainPlay = document.querySelector('.playControls__play');
+                if (mainPlay && !mainPlay.classList.contains('playing')) {
+                    mainPlay.click();
+                }
+            }
+            return { success: true, message: 'ステーションを開始しました' };
+        }
+
+        showGlobalToast('⚠️ 現在再生中の曲情報を取得できませんでした');
+        return { success: false, message: '曲情報を取得できませんでした' };
+    }
+
     // =========================================================================
     // 🎵 Windows タスクバー / メディアキー / 音量フライアウト連携 (Media Session API)
     // =========================================================================
@@ -1329,29 +1560,49 @@
                 .badge-row {
                     display: flex;
                     align-items: center;
-                    gap: 5px;
+                    gap: 4px;
                     margin-top: 3px;
                 }
                 .status-badge {
                     display: inline-block;
-                    font-size: 9px;
-                    padding: 1px 5px;
-                    border-radius: 3px;
-                    background: rgba(255, 85, 0, 0.2);
-                    color: #ff5500;
+                    font-size: 8.5px;
+                    padding: 2px 6px;
+                    border-radius: 10px;
+                    background: rgba(255, 85, 0, 0.15);
+                    border: 1px solid #ff5500;
+                    color: #ffaa00;
                     white-space: nowrap;
+                    flex-shrink: 0;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                }
+                .status-badge:hover {
+                    background: #ff5500;
+                    color: #fff;
+                    transform: scale(1.05);
+                }
+                .status-badge.following-mode {
+                    border-color: #29b6f6;
+                    background: rgba(41, 182, 246, 0.15);
+                    color: #4fc3f7;
+                }
+                .status-badge.following-mode:hover {
+                    background: #0288d1;
+                    color: #fff;
                 }
                 .btn-follow {
                     background: #222;
                     border: 1px solid #444;
                     color: #aaa;
-                    font-size: 9px;
-                    padding: 1px 6px;
+                    font-size: 8.5px;
+                    padding: 1px 5px;
                     border-radius: 10px;
                     cursor: pointer;
                     display: inline-flex;
                     align-items: center;
                     gap: 2px;
+                    white-space: nowrap;
+                    flex-shrink: 0;
                     transition: all 0.15s ease;
                 }
                 .btn-follow:hover {
@@ -1362,6 +1613,25 @@
                     background: rgba(0, 230, 118, 0.15);
                     border-color: #00e676;
                     color: #00e676;
+                }
+                .btn-station {
+                    background: #222;
+                    border: 1px solid #ff5500;
+                    color: #ff7700;
+                    font-size: 8.5px;
+                    padding: 1px 5px;
+                    border-radius: 10px;
+                    cursor: pointer;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 2px;
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                    transition: all 0.15s ease;
+                }
+                .btn-station:hover {
+                    background: #ff5500;
+                    color: #fff;
                 }
 
                 /* シークバーエリア */
@@ -1513,7 +1783,8 @@
                     <div class="artist" id="mp-artist">SoundCloud</div>
                     <div class="badge-row">
                         <span class="status-badge" id="mp-status">再生待機中</span>
-                        <button class="btn-follow" id="mp-follow" title="アーティストをフォロー">👤＋ フォロー</button>
+                        <button class="btn-follow" id="mp-follow" title="アーティストをフォロー">👤 フォロー</button>
+                        <button class="btn-station" id="mp-station" title="この曲のステーションを開始">📻 ステーション</button>
                     </div>
                 </div>
             </div>
@@ -1714,6 +1985,16 @@
             }
         });
 
+        // ステータスバッジ（発掘モード／フォロー新曲）クリックでモード切替
+        doc.getElementById('mp-status')?.addEventListener('click', function () {
+            togglePlaybackMode();
+        });
+
+        // ステーション開始 (Start Station)
+        doc.getElementById('mp-station')?.addEventListener('click', async function () {
+            await startTrackStation();
+        });
+
         // プレイリスト追加 & 除外
         doc.getElementById('mp-add-pl')?.addEventListener('click', async function () {
             showToast('➕ 追加中...');
@@ -1824,13 +2105,20 @@
                 mpFollow.textContent = '👤✓ フォロー中';
                 mpFollow.classList.add('following');
             } else {
-                mpFollow.textContent = '👤＋ フォロー';
+                mpFollow.textContent = '👤 フォロー';
                 mpFollow.classList.remove('following');
             }
         }
 
         if (mpStatus) {
-            mpStatus.textContent = state.playbackMode === 'DISCOVERY' ? '🔍 発掘モード' : '👥 フォロー新曲';
+            const isDiscovery = state.playbackMode === 'DISCOVERY';
+            mpStatus.textContent = isDiscovery ? '🔍 発掘モード' : '👥 フォロー新曲';
+            mpStatus.title = isDiscovery ? 'クリックで「フォロー新曲のみ」へ切替' : 'クリックで「発掘モード」へ切替';
+            if (isDiscovery) {
+                mpStatus.classList.remove('following-mode');
+            } else {
+                mpStatus.classList.add('following-mode');
+            }
         }
 
         // シークバーの同期

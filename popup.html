@@ -140,20 +140,26 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.6.1</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.7.0</span>
     </div>
     <div class="badge" id="conn-badge">SoundCloud未接続</div>
   </div>
 
-  <!-- 浮遊ミニプレイヤー起動 -->
-  <button id="btn-miniplayer" class="btn-primary">
-    🪟 浮遊ミニプレイヤーを開く (最前面)
-  </button>
+  <!-- アクションボタン列 -->
+  <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+    <button id="btn-miniplayer" class="btn-primary" style="margin-bottom: 0; flex: 1;">
+      🪟 ミニプレイヤー
+    </button>
+    <button id="btn-station" class="btn-primary" style="margin-bottom: 0; flex: 1; border-color: #00e676; color: #00e676;" title="現在再生中の曲のステーションを開始">
+      📻 ステーション開始
+    </button>
+  </div>
 
   <!-- 再生モード -->
   <div class="card" style="border-left: 3px solid #ff5500;">
-    <div class="card-label" style="color: #ffaa00; font-weight: bold;">
+    <div class="card-label" id="mode-label-row" style="color: #ffaa00; font-weight: bold; cursor: pointer;" title="クリックでモード切替">
       <span>🎛️ 再生動作モード</span>
+      <span id="mode-quick-badge" style="font-size: 10px; padding: 1px 6px; background: #333; border: 1px solid #ff5500; border-radius: 4px; color: #ffaa00; cursor: pointer;">🔍 切替</span>
     </div>
     <select id="mode-select">
       <option value="DISCOVERY">🔍 未知のアーティスト発掘 (既知/フォロー除外)</option>

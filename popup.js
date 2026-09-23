@@ -114,7 +114,66 @@ document.addEventListener('DOMContentLoaded', async function () {
       window.close();
     });
   }
+
+  // ステーション開始ボタン
+  const stationBtn = document.getElementById('btn-station');
+  if (stationBtn) {
+    stationBtn.addEventListener('click', function () {
+      stationBtn.disabled = true;
+      stationBtn.textContent = '⏳ 開始中...';
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'START_STATION'
+      }, function (res) {
+        stationBtn.disabled = false;
+        stationBtn.textContent = '📻 ステーション開始';
+        setTimeout(function () { window.close(); }, 350);
+      });
+    });
+  }
+
+  // モードバッジクリック切替
+  const modeSelectEl = document.getElementById('mode-select');
+  const modeLabelRow = document.getElementById('mode-label-row');
+  const modeBadge = document.getElementById('mode-quick-badge');
+
+  function toggleModeInPopup() {
+    if (!modeSelectEl) return;
+    const currentMode = modeSelectEl.value;
+    const newMode = currentMode === 'DISCOVERY' ? 'FOLLOWING_NEW' : 'DISCOVERY';
+    modeSelectEl.value = newMode;
+    updatePopupModeBadge(newMode);
+    chrome.tabs.sendMessage(tab.id, {
+      target: 'SC_FRESH_STATION',
+      action: 'SET_PLAYBACK_MODE',
+      mode: newMode
+    });
+  }
+
+  if (modeBadge) {
+    modeBadge.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleModeInPopup();
+    });
+  }
+  if (modeLabelRow) {
+    modeLabelRow.addEventListener('click', toggleModeInPopup);
+  }
 });
+
+function updatePopupModeBadge(mode) {
+  const badge = document.getElementById('mode-quick-badge');
+  if (!badge) return;
+  if (mode === 'DISCOVERY') {
+    badge.textContent = '🔍 発掘中';
+    badge.style.borderColor = '#ff5500';
+    badge.style.color = '#ffaa00';
+  } else {
+    badge.textContent = '👥 フォロー中';
+    badge.style.borderColor = '#29b6f6';
+    badge.style.color = '#4fc3f7';
+  }
+}
 
 function renderData(tabId, data) {
   const badge = document.getElementById('conn-badge');
@@ -126,12 +185,14 @@ function renderData(tabId, data) {
   const modeSelect = document.getElementById('mode-select');
   if (modeSelect) {
     modeSelect.value = data.playbackMode || 'DISCOVERY';
+    updatePopupModeBadge(data.playbackMode || 'DISCOVERY');
     modeSelect.onchange = function (e) {
       chrome.tabs.sendMessage(tabId, {
         target: 'SC_FRESH_STATION',
         action: 'SET_PLAYBACK_MODE',
         mode: e.target.value
       });
+      updatePopupModeBadge(e.target.value);
     };
   }
 
