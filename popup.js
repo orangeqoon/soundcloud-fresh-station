@@ -143,6 +143,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     const newMode = currentMode === 'DISCOVERY' ? 'FOLLOWING_NEW' : 'DISCOVERY';
     modeSelectEl.value = newMode;
     updatePopupModeBadge(newMode);
+    if (chrome.storage && chrome.storage.local) {
+      chrome.storage.local.set({ playbackMode: newMode });
+    }
     chrome.tabs.sendMessage(tab.id, {
       target: 'SC_FRESH_STATION',
       action: 'SET_PLAYBACK_MODE',
@@ -187,12 +190,16 @@ function renderData(tabId, data) {
     modeSelect.value = data.playbackMode || 'DISCOVERY';
     updatePopupModeBadge(data.playbackMode || 'DISCOVERY');
     modeSelect.onchange = function (e) {
+      const modeVal = e.target.value;
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ playbackMode: modeVal });
+      }
       chrome.tabs.sendMessage(tabId, {
         target: 'SC_FRESH_STATION',
         action: 'SET_PLAYBACK_MODE',
-        mode: e.target.value
+        mode: modeVal
       });
-      updatePopupModeBadge(e.target.value);
+      updatePopupModeBadge(modeVal);
     };
   }
 
@@ -228,10 +235,14 @@ function renderData(tabId, data) {
       });
 
       plSelect.onchange = function (e) {
+        const plVal = e.target.value;
+        if (chrome.storage && chrome.storage.local) {
+          chrome.storage.local.set({ targetPlaylistId: plVal });
+        }
         chrome.tabs.sendMessage(tabId, {
           target: 'SC_FRESH_STATION',
           action: 'SET_TARGET_PLAYLIST',
-          targetId: e.target.value
+          targetId: plVal
         });
       };
     }

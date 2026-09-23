@@ -1,9 +1,50 @@
-// Bridge between popup.js and MAIN world station_hook.js
+// Bridge between popup.js, chrome.storage.local and MAIN world station_hook.js
 (function () {
     'use strict';
 
-    // Relay messages from popup to window (MAIN world)
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    function sendStoredSettingsToMainWorld() {
+        if (!chrome.storage || !chrome.storage.local) return;
+        chrome.storage.local.get(['targetPlaylistId', 'playbackMode'], function (items) {
+            if (chrome.runtime.lastError || !items) return;
+            window.postMessage({
+                type: 'SC_FRESH_STATION_RESTORE_STORAGE',
+                data: items
+            }, '*');
+        });
+    }
+
+    // 1. Initial storage sync to MAIN world
+    sendStoredSettingsToMainWorld();
+    setTimeout(sendStoredSettingsToMainWorld, 1000);
+    setTimeout(sendStoredSettingsToMainWorld, 3000);
+
+    // 2. Listen for messages from MAIN world
+    window.addEventListener('message', function (event) {
+        if (!event.data) return;
+
+        // Request storage from MAIN world
+        if (event.data.type === 'SC_FRESH_STATION_REQUEST_STORAGE') {
+            sendStoredSettingsToMainWorld();
+        }
+
+        // Save data to extension storage (chrome.storage.local)
+        if (event.data.type === 'SC_FRESH_STATION_SYNC_STORAGE') {
+            const key = event.data.key;
+            const val = event.data.value;
+            if (key && chrome.storage && chrome.storage.local) {
+                chrome.storage.local.set({ [key]: val }, function () {
+                    if (chrome.runtime.lastError) {
+                        console.warn('[SC-FreshStation] Storage save error:', chrome.runtime.lastError);
+                    } else {
+                        console.log('[SC-FreshStation] Synced to extension storage:', key, val);
+                    }
+                });
+            }
+        }
+    });
+
+    // 3. Relay messages from popup to window (MAIN world)
+    chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
         if (request.target === 'SC_FRESH_STATION') {
             window.postMessage({
                 type: 'SC_FRESH_STATION_POPUP_ACTION',
@@ -15,7 +56,7 @@
             }, '*');
 
             // Wait for response from window
-            const handler = (event) => {
+            const handler = function (event) {
                 if (event.data && (event.data.type === 'SC_FRESH_STATION_DATA_RESPONSE' || event.data.type === 'SC_FRESH_STATION_ACTION_RESULT')) {
                     window.removeEventListener('message', handler);
                     sendResponse(event.data.data || event.data.result);

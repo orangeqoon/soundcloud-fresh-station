@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.7.0
+// @version      1.7.1
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -12,7 +12,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -137,6 +137,22 @@
     }
 
     window.addEventListener('message', async function (event) {
+        if (event.data && event.data.type === 'SC_FRESH_STATION_RESTORE_STORAGE') {
+            const d = event.data.data;
+            if (d && d.targetPlaylistId) {
+                state.targetPlaylistId = String(d.targetPlaylistId);
+                localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
+                updatePlaylistButtonUI();
+                console.log('[SC-FreshStation] Restored targetPlaylistId from extension storage:', state.targetPlaylistId);
+            }
+            if (d && d.playbackMode) {
+                state.playbackMode = d.playbackMode;
+                localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
+                updateModeButtonUI();
+            }
+            return;
+        }
+
         if (event.data && event.data.type === 'SC_FRESH_STATION_POPUP_ACTION') {
             const action = event.data.action;
             const targetType = event.data.targetType;
@@ -160,17 +176,9 @@
                 if (targetType === 'genre') delete state.dislikedGenres[targetId];
                 saveDislikeData();
             } else if (action === 'SET_TARGET_PLAYLIST') {
-                state.targetPlaylistId = targetId;
-                if (targetId) {
-                    localStorage.setItem(TARGET_PLAYLIST_KEY, targetId);
-                } else {
-                    localStorage.removeItem(TARGET_PLAYLIST_KEY);
-                }
-                updatePlaylistButtonUI();
+                saveTargetPlaylist(targetId);
             } else if (action === 'SET_PLAYBACK_MODE') {
-                state.playbackMode = event.data.mode;
-                localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
-                console.log('[SC-FreshStation] Switched mode to:', state.playbackMode);
+                savePlaybackMode(event.data.mode);
             } else if (action === 'EXPORT_DISLIKES') {
                 exportDislikesToPlaylist().then(function (result) {
                     window.postMessage({
@@ -223,6 +231,9 @@
 
     loadCachedData();
     extractAuthTokenFromCookie();
+
+    // 拡張機能本体（chrome.storage.local）から最新設定の同期を要求
+    window.postMessage({ type: 'SC_FRESH_STATION_REQUEST_STORAGE' }, '*');
 
     // 積極的 client_id 発見ロジック
     async function discoverClientId() {
@@ -866,6 +877,36 @@
         }
     }
 
+    function saveTargetPlaylist(targetId) {
+        if (!targetId) return;
+        state.targetPlaylistId = String(targetId);
+        try {
+            localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
+        } catch (e) {}
+        updatePlaylistButtonUI();
+        window.postMessage({
+            type: 'SC_FRESH_STATION_SYNC_STORAGE',
+            key: 'targetPlaylistId',
+            value: state.targetPlaylistId
+        }, '*');
+        console.log('[SC-FreshStation] Target playlist saved & synced to extension storage:', state.targetPlaylistId);
+    }
+
+    function savePlaybackMode(mode) {
+        if (!mode) return;
+        state.playbackMode = mode;
+        try {
+            localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
+        } catch (e) {}
+        updateModeButtonUI();
+        window.postMessage({
+            type: 'SC_FRESH_STATION_SYNC_STORAGE',
+            key: 'playbackMode',
+            value: state.playbackMode
+        }, '*');
+        console.log('[SC-FreshStation] Playback mode saved & synced to extension storage:', state.playbackMode);
+    }
+
     function updatePlaylistButtonUI() {
         const btn = document.getElementById('sc-fresh-station-playlist-btn');
         if (!btn) return;
@@ -878,92 +919,85 @@
         btn.title = '➕ 「' + name + '」に一発追加 (右クリックで保存先変更)';
     }
 
-    function chooseTargetPlaylistPrompt() {
-        if (state.myPlaylists.length === 0) {
-            alert('プレイリストが見つかりませんでした。SoundCloudにログインしているか確認してください。');
-            return;
+    async function chooseTargetPlaylistPrompt() {
+        if (!state.myPlaylists || state.myPlaylists.length === 0) {
+            showGlobalToast('🔄 プレイリスト一覧を取得中...');
+            await initUserData();
         }
-        const listText = state.myPlaylists.map(function (p, idx) { return '[' + (idx + 1) + '] ' + p.title + ' (' + p.trackCount + '曲)'; }).join('\n');
-        const choice = prompt('ワンクリックで追加するプレイリストの番号を入力してください：\n\n' + listText);
-        if (!choice) return;
+
+        if (!state.myPlaylists || state.myPlaylists.length === 0) {
+            showGlobalToast('⚠️ プレイリストが見つかりません');
+            alert('プレイリストが見つかりませんでした。SoundCloudにログインしてプレイリストを作成しているか確認してください。');
+            return null;
+        }
+
+        const listText = state.myPlaylists.map(function (p, idx) {
+            const isCur = String(p.id) === String(state.targetPlaylistId) ? ' ★現在選択中' : '';
+            return '[' + (idx + 1) + '] ' + p.title + ' (' + p.trackCount + '曲)' + isCur;
+        }).join('\n');
+
+        const choice = prompt('【ワンクリック追加先プレイリストの設定】\n保存先にするプレイリストの番号を入力してください：\n\n' + listText);
+        if (!choice) return null;
+
         const num = parseInt(choice, 10);
         if (!isNaN(num) && num >= 1 && num <= state.myPlaylists.length) {
             const selected = state.myPlaylists[num - 1];
-            state.targetPlaylistId = String(selected.id);
-            localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
-            updatePlaylistButtonUI();
-            alert('保存先プレイリストを「' + selected.title + '」に設定しました！');
+            saveTargetPlaylist(selected.id);
+            showGlobalToast('📋 保存先を「' + selected.title + '」に設定しました！');
+            return selected;
         } else {
             alert('無効な番号です。');
+            return null;
         }
     }
 
     async function handleAddTrackToPlaylist() {
         const btn = document.getElementById('sc-fresh-station-playlist-btn');
-        if (!state.currentTrack || !state.currentTrack.id) {
-            // DOMからトラック情報の解決を試みる
-            const titleLink = document.querySelector('.playbackSoundBadge__titleLink');
-            if (titleLink && titleLink.getAttribute('href') && state.clientId) {
-                try {
-                    if (btn) btn.innerHTML = '⏳';
-                    const href = titleLink.getAttribute('href');
-                    const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent('https://soundcloud.com' + href) + '&client_id=' + state.clientId;
-                    const rRes = await originalFetch(resolveUrl, {
-                        headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
-                        credentials: 'include'
-                    });
-                    const rData = await rRes.json();
-                    if (rData && rData.id) {
-                        state.currentTrack = {
-                            id: rData.id,
-                            title: rData.title,
-                            artistId: rData.user ? rData.user.id : rData.user_id,
-                            artistName: rData.user ? rData.user.username : 'Unknown',
-                            genre: (rData.genre || '').trim()
-                        };
-                    }
-                } catch (e) {}
-            }
-        }
-
-        if (!state.currentTrack || !state.currentTrack.id) {
-            alert('現在再生中のトラック情報が取得できませんでした。曲を再生してから押してください。');
+        const track = await ensureCurrentTrackInfo();
+        if (!track || !track.id) {
+            showGlobalToast('⚠️ 再生中の曲情報が取得できません');
             if (btn) btn.innerHTML = '➕';
-            return;
-        }
-        if (!state.targetPlaylistId) {
-            chooseTargetPlaylistPrompt();
-            if (!state.targetPlaylistId) {
-                if (btn) btn.innerHTML = '➕';
-                return;
-            }
+            return false;
         }
 
-        const playlist = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
-        const plTitle = playlist ? playlist.title : '指定プレイリスト';
-        const trackTitle = state.currentTrack.title;
-        const trackId = state.currentTrack.id;
+        // 追加先プレイリストのチェック＆自動再設定プロンプト
+        if (!state.targetPlaylistId) {
+            showGlobalToast('⚠️ 保存先が未設定です。選択してください');
+            const selected = await chooseTargetPlaylistPrompt();
+            if (!selected && !state.targetPlaylistId) {
+                showGlobalToast('⚠️ プレイリストへの追加を中断しました');
+                if (btn) btn.innerHTML = '➕';
+                return false;
+            }
+        }
 
         if (btn) btn.innerHTML = '⏳';
+        showGlobalToast('➕ プレイリストに追加中...');
 
-        try {
-            const plUrl = 'https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId;
+        extractAuthTokenFromCookie();
+
+        async function tryAddToPlaylist(plId) {
+            const plUrl = 'https://api-v2.soundcloud.com/playlists/' + plId + '?client_id=' + state.clientId;
             const plRes = await originalFetch(plUrl, {
                 headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
                 credentials: 'include'
             });
-            const plData = await plRes.json();
 
-            let currentTrackIds = (plData.tracks || []).map(function (t) { return t.id; });
-            if (currentTrackIds.indexOf(trackId) !== -1) {
-                alert('「' + trackTitle + '」はすでに「' + plTitle + '」に入っています。');
-                if (btn) btn.innerHTML = '➕';
-                return;
+            if (plRes.status === 404 || !plRes.ok) {
+                return { notFound: true, status: plRes.status };
             }
 
-            currentTrackIds.push(trackId);
+            const plData = await plRes.json();
+            const plTitle = plData.title || '指定プレイリスト';
+            let currentTrackIds = (plData.tracks || []).map(function (t) { return t.id; });
 
-            const putRes = await originalFetch('https://api-v2.soundcloud.com/playlists/' + state.targetPlaylistId + '?client_id=' + state.clientId, {
+            if (currentTrackIds.indexOf(track.id) !== -1) {
+                return { alreadyIn: true, plTitle: plTitle };
+            }
+
+            currentTrackIds.push(track.id);
+
+            const putRes = await originalFetch('https://api-v2.soundcloud.com/playlists/' + plId + '?client_id=' + state.clientId, {
                 method: 'PUT',
                 headers: {
                     ...(state.oauthToken ? { 'Authorization': state.oauthToken } : {}),
@@ -978,7 +1012,39 @@
             });
 
             if (putRes.ok) {
-                console.log('[SC-FreshStation] Added track ' + trackId + ' to playlist ' + state.targetPlaylistId);
+                return { success: true, plTitle: plTitle };
+            } else {
+                return { failed: true, status: putRes.status };
+            }
+        }
+
+        try {
+            let res = await tryAddToPlaylist(state.targetPlaylistId);
+
+            // もしプレイリストが見つからない（404等）なら、案内を出して再選択
+            if (res.notFound) {
+                showGlobalToast('⚠️ 保存先プレイリストが無効です。再設定してください');
+                alert('保存先に設定されていたプレイリストが見つかりませんでした（削除された可能性があります）。\n追加先のプレイリストを再設定してください。');
+                state.targetPlaylistId = null;
+                const newSelected = await chooseTargetPlaylistPrompt();
+                if (!newSelected || !state.targetPlaylistId) {
+                    showGlobalToast('⚠️ 追加先が設定されなかったため中断しました');
+                    if (btn) btn.innerHTML = '➕';
+                    return false;
+                }
+                // 新しいプレイリストで再試行
+                res = await tryAddToPlaylist(state.targetPlaylistId);
+            }
+
+            if (res.alreadyIn) {
+                showGlobalToast('⚠️ 「' + track.title + '」はすでに「' + res.plTitle + '」に入っています');
+                if (btn) btn.innerHTML = '➕';
+                return false;
+            }
+
+            if (res.success) {
+                console.log('[SC-FreshStation] Successfully added track ' + track.id + ' to playlist ' + state.targetPlaylistId);
+                showGlobalToast('✅ 「' + track.title + '」を「' + res.plTitle + '」に追加しました！');
                 if (btn) {
                     btn.innerHTML = '✅';
                     btn.style.background = '#00c853';
@@ -990,16 +1056,23 @@
                         updatePlaylistButtonUI();
                     }, 1500);
                 }
+                return true;
             } else {
-                throw new Error('Status ' + putRes.status);
+                showGlobalToast('❌ プレイリストへの追加に失敗しました (' + res.status + ')');
+                if (btn) {
+                    btn.innerHTML = '➕';
+                    btn.style.background = '#ff5500';
+                }
+                return false;
             }
         } catch (err) {
             console.error('[SC-FreshStation] Failed to add track to playlist:', err);
-            alert('プレイリストへの追加に失敗しました: ' + err.message);
+            showGlobalToast('❌ 追加エラー: ' + err.message);
             if (btn) {
                 btn.innerHTML = '➕';
                 btn.style.background = '#ff5500';
             }
+            return false;
         }
     }
 
@@ -1879,9 +1952,9 @@
         doc.getElementById('mp-like')?.addEventListener('click', function () {
             const likeBtn = document.querySelector('.playbackSoundBadge__like');
             if (likeBtn) {
+                const isCurrentlyLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
                 likeBtn.click();
-                const wasLiked = likeBtn.classList.contains('sc-button-selected');
-                showToast(wasLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
+                showToast(isCurrentlyLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
                 setTimeout(syncMiniPlayerUI, 300);
             } else {
                 showToast('⚠️ Likeボタンが見つかりません');
@@ -1892,9 +1965,9 @@
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
             const repostBtn = document.querySelector('.playbackSoundBadge button.sc-button-repost, .playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .soundActions button.sc-button-repost, button.sc-button-repost');
             if (repostBtn) {
+                const isCurrentlyReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
                 repostBtn.click();
-                const wasReposted = repostBtn.classList.contains('sc-button-selected');
-                showToast(wasReposted ? '🔁 リポストを解除しました' : '🔁 リポストしました！');
+                showToast(isCurrentlyReposted ? '🔁 リポストを解除しました' : '🔁 リポストしました！');
                 setTimeout(syncMiniPlayerUI, 400);
                 return;
             }
@@ -2005,12 +2078,17 @@
             await startTrackStation();
         });
 
-        // プレイリスト追加 & 除外
-        doc.getElementById('mp-add-pl')?.addEventListener('click', async function () {
-            showToast('➕ 追加中...');
-            await handleAddTrackToPlaylist();
-            showToast('✅ 追加完了！');
-        });
+        // プレイリスト追加 & 設定
+        const mpAddPlBtn = doc.getElementById('mp-add-pl');
+        if (mpAddPlBtn) {
+            mpAddPlBtn.addEventListener('click', async function () {
+                await handleAddTrackToPlaylist();
+            });
+            mpAddPlBtn.addEventListener('contextmenu', async function (e) {
+                e.preventDefault();
+                await chooseTargetPlaylistPrompt();
+            });
+        }
         doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
             showToast('👎 曲を除外してスキップ');
             await handleDislikeClick();
