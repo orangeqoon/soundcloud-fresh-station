@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.2)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -641,6 +641,8 @@
                 genre: ''
             };
             updateMediaSessionMetadata(title, artist);
+            // バックグラウンドで即座に track ID を解決
+            ensureCurrentTrackInfo();
             return;
         }
 
@@ -1067,15 +1069,79 @@
     }
 
     async function ensureCurrentTrackInfo() {
-        if (state.currentTrack && (state.currentTrack.id || state.currentTrack.title)) {
+        // すでに有効な ID があれば即座に返す
+        if (state.currentTrack && state.currentTrack.id) {
             return state.currentTrack;
         }
-        detectPlayingTrackFromDOM();
-        const titleLink = document.querySelector('.playbackSoundBadge__titleLink');
-        if (titleLink && titleLink.getAttribute('href') && state.clientId) {
+
+        // 1. React Fiber / Internal Props から瞬時に track オブジェクトを取得（同期・高速）
+        try {
+            const badge = document.querySelector('.playbackSoundBadge') || document.querySelector('.playControls');
+            if (badge) {
+                const fiberKey = Object.keys(badge).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+                const propsKey = Object.keys(badge).find(k => k.startsWith('__reactProps$'));
+
+                let sound = null;
+                if (propsKey && badge[propsKey]) {
+                    sound = badge[propsKey].sound || badge[propsKey].track || (badge[propsKey].children && badge[propsKey].children.props && badge[propsKey].children.props.sound);
+                }
+                if (!sound && fiberKey && badge[fiberKey]) {
+                    let curr = badge[fiberKey];
+                    let depth = 0;
+                    while (curr && depth < 10) {
+                        const memo = curr.memoizedProps;
+                        if (memo && (memo.sound || memo.track || memo.currentSound)) {
+                            sound = memo.sound || memo.track || memo.currentSound;
+                            break;
+                        }
+                        curr = curr.return;
+                        depth++;
+                    }
+                }
+
+                if (sound && sound.id) {
+                    state.currentTrack = {
+                        id: sound.id,
+                        title: sound.title || (state.currentTrack && state.currentTrack.title) || '',
+                        artistId: sound.user ? sound.user.id : sound.user_id,
+                        artistName: sound.user ? (sound.user.username || sound.user.name) : 'Unknown',
+                        genre: (sound.genre || '').trim(),
+                        href: sound.permalink_url ? new URL(sound.permalink_url).pathname : (sound.permalink || '')
+                    };
+                    console.log('[SC-FreshStation] Resolved track info via React Fiber:', state.currentTrack.id, state.currentTrack.title);
+                    return state.currentTrack;
+                }
+            }
+        } catch (e) {
+            console.warn('[SC-FreshStation] React Fiber track extraction skipped:', e);
+        }
+
+        // 2. DOMからタイトル・アーティスト・href を取得
+        const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
+        const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        const href = titleEl ? titleEl.getAttribute('href') : (state.currentTrack ? state.currentTrack.href : null);
+        const title = titleEl ? (titleEl.getAttribute('title') || (titleEl.textContent ? titleEl.textContent.trim() : '')) : (state.currentTrack ? state.currentTrack.title : '');
+        const artistName = artistEl ? (artistEl.getAttribute('title') || (artistEl.textContent ? artistEl.textContent.trim() : '')) : (state.currentTrack ? state.currentTrack.artistName : '');
+
+        if (!state.currentTrack) {
+            state.currentTrack = { id: null, title: title, artistName: artistName, artistId: null, href: href, genre: '' };
+        } else {
+            if (title && !state.currentTrack.title) state.currentTrack.title = title;
+            if (artistName && !state.currentTrack.artistName) state.currentTrack.artistName = artistName;
+            if (href && !state.currentTrack.href) state.currentTrack.href = href;
+        }
+
+        // 3. clientId の確保
+        if (!state.clientId) {
+            await discoverClientId();
+        }
+
+        // 4. /resolve API による確実な解決
+        if (href && state.clientId) {
             try {
-                const href = titleLink.getAttribute('href');
-                const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent('https://soundcloud.com' + href) + '&client_id=' + state.clientId;
+                const fullUrl = href.startsWith('http') ? href : ('https://soundcloud.com' + href);
+                const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent(fullUrl) + '&client_id=' + state.clientId;
+                extractAuthTokenFromCookie();
                 const rRes = await originalFetch(resolveUrl, {
                     headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
                     credentials: 'include'
@@ -1084,14 +1150,33 @@
                 if (rData && rData.id) {
                     state.currentTrack = {
                         id: rData.id,
-                        title: rData.title,
+                        title: rData.title || title,
                         artistId: rData.user ? rData.user.id : rData.user_id,
-                        artistName: rData.user ? rData.user.username : 'Unknown',
-                        genre: (rData.genre || '').trim()
+                        artistName: rData.user ? (rData.user.username || rData.user.name) : artistName,
+                        genre: (rData.genre || '').trim(),
+                        href: href
                     };
+                    console.log('[SC-FreshStation] Resolved track info via /resolve API:', state.currentTrack.id, state.currentTrack.title);
+                    return state.currentTrack;
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.warn('[SC-FreshStation] API resolve error:', e);
+            }
         }
+
+        // 5. DOM上のデータ属性からの探索 (data-sound-id / data-track-id)
+        try {
+            const activeItems = document.querySelectorAll('.soundList__item.active, .soundList__item.playing, .sound.playing');
+            for (const item of activeItems) {
+                const sid = item.getAttribute('data-sound-id') || item.getAttribute('data-track-id');
+                if (sid) {
+                    state.currentTrack.id = sid;
+                    console.log('[SC-FreshStation] Resolved track ID via DOM attribute:', sid);
+                    return state.currentTrack;
+                }
+            }
+        } catch (e) {}
+
         return state.currentTrack;
     }
 
@@ -1361,6 +1446,7 @@
             '.playbackSoundBadge__actions button[aria-label*="Station" i]',
             '.playbackSoundBadge__actions button[title*="ステーション"]',
             '.playbackSoundBadge__actions button[aria-label*="ステーション"]',
+            '.playControls button.sc-button-station',
             'button.sc-button-station'
         ];
         for (const sel of directStationSelectors) {
@@ -1373,6 +1459,12 @@
         }
 
         // Step 2: プレイヤーバーの「... (More / その他)」メニューを開いてステーションを探索
+        const actionsGroup = document.querySelector('.playbackSoundBadge__actions');
+        if (actionsGroup) {
+            actionsGroup.style.opacity = '1';
+            actionsGroup.style.visibility = 'visible';
+        }
+
         const moreBtnSelectors = [
             '.playbackSoundBadge button.sc-button-more',
             '.playbackSoundBadge__actions button.sc-button-more',
@@ -1389,7 +1481,7 @@
         let moreBtn = null;
         for (const sel of moreBtnSelectors) {
             const el = document.querySelector(sel);
-            if (el && el.offsetParent !== null) {
+            if (el && el.id !== 'mp-station') {
                 moreBtn = el;
                 break;
             }
@@ -1398,8 +1490,8 @@
         if (moreBtn) {
             moreBtn.click();
             let foundStationItem = null;
-            for (let i = 0; i < 12; i++) {
-                await new Promise(r => setTimeout(r, 35));
+            for (let i = 0; i < 15; i++) {
+                await new Promise(r => setTimeout(r, 40));
                 const items = document.querySelectorAll('.moreActions button, .dropdownMenu button, [role="menu"] button, [role="menuitem"], .sc-popper button, .moreActions__group button, button.sc-button-station');
                 for (const item of items) {
                     const text = ((item.textContent || '') + ' ' + (item.title || '') + ' ' + (item.getAttribute('aria-label') || '') + ' ' + item.className).toLowerCase();
@@ -1436,17 +1528,30 @@
             showGlobalToast('📻 ステーションを読込中...');
             const stationUrl = '/discover/sets/track-stations:' + currentTrackId;
 
+            // SPAリンククリックで確実にルーターをキック
             try {
-                window.history.pushState({}, '', stationUrl);
-                window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
-            } catch (e) {
-                window.location.href = 'https://soundcloud.com' + stationUrl;
-                return { success: true, message: 'ステーションへ移動中...' };
-            }
+                let link = document.createElement('a');
+                link.href = stationUrl;
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            } catch (e) {}
+
+            setTimeout(function () {
+                if (window.location.pathname.indexOf('track-stations') === -1) {
+                    try {
+                        window.history.pushState({}, '', stationUrl);
+                        window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+                    } catch (e) {
+                        window.location.href = 'https://soundcloud.com' + stationUrl;
+                    }
+                }
+            }, 120);
 
             // ステーション画面の再生ボタン出現を待機して自動クリック
             let playStarted = false;
-            for (let i = 0; i < 25; i++) {
+            for (let i = 0; i < 30; i++) {
                 await new Promise(r => setTimeout(r, 150));
                 const playBtn = document.querySelector('.heroSoundTitle button.playButton, .soundTitle__playButton button, .listenSection button.sc-button-play, .sound__coverArt button.playButton, .trackItem button.sc-button-play');
                 if (playBtn) {
