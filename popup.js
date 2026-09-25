@@ -162,6 +162,37 @@ document.addEventListener('DOMContentLoaded', async function () {
   if (modeLabelRow) {
     modeLabelRow.addEventListener('click', toggleModeInPopup);
   }
+
+  // 音量コントロール
+  const volSlider = document.getElementById('vol-slider');
+  const volText = document.getElementById('vol-display-text');
+  const volMuteBtn = document.getElementById('btn-vol-mute');
+
+  if (volSlider) {
+    volSlider.addEventListener('input', function (e) {
+      const val = parseFloat(e.target.value);
+      if (volText) volText.textContent = Math.round(val) + '%';
+      if (volMuteBtn) {
+        volMuteBtn.textContent = val === 0 ? '🔇' : (val < 50 ? '🔉' : '🔊');
+      }
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'SET_VOLUME',
+        volume: val / 100
+      });
+    });
+  }
+
+  if (volMuteBtn) {
+    volMuteBtn.addEventListener('click', function () {
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'TOGGLE_MUTE'
+      }, function () {
+        setTimeout(requestData, 200);
+      });
+    });
+  }
 });
 
 function updatePopupModeBadge(mode) {
@@ -245,6 +276,24 @@ function renderData(tabId, data) {
           targetId: plVal
         });
       };
+    }
+  }
+
+  // 音量同期
+  if (typeof data.volume === 'number') {
+    const volSlider = document.getElementById('vol-slider');
+    const volText = document.getElementById('vol-display-text');
+    const volMuteBtn = document.getElementById('btn-vol-mute');
+    const pct = Math.round(data.volume * 100);
+
+    if (volSlider && document.activeElement !== volSlider) {
+      volSlider.value = pct;
+    }
+    if (volText) {
+      volText.textContent = pct + '%';
+    }
+    if (volMuteBtn) {
+      volMuteBtn.textContent = data.volume === 0 ? '🔇' : (data.volume < 0.5 ? '🔉' : '🔊');
     }
   }
 }

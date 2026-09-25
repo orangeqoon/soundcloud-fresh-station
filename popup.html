@@ -140,7 +140,7 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.7.3</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.7.4</span>
     </div>
     <div class="badge" id="conn-badge">SoundCloud未接続</div>
   </div>
@@ -153,6 +153,18 @@
     <button id="btn-station" class="btn-primary" style="margin-bottom: 0; flex: 1; border-color: #00e676; color: #00e676;" title="現在再生中の曲のステーションを開始">
       📻 ステーション開始
     </button>
+  </div>
+
+  <!-- 音量コントロール -->
+  <div class="card" style="border-left: 3px solid #00e676;">
+    <div class="card-label">
+      <span>🔊 音量コントロール</span>
+      <span id="vol-display-text" style="font-size: 11px; color: #00e676; font-weight: bold;">80%</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+      <button id="btn-vol-mute" style="background: #2a2a2a; border: 1px solid #444; color: #eee; font-size: 14px; border-radius: 4px; padding: 2px 8px; cursor: pointer; min-width: 32px;" title="ミュート切替">🔊</button>
+      <input type="range" id="vol-slider" min="0" max="100" value="80" step="1" style="flex: 1; accent-color: #ff5500; cursor: pointer; height: 6px;">
+    </div>
   </div>
 
   <!-- 再生モード -->

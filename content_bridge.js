@@ -76,7 +76,8 @@
                 targetType: request.targetType,
                 targetId: request.targetId,
                 mode: request.mode,
-                token: request.token
+                token: request.token,
+                volume: request.volume
             }, '*');
 
             // Wait for response from window

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.7.3
+// @version      1.7.4
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -12,7 +12,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.3)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.4)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -216,6 +216,12 @@
                 });
             } else if (action === 'TOGGLE_MINI_PLAYER') {
                 toggleMiniPlayer();
+            } else if (action === 'SET_VOLUME') {
+                if (typeof event.data.volume === 'number') {
+                    setSoundCloudVolume(event.data.volume);
+                }
+            } else if (action === 'TOGGLE_MUTE') {
+                toggleSoundCloudMute();
             } else if (action === 'GET_DATA') {
                 loadCachedData();
                 extractAuthTokenFromCookie();
@@ -233,7 +239,8 @@
                         playbackMode: state.playbackMode,
                         likedCount: state.likedTrackIds.size,
                         followingCount: state.followingUserIds.size,
-                        isReady: state.isUserDataLoaded
+                        isReady: state.isUserDataLoaded,
+                        volume: getSoundCloudVolume()
                     }
                 }, '*');
             }
@@ -1445,6 +1452,101 @@
         }
     }
 
+    // =========================================================================
+    // 🔊 ボリューム管理 (Volume Control & Mute)
+    // =========================================================================
+    const VOLUME_STORAGE_KEY = 'sc_fresh_station_volume';
+    let lastNonZeroVolume = 0.8;
+
+    function getSoundCloudVolume() {
+        const audios = document.querySelectorAll('audio');
+        for (const a of audios) {
+            if (typeof a.volume === 'number' && !isNaN(a.volume)) {
+                return a.volume;
+            }
+        }
+        const saved = localStorage.getItem(VOLUME_STORAGE_KEY);
+        if (saved !== null) {
+            const v = parseFloat(saved);
+            if (!isNaN(v)) return v;
+        }
+        return 0.8;
+    }
+
+    function setSoundCloudVolume(vol) {
+        const v = Math.max(0, Math.min(1, vol));
+        if (v > 0) {
+            lastNonZeroVolume = v;
+        }
+        try {
+            localStorage.setItem(VOLUME_STORAGE_KEY, v.toString());
+        } catch (e) {}
+
+        // 1. 全 audio 要素に即座に反映
+        const audios = document.querySelectorAll('audio');
+        audios.forEach(function (a) {
+            try {
+                a.volume = v;
+            } catch (e) {}
+        });
+
+        // 2. SoundCloud の React Fiber / UI Volume コンポーネントに反映
+        try {
+            const volContainer = document.querySelector('.volume, .playControls__volume');
+            if (volContainer) {
+                const propsKey = Object.keys(volContainer).find(k => k.startsWith('__reactProps$'));
+                if (propsKey && volContainer[propsKey] && typeof volContainer[propsKey].onVolumeChange === 'function') {
+                    volContainer[propsKey].onVolumeChange(v);
+                }
+            }
+        } catch (e) {}
+
+        // 3. ミニプレイヤーの音量UIに同期
+        syncMiniPlayerVolumeUI(v);
+        return v;
+    }
+
+    function toggleSoundCloudMute() {
+        const cur = getSoundCloudVolume();
+        if (cur > 0) {
+            lastNonZeroVolume = cur;
+            setSoundCloudVolume(0);
+            showGlobalToast('🔇 ミュートしました');
+        } else {
+            const restore = lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8;
+            setSoundCloudVolume(restore);
+            showGlobalToast('🔊 音量を復元しました (' + Math.round(restore * 100) + '%)');
+        }
+    }
+
+    function syncMiniPlayerVolumeUI(vol) {
+        if (!miniPlayerWindow || miniPlayerWindow.closed) return;
+        try {
+            const doc = miniPlayerWindow.document;
+            const input = doc.getElementById('mp-vol-input');
+            const fill = doc.getElementById('mp-vol-fill');
+            const text = doc.getElementById('mp-vol-text');
+            const icon = doc.getElementById('mp-vol-icon');
+
+            const pct = Math.round(vol * 100);
+            if (input && doc.activeElement !== input) input.value = pct;
+            if (fill) fill.style.width = pct + '%';
+            if (text) text.textContent = pct + '%';
+            if (icon) {
+                icon.textContent = vol === 0 ? '🔇' : (vol < 0.5 ? '🔉' : '🔊');
+                icon.title = vol === 0 ? 'ミュート解除' : 'ミュート切替';
+            }
+        } catch (e) {}
+    }
+
+    // 曲が変わったり audio が再生された時に設定した音量をキープ
+    document.addEventListener('play', function (e) {
+        if (e.target && e.target.tagName === 'AUDIO') {
+            const v = getSoundCloudVolume();
+            try { e.target.volume = v; } catch (err) {}
+        }
+    }, true);
+
     function showGlobalToast(msg) {
         // 1. Mini player toast if open
         if (miniPlayerWindow && !miniPlayerWindow.closed) {
@@ -1715,13 +1817,13 @@
             if ('documentPictureInPicture' in window) {
                 miniPlayerWindow = await window.documentPictureInPicture.requestWindow({
                     width: 350,
-                    height: 170
+                    height: 195
                 });
             } else {
                 miniPlayerWindow = window.open(
                     '',
                     'SCFreshMiniPlayer',
-                    'width=350,height=170,menubar=no,toolbar=no,location=no,status=no,resizable=no'
+                    'width=350,height=195,menubar=no,toolbar=no,location=no,status=no,resizable=no'
                 );
             }
 
@@ -1927,6 +2029,79 @@
                     z-index: 10;
                 }
 
+                /* ボリュームコントロールエリア */
+                .volume-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 6px;
+                    margin: 2px 0 4px;
+                    padding: 0 2px;
+                }
+                .btn-vol-icon {
+                    background: transparent;
+                    border: none;
+                    font-size: 13px;
+                    color: #aaa;
+                    cursor: pointer;
+                    padding: 0;
+                    width: 20px;
+                    height: 20px;
+                    flex: none;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: color 0.15s ease;
+                }
+                .btn-vol-icon:hover {
+                    color: #ff5500;
+                    background: transparent;
+                    transform: none;
+                }
+                .volumebar-container {
+                    flex: 1;
+                    position: relative;
+                    height: 12px;
+                    display: flex;
+                    align-items: center;
+                    cursor: pointer;
+                }
+                .volumebar-bg {
+                    width: 100%;
+                    height: 4px;
+                    background: #2a2a2a;
+                    border-radius: 2px;
+                    position: relative;
+                    overflow: hidden;
+                }
+                .volumebar-fill {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    height: 100%;
+                    width: 80%;
+                    background: linear-gradient(90deg, #ff9900, #ff5500);
+                    border-radius: 2px;
+                    transition: width 0.05s linear;
+                }
+                .volumebar-input {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    opacity: 0;
+                    cursor: pointer;
+                    margin: 0;
+                    z-index: 10;
+                }
+                .vol-text {
+                    font-size: 9px;
+                    color: #777;
+                    min-width: 26px;
+                    text-align: right;
+                    font-variant-numeric: tabular-nums;
+                }
+
                 /* 一列にきれいに収まるコントロールボタン群 */
                 .controls-row {
                     display: flex;
@@ -2042,6 +2217,18 @@
                 <span class="time-text" id="mp-time-duration">0:00</span>
             </div>
 
+            <!-- ボリュームエリア -->
+            <div class="volume-row">
+                <button class="btn-vol-icon" id="mp-vol-icon" title="ミュート切替">🔊</button>
+                <div class="volumebar-container">
+                    <div class="volumebar-bg">
+                        <div class="volumebar-fill" id="mp-vol-fill"></div>
+                    </div>
+                    <input type="range" min="0" max="100" value="80" step="1" class="volumebar-input" id="mp-vol-input" title="音量調整">
+                </div>
+                <span class="vol-text" id="mp-vol-text">80%</span>
+            </div>
+
             <!-- コントロールボタン列 -->
             <div class="controls-row">
                 <button id="mp-prev" title="前の曲">⏮</button>
@@ -2105,6 +2292,17 @@
                 progressWrapper.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX, clientY }));
             }
         }
+
+        // ボリューム操作
+        const volInput = doc.getElementById('mp-vol-input');
+        volInput?.addEventListener('input', function (e) {
+            const val = parseFloat(e.target.value);
+            setSoundCloudVolume(val / 100);
+        });
+
+        doc.getElementById('mp-vol-icon')?.addEventListener('click', function () {
+            toggleSoundCloudMute();
+        });
 
         // いいね (Like)
         doc.getElementById('mp-like')?.addEventListener('click', function () {
@@ -2395,6 +2593,9 @@
             if (mpFill) mpFill.style.width = (ratio * 100) + '%';
             if (mpInput && !isSeekingInMiniPlayer) mpInput.value = (ratio * 100);
         }
+
+        // 音量UIの同期
+        syncMiniPlayerVolumeUI(getSoundCloudVolume());
     }
 
     // 初期化実行: タスクバー MediaSession 登録
