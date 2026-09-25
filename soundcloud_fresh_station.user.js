@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.7.2
+// @version      1.7.3
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -12,7 +12,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.2)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.3)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -21,10 +21,11 @@
     const CACHE_FOLLOWS_KEY = 'sc_fresh_station_cache_follows';
     const CACHE_PLAYLISTS_KEY = 'sc_fresh_station_cache_playlists';
     const CACHE_CLIENT_ID_KEY = 'sc_fresh_station_client_id';
+    const CACHE_OAUTH_TOKEN_KEY = 'sc_fresh_station_cache_oauth_token';
 
     const state = {
         myUserId: null,
-        oauthToken: null,
+        oauthToken: localStorage.getItem(CACHE_OAUTH_TOKEN_KEY) || null,
         clientId: localStorage.getItem(CACHE_CLIENT_ID_KEY) || null,
         likedTrackIds: new Set(),
         followingUserIds: new Set(),
@@ -52,6 +53,7 @@
             }
             state.targetPlaylistId = localStorage.getItem(TARGET_PLAYLIST_KEY) || null;
             state.playbackMode = localStorage.getItem(PLAYBACK_MODE_KEY) || 'DISCOVERY';
+            state.oauthToken = localStorage.getItem(CACHE_OAUTH_TOKEN_KEY) || state.oauthToken;
 
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
             if (cachedLikes) {
@@ -124,15 +126,23 @@
         } catch (e) {}
     }
 
-    // Cookieから即座にトークンを抽出
+    // Cookie & ストレージからトークンを抽出（不足時はバックグラウンドへ即時要求）
     function extractAuthTokenFromCookie() {
         if (state.oauthToken) return state.oauthToken;
+        const cached = localStorage.getItem(CACHE_OAUTH_TOKEN_KEY);
+        if (cached) {
+            state.oauthToken = cached;
+            return state.oauthToken;
+        }
         const match = document.cookie.match(/(?:^|;\s*)oauth_token=([^;]+)/);
         if (match && match[1]) {
             const tok = decodeURIComponent(match[1]);
             state.oauthToken = tok.startsWith('OAuth ') ? tok : ('OAuth ' + tok);
+            localStorage.setItem(CACHE_OAUTH_TOKEN_KEY, state.oauthToken);
             return state.oauthToken;
         }
+        // 拡張機能本体（Service Worker）へトークン要求
+        window.postMessage({ type: 'SC_FRESH_STATION_REQUEST_AUTH' }, '*');
         return null;
     }
 
@@ -161,7 +171,8 @@
             if (action === 'INJECT_AUTH_TOKEN') {
                 if (event.data.token) {
                     state.oauthToken = event.data.token;
-                    console.log('[SC-FreshStation] Injected OAuth token from extension:', state.oauthToken.slice(0, 15) + '...');
+                    localStorage.setItem(CACHE_OAUTH_TOKEN_KEY, state.oauthToken);
+                    console.log('[SC-FreshStation] Injected & saved OAuth token:', state.oauthToken.slice(0, 15) + '...');
                     if (!state.isUserDataLoaded || state.myPlaylists.length === 0) {
                         initUserData();
                     }
@@ -296,6 +307,7 @@
         try {
             if (header && header.toLowerCase() === 'authorization' && value && value.indexOf('OAuth ') === 0) {
                 state.oauthToken = value;
+                localStorage.setItem(CACHE_OAUTH_TOKEN_KEY, state.oauthToken);
                 if (state.clientId && (!state.isUserDataLoaded || state.myPlaylists.length === 0)) {
                     initUserData();
                 }
@@ -317,6 +329,7 @@
                 const parsedUrl = new URL(url, window.location.origin);
                 if (parsedUrl.searchParams.has('client_id')) {
                     state.clientId = parsedUrl.searchParams.get('client_id');
+                    localStorage.setItem(CACHE_CLIENT_ID_KEY, state.clientId);
                 }
                 const options = args[1];
                 if (options && options.headers) {
@@ -324,6 +337,7 @@
                     const auth = (typeof headers.get === 'function' ? headers.get('Authorization') : headers.Authorization) || headers['authorization'];
                     if (auth && auth.indexOf('OAuth ') === 0) {
                         state.oauthToken = auth;
+                        localStorage.setItem(CACHE_OAUTH_TOKEN_KEY, state.oauthToken);
                     }
                 }
                 if (state.clientId && state.oauthToken && !state.isUserDataLoaded) {
@@ -962,6 +976,24 @@
             return false;
         }
 
+        // 認証トークンの確認＆自動待機
+        if (!state.oauthToken) {
+            extractAuthTokenFromCookie();
+        }
+        if (!state.oauthToken) {
+            showGlobalToast('🔑 ログイン認証トークンを取得中...');
+            window.postMessage({ type: 'SC_FRESH_STATION_REQUEST_AUTH' }, '*');
+            for (let i = 0; i < 15; i++) {
+                await new Promise(r => setTimeout(r, 100));
+                if (state.oauthToken) break;
+            }
+        }
+        if (!state.oauthToken) {
+            showGlobalToast('⚠️ SoundCloudのログイン認証が必要です。ログインを確認してください');
+            if (btn) btn.innerHTML = '➕';
+            return false;
+        }
+
         // 追加先プレイリストのチェック＆自動再設定プロンプト
         if (!state.targetPlaylistId) {
             showGlobalToast('⚠️ 保存先が未設定です。選択してください');
@@ -975,8 +1007,6 @@
 
         if (btn) btn.innerHTML = '⏳';
         showGlobalToast('➕ プレイリストに追加中...');
-
-        extractAuthTokenFromCookie();
 
         async function tryAddToPlaylist(plId) {
             const plUrl = 'https://api-v2.soundcloud.com/playlists/' + plId + '?client_id=' + state.clientId;
@@ -1086,23 +1116,33 @@
 
         // 1. React Fiber / Internal Props から瞬時に track オブジェクトを取得（同期・高速）
         try {
-            const badge = document.querySelector('.playbackSoundBadge') || document.querySelector('.playControls');
-            if (badge) {
-                const fiberKey = Object.keys(badge).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
-                const propsKey = Object.keys(badge).find(k => k.startsWith('__reactProps$'));
+            const probeSelectors = [
+                '.playbackSoundBadge',
+                '.playbackSoundBadge__like',
+                '.playbackSoundBadge__titleLink',
+                '.playbackSoundBadge__actions',
+                '.playControls'
+            ];
+            for (const sel of probeSelectors) {
+                const el = document.querySelector(sel);
+                if (!el) continue;
+
+                const fiberKey = Object.keys(el).find(k => k.startsWith('__reactFiber$') || k.startsWith('__reactInternalInstance$'));
+                const propsKey = Object.keys(el).find(k => k.startsWith('__reactProps$'));
 
                 let sound = null;
-                if (propsKey && badge[propsKey]) {
-                    sound = badge[propsKey].sound || badge[propsKey].track || (badge[propsKey].children && badge[propsKey].children.props && badge[propsKey].children.props.sound);
+                if (propsKey && el[propsKey]) {
+                    const p = el[propsKey];
+                    sound = p.sound || p.track || p.currentSound || (p.children && p.children.props && (p.children.props.sound || p.children.props.track));
                 }
-                if (!sound && fiberKey && badge[fiberKey]) {
-                    let curr = badge[fiberKey];
+                if (!sound && fiberKey && el[fiberKey]) {
+                    let curr = el[fiberKey];
                     let depth = 0;
-                    while (curr && depth < 10) {
+                    while (curr && depth < 12) {
                         const memo = curr.memoizedProps;
-                        if (memo && (memo.sound || memo.track || memo.currentSound)) {
+                        if (memo) {
                             sound = memo.sound || memo.track || memo.currentSound;
-                            break;
+                            if (sound && sound.id) break;
                         }
                         curr = curr.return;
                         depth++;
@@ -1118,7 +1158,7 @@
                         genre: (sound.genre || '').trim(),
                         href: sound.permalink_url ? new URL(sound.permalink_url).pathname : (sound.permalink || '')
                     };
-                    console.log('[SC-FreshStation] Resolved track info via React Fiber:', state.currentTrack.id, state.currentTrack.title);
+                    console.log('[SC-FreshStation] Resolved track info via React Fiber from ' + sel + ':', state.currentTrack.id, state.currentTrack.title);
                     return state.currentTrack;
                 }
             }
@@ -1146,28 +1186,41 @@
             await discoverClientId();
         }
 
-        // 4. /resolve API による確実な解決
+        // 4. /resolve API による確実な解決（401/403時は公開APIとして即リトライ）
         if (href && state.clientId) {
             try {
                 const fullUrl = href.startsWith('http') ? href : ('https://soundcloud.com' + href);
                 const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent(fullUrl) + '&client_id=' + state.clientId;
                 extractAuthTokenFromCookie();
-                const rRes = await originalFetch(resolveUrl, {
+
+                let rRes = await originalFetch(resolveUrl, {
                     headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
                     credentials: 'include'
                 });
-                const rData = await rRes.json();
-                if (rData && rData.id) {
-                    state.currentTrack = {
-                        id: rData.id,
-                        title: rData.title || title,
-                        artistId: rData.user ? rData.user.id : rData.user_id,
-                        artistName: rData.user ? (rData.user.username || rData.user.name) : artistName,
-                        genre: (rData.genre || '').trim(),
-                        href: href
-                    };
-                    console.log('[SC-FreshStation] Resolved track info via /resolve API:', state.currentTrack.id, state.currentTrack.title);
-                    return state.currentTrack;
+
+                // 認証エラー(401/403)なら、Authorizationヘッダーを外して公開APIとして即リトライ！
+                if (!rRes.ok && (rRes.status === 401 || rRes.status === 403)) {
+                    console.warn('[SC-FreshStation] Resolve with token returned ' + rRes.status + ', retrying as public request...');
+                    window.postMessage({ type: 'SC_FRESH_STATION_REQUEST_AUTH' }, '*');
+                    rRes = await originalFetch(resolveUrl, {
+                        credentials: 'include'
+                    });
+                }
+
+                if (rRes.ok) {
+                    const rData = await rRes.json();
+                    if (rData && rData.id) {
+                        state.currentTrack = {
+                            id: rData.id,
+                            title: rData.title || title,
+                            artistId: rData.user ? rData.user.id : rData.user_id,
+                            artistName: rData.user ? (rData.user.username || rData.user.name) : artistName,
+                            genre: (rData.genre || '').trim(),
+                            href: href
+                        };
+                        console.log('[SC-FreshStation] Resolved track info via /resolve API:', state.currentTrack.id, state.currentTrack.title);
+                        return state.currentTrack;
+                    }
                 }
             } catch (e) {
                 console.warn('[SC-FreshStation] API resolve error:', e);

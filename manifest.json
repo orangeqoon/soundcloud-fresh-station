@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FreshDig for SoundCloud - 新アーティスト自動発掘",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー",
   "permissions": [
     "storage",
@@ -13,6 +13,9 @@
     "https://soundcloud.com/*",
     "https://*.soundcloud.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

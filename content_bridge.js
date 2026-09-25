@@ -13,10 +13,29 @@
         });
     }
 
-    // 1. Initial storage sync to MAIN world
+    function requestAndInjectAuthToken() {
+        try {
+            chrome.runtime.sendMessage({ action: 'GET_AUTH_TOKEN' }, function (res) {
+                if (chrome.runtime.lastError) return;
+                if (res && res.token) {
+                    window.postMessage({
+                        type: 'SC_FRESH_STATION_POPUP_ACTION',
+                        action: 'INJECT_AUTH_TOKEN',
+                        token: res.token
+                    }, '*');
+                    console.log('[SC-FreshStation] Auto-injected auth token from background service worker');
+                }
+            });
+        } catch (e) {}
+    }
+
+    // 1. Initial storage & auth token sync to MAIN world
     sendStoredSettingsToMainWorld();
+    requestAndInjectAuthToken();
     setTimeout(sendStoredSettingsToMainWorld, 1000);
+    setTimeout(requestAndInjectAuthToken, 1200);
     setTimeout(sendStoredSettingsToMainWorld, 3000);
+    setTimeout(requestAndInjectAuthToken, 3200);
 
     // 2. Listen for messages from MAIN world
     window.addEventListener('message', function (event) {
@@ -25,6 +44,11 @@
         // Request storage from MAIN world
         if (event.data.type === 'SC_FRESH_STATION_REQUEST_STORAGE') {
             sendStoredSettingsToMainWorld();
+        }
+
+        // Request auth token from MAIN world
+        if (event.data.type === 'SC_FRESH_STATION_REQUEST_AUTH') {
+            requestAndInjectAuthToken();
         }
 
         // Save data to extension storage (chrome.storage.local)
