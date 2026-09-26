@@ -14,7 +14,6 @@ Chromium MV3 extension + UserScript. Full spec, data-storage map and message pro
 - Media Session: do not override SoundCloud's own play/pause/next/prev/seek handlers or metadata; only add position state, `seekto` and `stop` (`syncMediaSession()`).
 - Find SoundCloud internals with `findScModule()` by shape, never by webpack module id.
 - Never let `undefined` / `null` / empty keys into the dislike maps (causes skip-everything loops).
-- Do not run `writer.js`: it embeds stale 2026-09-18 code and overwrites the real sources.
 
 ## Check
 ```bash

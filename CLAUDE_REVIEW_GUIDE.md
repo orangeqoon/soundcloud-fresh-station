@@ -157,7 +157,6 @@ flowchart TD
 ## 8. ビルド
 
 - `soundcloud_fresh_station.user.js` = UserScript ヘッダー（10行）＋ `station_hook.js` 全文。`station_hook.js` を修正したら必ず再生成する。
-- `writer.js` は 2026-09-18 時点の**古いコードを埋め込んだ生成スクリプト**。実行すると popup.js / station_hook.js / user.js を旧版で上書きするので実行しないこと。
 
 ---
 
