@@ -3,7 +3,7 @@
     'use strict';
 
     // MAIN world から chrome.storage.local へ書き込みを許可するキー（それ以外は無視）
-    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode'];
+    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled'];
 
     // 応答待ちのタイムアウト（エクスポート等の長い処理も考慮）
     const RESPONSE_TIMEOUT_MS = 60000;
