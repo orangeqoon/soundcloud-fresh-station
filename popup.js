@@ -31,8 +31,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   function requestData() {
     chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DATA' }, function (response) {
-      if (chrome.runtime.lastError || !response) {
-        document.getElementById('conn-badge').textContent = 'SoundCloud読込中...';
+      const badge = document.getElementById('conn-badge');
+      if (chrome.runtime.lastError) {
+        // 拡張機能のインストール/更新前から開いていたタブにはスクリプトが入っていない
+        badge.textContent = '⚠️ SoundCloudタブを再読み込みしてください';
+        badge.style.color = '#ffb300';
+        badge.title = '拡張機能の更新後は、開いているSoundCloudタブの再読み込みが必要です';
+        return;
+      }
+      if (!response) {
+        badge.textContent = 'SoundCloud読込中...';
         return;
       }
       renderData(tab.id, response);
@@ -47,10 +55,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     syncBtn.addEventListener('click', function () {
       syncBtn.textContent = '⏳ 同期中...';
       chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'FORCE_SYNC' }, function () {
-        setTimeout(function () {
-          syncBtn.textContent = '🔄 今すぐ同期';
-          requestData();
-        }, 1500);
+        void chrome.runtime.lastError;
+        syncBtn.textContent = '🔄 同期';
+        requestData();
       });
     });
   }
@@ -132,35 +139,21 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
 
-  // モードバッジクリック切替
-  const modeSelectEl = document.getElementById('mode-select');
-  const modeLabelRow = document.getElementById('mode-label-row');
-  const modeBadge = document.getElementById('mode-quick-badge');
-
-  function toggleModeInPopup() {
-    if (!modeSelectEl) return;
-    const currentMode = modeSelectEl.value;
-    const newMode = currentMode === 'DISCOVERY' ? 'FOLLOWING_NEW' : 'DISCOVERY';
-    modeSelectEl.value = newMode;
-    updatePopupModeBadge(newMode);
-    if (chrome.storage && chrome.storage.local) {
-      chrome.storage.local.set({ playbackMode: newMode });
-    }
-    chrome.tabs.sendMessage(tab.id, {
-      target: 'SC_FRESH_STATION',
-      action: 'SET_PLAYBACK_MODE',
-      mode: newMode
+  // 発掘モード ON/OFF
+  const discoveryToggle = document.getElementById('discovery-toggle');
+  if (discoveryToggle) {
+    discoveryToggle.addEventListener('change', function () {
+      const enabled = discoveryToggle.checked;
+      updateDiscoveryUI(enabled);
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ discoveryEnabled: enabled });
+      }
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'SET_DISCOVERY_ENABLED',
+        enabled: enabled
+      }, function () { void chrome.runtime.lastError; });
     });
-  }
-
-  if (modeBadge) {
-    modeBadge.addEventListener('click', function (e) {
-      e.stopPropagation();
-      toggleModeInPopup();
-    });
-  }
-  if (modeLabelRow) {
-    modeLabelRow.addEventListener('click', toggleModeInPopup);
   }
 
   // 音量コントロール
@@ -195,44 +188,38 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 });
 
-function updatePopupModeBadge(mode) {
-  const badge = document.getElementById('mode-quick-badge');
-  if (!badge) return;
-  if (mode === 'DISCOVERY') {
-    badge.textContent = '🔍 発掘中';
-    badge.style.borderColor = '#ff5500';
-    badge.style.color = '#ffaa00';
-  } else {
-    badge.textContent = '👥 フォロー中';
-    badge.style.borderColor = '#29b6f6';
-    badge.style.color = '#4fc3f7';
+function updateDiscoveryUI(enabled) {
+  const toggle = document.getElementById('discovery-toggle');
+  const card = document.getElementById('discovery-card');
+  const desc = document.getElementById('discovery-desc');
+  if (toggle && toggle.checked !== enabled) toggle.checked = enabled;
+  if (card) card.classList.toggle('off', !enabled);
+  if (desc) {
+    desc.textContent = enabled
+      ? '知っている曲（Likes・フォロー中・Dislike）を自動スキップ'
+      : 'OFF：自動スキップせず SoundCloud 通常再生';
   }
 }
 
 function renderData(tabId, data) {
   const badge = document.getElementById('conn-badge');
   if (badge) {
-    badge.textContent = data.isReady ? '稼働中' : '同期中...';
-    badge.style.color = data.isReady ? '#00e676' : '#ffb300';
+    if (!data.loggedIn) {
+      badge.textContent = '⚠️ SoundCloud未ログイン';
+      badge.style.color = '#ff5252';
+      badge.title = 'SoundCloudにログインすると、Likes/フォローの除外やプレイリスト追加が使えます';
+    } else if (data.accountName) {
+      badge.textContent = '✅ @' + data.accountName;
+      badge.style.color = data.isReady ? '#00e676' : '#ffb300';
+      badge.title = data.isReady ? 'アカウント接続済み・稼働中' : 'アカウント接続済み・同期中';
+    } else {
+      badge.textContent = '🔄 アカウント接続中...';
+      badge.style.color = '#ffb300';
+      badge.title = '接続できない場合は [🔄 同期] を押すか、SoundCloudを再読み込みしてください';
+    }
   }
 
-  const modeSelect = document.getElementById('mode-select');
-  if (modeSelect) {
-    modeSelect.value = data.playbackMode || 'DISCOVERY';
-    updatePopupModeBadge(data.playbackMode || 'DISCOVERY');
-    modeSelect.onchange = function (e) {
-      const modeVal = e.target.value;
-      if (chrome.storage && chrome.storage.local) {
-        chrome.storage.local.set({ playbackMode: modeVal });
-      }
-      chrome.tabs.sendMessage(tabId, {
-        target: 'SC_FRESH_STATION',
-        action: 'SET_PLAYBACK_MODE',
-        mode: modeVal
-      });
-      updatePopupModeBadge(modeVal);
-    };
-  }
+  updateDiscoveryUI(data.discoveryEnabled !== false);
 
   const statLikes = document.getElementById('stat-likes');
   if (statLikes) statLikes.textContent = data.likedCount || 0;
