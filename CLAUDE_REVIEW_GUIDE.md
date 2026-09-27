@@ -8,7 +8,7 @@
 ## 1. プロジェクト概要
 
 - **名称**: FreshDig for SoundCloud - 新アーティスト自動発掘 (SoundCloud Fresh Station)
-- **バージョン**: `v1.7.8` (Semantic Versioning)
+- **バージョン**: `v1.7.9` (Semantic Versioning)
 - **対象プラットフォーム**:
   - Chromium系ブラウザ拡張機能 (Microsoft Edge Add-ons / Chrome Web Store 対応, Manifest V3)
   - ユーザースクリプト版 (Violentmonkey / Tampermonkey 対応: `soundcloud_fresh_station.user.js`)
@@ -22,7 +22,12 @@
 
 ### 発掘モードの ON/OFF（v1.7.8〜）
 - 現在使えるモードは **DISCOVERY（発掘モード）のみ**。ポップアップのスイッチ／プレイヤーバーの 🔍 ボタン／ミニプレイヤーのバッジで ON/OFF できる。
-- OFF のときは自動スキップとステーションの絞り込みを行わず、SoundCloud の通常再生になる（👎/🚫/➕ などの手動操作は使える）。
+- OFF のときは自動スキップを行わず、SoundCloud の通常再生になる（👎/🚫/➕ などの手動操作は使える）。
+- **スキップの仕組み（v1.7.9〜）**：SoundCloud 再生管理モジュールの `change:currentSound` イベント（音が鳴る前に発火し、曲ID・作者IDが取れる）を `hookScCurrentSoundChange()` で購読し、`getSkipReason()` で判定して即スキップ。判定条件は Dislike 曲 / 除外作者 / 除外ジャンル / 自分の曲 / ライク済み / フォロー中。`monitorPlaybackWithMargin()` は DOM の Like 表示を見る予備。
+- 自分のライブラリ（`/you/...`）と自分のプロフィールの Likes・プレイリスト（`/自分のpermalink/likes`, `/sets`）で再生中は、ライク済みでもスキップしない。
+- 連続 20 曲スキップしたら 1 曲はそのまま流す（全曲既知などの暴走防止）。
+- SoundCloud は API 通信をすべて XMLHttpRequest で行い、ステーションの曲リストも HTML に埋め込むため、fetch フックでの「ステーション絞り込み」「ストリーム絞り込み」は実質動かない（コードは残してある）。
+- Likes / フォローは ID のみの `me/track_likes/ids`・`users/:id/followings/ids` で全件取得（上限 20000）。
 - 設定は `setDiscoveryEnabled()` で localStorage `sc_fresh_station_discovery_enabled` と `chrome.storage.local` の `discoveryEnabled` に保存（未設定なら ON）。
 - **FOLLOWING_NEW（フォロー新曲のみ）モードは一時的に無効**。コードは残してあり、`station_hook.js` の `FOLLOWING_NEW_MODE_ENABLED` を `true` にすると復活する（ポップアップの選択 UI は別途戻す必要あり）。
 

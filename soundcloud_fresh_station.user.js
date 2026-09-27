@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.7.8
+// @version      1.7.9
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -12,7 +12,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.8)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.7.9)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -42,12 +42,13 @@
     }
 
     const MAX_STATION_EXTRA_PAGES = 5;      // ステーション補充で追加取得するページ数の上限
-    const MAX_LIKES_SYNC = 1000;            // 同期するLikesの上限件数
-    const MAX_FOLLOWINGS_SYNC = 5000;       // 同期するフォローの上限件数
+    const MAX_LIKES_SYNC = 20000;           // 同期するLikesの上限件数（ID のみ取得なので軽い）
+    const MAX_FOLLOWINGS_SYNC = 20000;      // 同期するフォローの上限件数
     const AUTO_SYNC_COOLDOWN_MS = 60000;    // 自動同期の最短間隔（リクエスト連打防止）
 
     const state = {
         myUserId: null,
+        myPermalink: null,       // 自分のプロフィールURL名（/permalink/likes 等の判定用）
         oauthToken: null,        // 直近で使う認証ヘッダー値 ("OAuth xxx")。毎回 getAuthToken() で最新化する
         capturedToken: null,     // SoundCloud 自身の通信から捕捉したトークン
         injectedToken: null,     // 拡張機能 background から注入されたトークン
@@ -85,13 +86,13 @@
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
             if (cachedLikes) {
                 const arr = JSON.parse(cachedLikes);
-                state.likedTrackIds = new Set(arr);
+                state.likedTrackIds = new Set((Array.isArray(arr) ? arr : []).map(Number).filter(function (n) { return n > 0; }));
             }
 
             const cachedFollows = localStorage.getItem(CACHE_FOLLOWS_KEY);
             if (cachedFollows) {
                 const arr = JSON.parse(cachedFollows);
-                state.followingUserIds = new Set(arr);
+                state.followingUserIds = new Set((Array.isArray(arr) ? arr : []).map(Number).filter(function (n) { return n > 0; }));
             }
 
             const cachedPls = localStorage.getItem(CACHE_PLAYLISTS_KEY);
@@ -527,6 +528,9 @@
     };
 
     // 2. window.fetch Hook
+    // ※ 2026-09 時点の SoundCloud は API 通信をすべて XMLHttpRequest で行っており、ページの曲リストも
+    //    HTML に埋め込まれているため、下の B〜D（fetch 経由の書き換え）は実際にはほぼ動かない。
+    //    発掘モードの本体は「曲の切替通知での即時スキップ」（hookScCurrentSoundChange）。
     const originalFetch = window.fetch;
 
     window.fetch = async function () {
@@ -777,6 +781,7 @@
             if (meData && meData.id) {
                 state.myUserId = meData.id;
                 state.myUsername = meData.username || meData.permalink || null;
+                state.myPermalink = meData.permalink ? String(meData.permalink).toLowerCase() : null;
             } else {
                 // ログインしていない（またはトークンが無効）なら、他人のデータで判定しないよう打ち切る
                 state.myUsername = null;
@@ -800,18 +805,25 @@
                 updatePlaylistButtonUI();
             }
 
-            // ライク一覧取得（新規Setに集めて成功時のみ置換 → いいね解除も反映される）
-            const likes = await fetchPagedIds(
-                'users/' + state.myUserId + '/track_likes?limit=200&linked_partitioning=1', MAX_LIKES_SYNC,
-                function (item) { return item.track ? item.track.id : (item.target ? item.target.id : item.id); }
-            );
+            // ライク一覧（ID のみの軽いエンドポイントで全件。失敗時は従来の一覧から取得）
+            // 新規Setに集めて成功時のみ置換 → いいね解除も反映される
+            let likes = await fetchPagedIds('me/track_likes/ids?limit=200', MAX_LIKES_SYNC, toNumId);
+            if (!likes) {
+                likes = await fetchPagedIds(
+                    'users/' + state.myUserId + '/track_likes?limit=200&linked_partitioning=1', MAX_LIKES_SYNC,
+                    function (item) { return toNumId(item.track ? item.track.id : (item.target ? item.target.id : item.id)); }
+                );
+            }
             if (likes) state.likedTrackIds = likes;
 
-            // フォロー一覧取得（同上 → フォロー解除も反映される）
-            const followings = await fetchPagedIds(
-                'users/' + state.myUserId + '/followings?limit=200&linked_partitioning=1', MAX_FOLLOWINGS_SYNC,
-                function (u) { return u.id; }
-            );
+            // フォロー一覧（同上 → フォロー解除も反映される）
+            let followings = await fetchPagedIds('users/' + state.myUserId + '/followings/ids?limit=5000', MAX_FOLLOWINGS_SYNC, toNumId);
+            if (!followings) {
+                followings = await fetchPagedIds(
+                    'users/' + state.myUserId + '/followings?limit=200&linked_partitioning=1', MAX_FOLLOWINGS_SYNC,
+                    function (u) { return toNumId(u.id); }
+                );
+            }
             if (followings) state.followingUserIds = followings;
 
             if (likes || followings) {
@@ -873,6 +885,9 @@
             console.warn('[SC-FreshStation] injectButtons exception:', e);
         }
         try {
+            hookScCurrentSoundChange();
+        } catch (e) {}
+        try {
             monitorPlaybackWithMargin();
         } catch (e) {
             console.warn('[SC-FreshStation] monitorPlayback exception:', e);
@@ -894,13 +909,147 @@
     function isExplicitLibraryPage() {
         try {
             const path = window.location.pathname.toLowerCase();
-            if (path.includes('/you/likes') || path.includes('/you/sets') || path.includes('/you/history')) {
+            // 自分のライブラリ（/you/likes, /you/sets, /you/history など）
+            if (path.indexOf('/you/') === 0) return true;
+            // 自分のプロフィールの Likes / プレイリスト（/自分のpermalink/likes, /自分のpermalink/sets/...）
+            if (state.myPermalink && (path.indexOf('/' + state.myPermalink + '/likes') === 0 || path.indexOf('/' + state.myPermalink + '/sets') === 0)) {
                 return true;
             }
         } catch (e) {}
         return false;
     }
 
+    // ---- 発掘モードの除外判定（曲の切替通知と定期監視の両方から使う共通処理） ----
+    function toNumId(v) {
+        const n = Number(v);
+        return isFinite(n) && n > 0 ? n : null;
+    }
+
+    // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由の文字列、しないなら null
+    function getSkipReason(info) {
+        if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY' || !info) return null;
+        const id = toNumId(info.id);
+        const artistId = toNumId(info.artistId);
+        const title = info.title || '';
+        const artist = info.artistName || '';
+        const genre = (info.genre || '').trim().toLowerCase();
+        const inLibrary = isExplicitLibraryPage();
+
+        if ((id && state.dislikedTracks[id]) ||
+            (title && (state.dislikedTracks['title_' + encodeURIComponent(title)] || state.dislikedTracks[title]))) {
+            return 'Dislike登録した曲';
+        }
+        if ((artistId && state.dislikedArtists[artistId]) ||
+            (artist && (state.dislikedArtists['artist_' + encodeURIComponent(artist)] || state.dislikedArtists[artist]))) {
+            return '除外した作者';
+        }
+        if (genre && state.dislikedGenres[genre]) {
+            return '除外したジャンル';
+        }
+        if (artistId && state.myUserId && artistId === toNumId(state.myUserId)) {
+            return '自分の曲';
+        }
+        // 自分で Likes / 再生履歴ページを開いて再生している時は、ライク済みでも止めない
+        if (!inLibrary && id && state.likedTrackIds.has(id)) {
+            return 'ライク済み';
+        }
+        if (artistId && state.followingUserIds.has(artistId)) {
+            return 'フォロー中のアーティスト';
+        }
+        return null;
+    }
+
+    const MAX_CONSECUTIVE_AUTO_SKIPS = 20;
+
+    // 自動スキップ実行。連続しすぎたら（全部既知などの異常時）1曲だけそのまま流す
+    function doAutoSkip(reason, info) {
+        if (marginGuard.consecutiveSkips >= MAX_CONSECUTIVE_AUTO_SKIPS) {
+            console.warn('[SC-FreshStation] ⚠️ 連続スキップが' + MAX_CONSECUTIVE_AUTO_SKIPS + '曲に達したため、この曲はそのまま再生します。');
+            showGlobalToast('⚠️ 知っている曲が続いたため、この曲はそのまま再生します');
+            marginGuard.consecutiveSkips = 0;
+            return false;
+        }
+        marginGuard.lastSkipTime = Date.now();
+        marginGuard.consecutiveSkips++;
+        const title = (info && info.title) || '';
+        console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
+        showGlobalToast('⏩ スキップ（' + reason + '）' + (title ? '：' + title : ''));
+
+        const skipBtn = document.querySelector('.playControls__next');
+        if (skipBtn) {
+            skipBtn.click();
+            return true;
+        }
+        const pm = getScPlaybackManager();
+        if (pm) {
+            try { pm.playNext({ userInitiated: false }); return true; } catch (e) {}
+        }
+        return false;
+    }
+
+    // ---- 曲の切替を SoundCloud 本体から即座に受け取る（再生が始まる前に判定・スキップできる） ----
+    const soundChangeState = { hooked: false, decidedPath: '', decidedAt: 0 };
+
+    function soundToTrackInfo(sound) {
+        const a = (sound && sound.attributes) || {};
+        const user = a.user || {};
+        let path = '';
+        try { path = a.permalink_url ? new URL(a.permalink_url).pathname : ''; } catch (e) {}
+        return {
+            id: toNumId(sound && sound.id !== undefined ? sound.id : a.id),
+            artistId: toNumId(a.user_id !== undefined ? a.user_id : user.id),
+            title: a.title || '',
+            artistName: user.username || '',
+            genre: (a.genre || '').trim(),
+            href: path,
+            kind: a.kind || ''
+        };
+    }
+
+    function onScCurrentSoundChanged() {
+        const sound = getScCurrentSound();
+        if (!sound) return;
+        const info = soundToTrackInfo(sound);
+        if (!info.id || (info.kind && info.kind !== 'track')) return;
+
+        state.currentTrack = {
+            id: info.id,
+            title: info.title,
+            artistId: info.artistId,
+            artistName: info.artistName,
+            genre: info.genre,
+            href: info.href
+        };
+
+        // 定期監視側で同じ曲を二重判定しないよう記録
+        soundChangeState.decidedPath = normalizeTrackPath(info.href);
+        soundChangeState.decidedAt = Date.now();
+
+        const reason = getSkipReason(info);
+        if (reason) {
+            doAutoSkip(reason, info);
+        } else if (state.discoveryEnabled) {
+            marginGuard.consecutiveSkips = 0;
+        }
+    }
+
+    function hookScCurrentSoundChange() {
+        if (soundChangeState.hooked) return;
+        const pm = getScPlaybackManager();
+        if (!pm || typeof pm.on !== 'function') return;
+        try {
+            pm.on('change:currentSound', function () {
+                // 本体の切替処理が終わってから判定する
+                setTimeout(function () {
+                    try { onScCurrentSoundChanged(); } catch (e) { console.warn('[SC-FreshStation] sound change handler error:', e); }
+                }, 0);
+            });
+            soundChangeState.hooked = true;
+            console.log('[SC-FreshStation] Hooked SoundCloud track-change events (instant skip enabled)');
+        } catch (e) {}
+    }
+
+    // 定期監視（フォールバック）：切替通知が使えない場合や、DOM の Like 表示での判定用
     function monitorPlaybackWithMargin() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
         const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
@@ -916,123 +1065,70 @@
 
         const now = Date.now();
 
-        // 1. 新しい曲に切り替わったことを検知！
+        // 1. 新しい曲に切り替わったことを検知
         if (currentHref !== marginGuard.lastTrackHref) {
             marginGuard.lastTrackHref = currentHref;
             marginGuard.loadStartTime = now;
             marginGuard.hasChecked = false;
 
-            // 新しい曲情報で初期化
-            state.currentTrack = {
-                id: null,
-                title: title,
-                artistName: artist,
-                artistId: null,
-                href: currentHref,
-                genre: ''
-            };
-            // バックグラウンドで即座に track ID を解決
-            ensureCurrentTrackInfo();
-            return;
-        }
-
-        // 2. この曲ですでに判定完了していればスキップ（1曲につき1回判定ルール）
-        if (marginGuard.hasChecked) {
-            return;
-        }
-
-        // 3. マージン待機：曲が始まってから 1.2秒（1200ms）経過するまで DOM や再生が安定するのを待つ！
-        if (now - marginGuard.loadStartTime < 1200) {
-            return;
-        }
-
-        // 4. 安全クールダウン：前回スキップから 2.0秒未満なら待つ（連続連打ループ防止）
-        if (now - marginGuard.lastSkipTime < 2000) {
-            return;
-        }
-
-        // 4b. トラックID解決待ち：ID未解決のままだと「ID登録のDislike/フォロー/Likes」判定が素通りになるため、
-        //     最大 4秒 までは解決を待つ（それを過ぎたらタイトル/DOMベースの判定だけで続行）
-        if (!(state.currentTrack && state.currentTrack.id) && now - marginGuard.loadStartTime < 4000) {
-            return;
-        }
-
-        // 5. 連続スキップ防止ブレーキ（万が一の無限ループ防止）
-        //    この曲はスキップせずに再生し、カウンタをリセットして次の曲から判定を再開する
-        if (marginGuard.consecutiveSkips >= 10) {
-            console.warn('[SC-FreshStation] ⚠️ 連続スキップが10曲に達したため、この曲は自動スキップせず再生します（次の曲から判定再開）。');
-            showGlobalToast('⚠️ 連続スキップ上限に達したため、この曲はそのまま再生します');
-            marginGuard.hasChecked = true;
-            marginGuard.consecutiveSkips = 0;
-            return;
-        }
-
-        // --- ここからマージン経過後の正確な除外判定 ---
-        marginGuard.hasChecked = true; // この曲の判定を完了済みにマーク
-
-        // 発掘モード ON のときだけ除外スキップ（OFF なら SoundCloud 通常再生）
-        if (state.discoveryEnabled && state.playbackMode === 'DISCOVERY') {
-            let shouldSkip = false;
-            let skipReason = '';
-
-            // A. DOMのLikeボタンの確認（※自発的にLikesページ等を再生している時はスキップしない！）
-            if (!isExplicitLibraryPage() && likeBtn) {
-                const isSelected = likeBtn.classList.contains('sc-button-selected');
-                const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
-                const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
-                if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
-                    shouldSkip = true;
-                    skipReason = 'ライク済みの曲 (DOM検知)';
-                }
-            }
-
-            // B. Dislike (曲) の確認
-            if (!shouldSkip) {
-                const trackKey = (state.currentTrack && state.currentTrack.id) ? state.currentTrack.id : ('title_' + encodeURIComponent(title));
-                if (state.dislikedTracks[trackKey] || state.dislikedTracks[title]) {
-                    shouldSkip = true;
-                    skipReason = 'Dislike登録された曲';
-                }
-            }
-
-            // C. Hate / Dislike (作者) の確認
-            if (!shouldSkip) {
-                const artistKey = (state.currentTrack && state.currentTrack.artistId) ? state.currentTrack.artistId : ('artist_' + encodeURIComponent(artist));
-                if (state.dislikedArtists[artistKey] || state.dislikedArtists[artist]) {
-                    shouldSkip = true;
-                    skipReason = 'Hate登録された作者';
-                }
-            }
-
-            // D. フォロー中アーティストの確認 (DISCOVERY除外)
-            if (!shouldSkip && state.currentTrack && state.currentTrack.artistId) {
-                if (state.followingUserIds.has(state.currentTrack.artistId)) {
-                    shouldSkip = true;
-                    skipReason = 'フォロー中のアーティスト';
-                }
-            }
-
-            // E. 登録Likes一覧の確認（※自発的にLikesページ等を再生している時はスキップしない！）
-            if (!isExplicitLibraryPage() && !shouldSkip && state.currentTrack && state.currentTrack.id) {
-                if (state.likedTrackIds.has(state.currentTrack.id)) {
-                    shouldSkip = true;
-                    skipReason = 'ライク済みID一覧に一致';
-                }
-            }
-
-            // スキップ実行
-            if (shouldSkip) {
-                console.log('[SC-FreshStation] ⏩ [' + skipReason + '] を検知！1.2秒マージン後にスキップ実行: "' + title + '" (' + artist + ')');
-                marginGuard.lastSkipTime = Date.now();
-                marginGuard.consecutiveSkips++;
-
-                const skipBtn = document.querySelector('.playControls__next');
-                if (skipBtn) {
-                    skipBtn.click();
-                }
+            const samePath = normalizeTrackPath(currentHref);
+            if (state.currentTrack && state.currentTrack.id && normalizeTrackPath(state.currentTrack.href) === samePath) {
+                // 切替通知で既に曲情報を取得済み（上書きしない）
             } else {
-                marginGuard.consecutiveSkips = 0;
+                state.currentTrack = {
+                    id: null,
+                    title: title,
+                    artistName: artist,
+                    artistId: null,
+                    href: currentHref,
+                    genre: ''
+                };
+                ensureCurrentTrackInfo();
             }
+            return;
+        }
+
+        // 2. この曲ですでに判定完了していれば何もしない（1曲につき1回）
+        if (marginGuard.hasChecked) return;
+
+        // 3. 表示が安定するまで少し待つ
+        if (now - marginGuard.loadStartTime < 800) return;
+
+        // 4. 前回スキップ直後は待つ（連打ループ防止）
+        if (now - marginGuard.lastSkipTime < 1500) return;
+
+        // 5. ID 未解決なら最大 4 秒待つ（ID 登録の Dislike / Likes / フォロー判定のため）
+        if (!(state.currentTrack && state.currentTrack.id) && now - marginGuard.loadStartTime < 4000) return;
+
+        marginGuard.hasChecked = true;
+        if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return;
+
+        const pathNow = normalizeTrackPath(currentHref);
+        const alreadyDecided = soundChangeState.decidedPath === pathNow && now - soundChangeState.decidedAt < 15000;
+
+        const info = {
+            id: state.currentTrack && state.currentTrack.id,
+            artistId: state.currentTrack && state.currentTrack.artistId,
+            title: title,
+            artistName: artist,
+            genre: (state.currentTrack && state.currentTrack.genre) || ''
+        };
+
+        // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
+        let reason = alreadyDecided ? null : getSkipReason(info);
+        if (!reason && !isExplicitLibraryPage() && likeBtn) {
+            const isSelected = likeBtn.classList.contains('sc-button-selected');
+            const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
+            const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
+            if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
+                reason = 'ライク済み';
+            }
+        }
+
+        if (reason) {
+            doAutoSkip(reason, info);
+        } else if (!alreadyDecided) {
+            marginGuard.consecutiveSkips = 0;
         }
     }
 
@@ -1422,6 +1518,25 @@
             (!startHref || !state.currentTrack.href || normalizeTrackPath(state.currentTrack.href) === normalizeTrackPath(startHref))) {
             return state.currentTrack;
         }
+
+        // 0. SoundCloud 本体の再生管理から現在の曲を取得（最も確実・同期）
+        try {
+            const sound = getScCurrentSound();
+            if (sound) {
+                const info = soundToTrackInfo(sound);
+                if (info.id && (!startHref || normalizeTrackPath(info.href) === normalizeTrackPath(startHref))) {
+                    state.currentTrack = {
+                        id: info.id,
+                        title: info.title,
+                        artistId: info.artistId,
+                        artistName: info.artistName,
+                        genre: info.genre,
+                        href: info.href
+                    };
+                    return state.currentTrack;
+                }
+            }
+        } catch (e) {}
 
         // 1. React Fiber / Internal Props から瞬時に track オブジェクトを取得（同期・高速）
         try {
@@ -1964,6 +2079,10 @@
             marginGuard.hasChecked = false;
             marginGuard.consecutiveSkips = 0;
             marginGuard.loadStartTime = Date.now();
+            soundChangeState.decidedPath = '';
+            setTimeout(function () {
+                try { onScCurrentSoundChanged(); } catch (e) {}
+            }, 0);
         }
         updateModeButtonUI();
         syncMiniPlayerUI();
