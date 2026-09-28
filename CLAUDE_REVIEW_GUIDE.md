@@ -8,7 +8,7 @@
 ## 1. プロジェクト概要
 
 - **名称**: FreshDig for SoundCloud - 新アーティスト自動発掘 (SoundCloud Fresh Station)
-- **バージョン**: `v1.7.9` (Semantic Versioning)
+- **バージョン**: `v1.8.0` (Semantic Versioning)
 - **対象プラットフォーム**:
   - Chromium系ブラウザ拡張機能 (Microsoft Edge Add-ons / Chrome Web Store 対応, Manifest V3)
   - ユーザースクリプト版 (Violentmonkey / Tampermonkey 対応: `soundcloud_fresh_station.user.js`)
@@ -30,6 +30,13 @@
 - Likes / フォローは ID のみの `me/track_likes/ids`・`users/:id/followings/ids` で全件取得（上限 20000）。
 - 設定は `setDiscoveryEnabled()` で localStorage `sc_fresh_station_discovery_enabled` と `chrome.storage.local` の `discoveryEnabled` に保存（未設定なら ON）。
 - **FOLLOWING_NEW（フォロー新曲のみ）モードは一時的に無効**。コードは残してあり、`station_hook.js` の `FOLLOWING_NEW_MODE_ENABLED` を `true` にすると復活する（ポップアップの選択 UI は別途戻す必要あり）。
+
+### v1.8.0 で追加・変更した機能
+- **ミニプレイヤーの自動表示**：音楽の再生中に別のタブへ切り替えると、ミニプレイヤーが自動で開く（Edge / Chrome の「自動ピクチャー イン ピクチャー」。Media Session の `enterpictureinpicture` ハンドラー）。ポップアップのチェックで ON/OFF（`autoMiniPlayer`、既定 ON）。ブラウザ側の設定で自動 PiP が無効だと開かない。
+- **ミニプレイヤーをポップアップから開く**：PiP はページ内クリック直後でないと開けないため、SoundCloud タブを前面に出してページ上に「ミニプレイヤーを開く」ボタンを表示する。
+- **コメント付きリポスト**：ミニプレイヤーの 🔁 で入力欄が開き、「送信」でリポスト＋コメント（空ならコメントなし）。Ctrl+Enter でも送信。リポスト済みなら押すと解除。リポスト済み一覧は `me/track_reposts/ids` で同期。
+- **➕ ボタンの2回目で外す**：追加先プレイリストに入っている曲は ✔ 表示になり、押すとプレイリストから外す。
+- **音量バーを青に**（ミニプレイヤーとポップアップ）。
 
 ### 2つの動作モード（参考：FOLLOWING_NEW は現在無効）
 1. **🔍 DISCOVERY（発掘モード）**:
@@ -134,6 +141,7 @@ flowchart TD
 | Dislike（曲/作者/ジャンル） | MAIN `localStorage` : `sc_fresh_station_data_v1` | `saveDislikeData()` | `{dislikedTracks, dislikedArtists, dislikedGenres, updatedAt}`。キーは数値ID、またはID未解決時 `title_<encoded>` / `artist_<encoded>` |
 | 追加先プレイリストID | MAIN `localStorage` : `sc_fresh_station_target_playlist_id` ＋ `chrome.storage.local` : `targetPlaylistId` | `saveTargetPlaylist()` / popup | 二重保存。**ページ読込時は chrome.storage 側が優先で上書き** |
 | 再生モード | MAIN `localStorage` : `sc_fresh_station_playback_mode` ＋ `chrome.storage.local` : `playbackMode` | `savePlaybackMode()` / popup | 同上。変更は必ず `savePlaybackMode()` を経由すること |
+| ミニプレイヤー自動表示 | MAIN `localStorage` : `sc_fresh_station_auto_miniplayer` ＋ `chrome.storage.local` : `autoMiniPlayer` | `setAutoMiniPlayer()` / popup | `'false'` のときだけ OFF（未設定は ON） |
 | 発掘モード ON/OFF | MAIN `localStorage` : `sc_fresh_station_discovery_enabled` ＋ `chrome.storage.local` : `discoveryEnabled` | `setDiscoveryEnabled()` / popup | `'false'` のときだけ OFF（未設定は ON） |
 | 音量 | MAIN `localStorage` : `sc_fresh_station_volume` | `setSoundCloudVolume()` | 0.0〜1.0。未設定なら再適用しない |
 | Likes キャッシュ | MAIN `localStorage` : `sc_fresh_station_cache_likes` | `saveCacheData()` | トラックID配列（上限 `MAX_LIKES_SYNC`） |
@@ -144,7 +152,7 @@ flowchart TD
 | Dislike クラウドバックアップ | SoundCloud 上の非公開プレイリスト **`[FreshDig] Disliked Tracks`** | `exportDislikesToPlaylist()` | 数値IDの曲のみ書き出し。読み込み時は名前に `dislike` を含むプレイリストもフォールバック対象 |
 
 - MAIN `localStorage` = soundcloud.com オリジンの localStorage（SoundCloud のページ自身と共有）。UserScript 版は `chrome.storage` を持たないため localStorage のみで動作する。
-- `content_bridge.js` が MAIN から `chrome.storage.local` に書き込めるキーは `targetPlaylistId`, `playbackMode`, `discoveryEnabled` のみ（ホワイトリスト）。
+- `content_bridge.js` が MAIN から `chrome.storage.local` に書き込めるキーは `targetPlaylistId`, `playbackMode`, `discoveryEnabled`, `autoMiniPlayer` のみ（ホワイトリスト）。
 
 ## 6. SoundCloud API の呼び出し（v1.7.6〜）
 
