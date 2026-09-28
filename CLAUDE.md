@@ -7,6 +7,7 @@ Chromium MV3 extension + UserScript. Full spec, data-storage map and message pro
 - `soundcloud_fresh_station.user.js` = its 10-line UserScript header + the full `station_hook.js`. Regenerate it after editing `station_hook.js`.
 - Every action handled in `station_hook.js`'s `SC_FRESH_STATION_POPUP_ACTION` listener must reply via `ack(...)` / `replyToBridge(...)`, otherwise the popup callback hangs until the bridge's 60s timeout.
 - Only accept `postMessage` where `event.source === window`; post to `window.location.origin`, never `'*'`.
+- Discovery skipping happens in `onScCurrentSoundChanged()` (SoundCloud playback manager's `change:currentSound` event, fires before audio starts) with `getSkipReason()` as the single rule set; `monitorPlaybackWithMargin()` is only the DOM fallback. SoundCloud uses XHR, not fetch, so the fetch-hook station/stream filters are effectively inactive.
 - Discovery mode ON/OFF only through `setDiscoveryEnabled()`; playback mode only through `savePlaybackMode()` (both keep localStorage and `chrome.storage.local` in sync; the latter wins on reload).
 - The FOLLOWING_NEW (follow-new-tracks) mode is disabled by `FOLLOWING_NEW_MODE_ENABLED = false` in `station_hook.js`; its code is kept on purpose. Do not delete it.
 - Call SoundCloud API v2 only through `scApi()` and get the token only through `getAuthToken()`. Never cache the OAuth token: SoundCloud rotates it.

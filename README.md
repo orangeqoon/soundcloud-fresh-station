@@ -75,7 +75,7 @@ SoundCloudのステーション機能は素晴らしいですが、使ってい�
 **FreshDig for SoundCloud** is the ultimate music discovery engine designed exclusively for digging unplayed tracks from new and underground artists.
 
 ### Key Highlights:
-- **Pure Discovery**: Automatically skips previously liked tracks and followed artists.
+- **Pure Discovery**: Automatically skips previously liked tracks, followed artists and disliked tracks/artists/genres the moment a track changes (before it starts playing). Toggle it ON/OFF from the popup, the 🔍 button in the player bar, or the mini player.
 - **Smart Dislike & Hate**: 1-click blacklist for unwanted tracks (`👎`) or entire artists (`🚫`).
 - **1-Click Acquisition**: Instantly add tracks to playlists (`➕`), Like (`❤️`), Repost (`🔁`), or Follow (`👤+`).
 - **Floating Mini Player (PiP)**: Keep an always-on-top compact player in your screen corner to dig artists while working or gaming.
