@@ -114,11 +114,15 @@ document.addEventListener('DOMContentLoaded', async function () {
   const mpBtn = document.getElementById('btn-miniplayer');
   if (mpBtn) {
     mpBtn.addEventListener('click', function () {
-      chrome.tabs.sendMessage(tab.id, {
-        target: 'SC_FRESH_STATION',
-        action: 'TOGGLE_MINI_PLAYER'
+      // ミニプレイヤーはページ内のクリックが必要なため、SoundCloud タブを前面に出してページ上のボタンから開く
+      chrome.tabs.update(tab.id, { active: true }, function () {
+        void chrome.runtime.lastError;
+        chrome.tabs.sendMessage(tab.id, {
+          target: 'SC_FRESH_STATION',
+          action: 'TOGGLE_MINI_PLAYER'
+        }, function () { void chrome.runtime.lastError; });
+        window.close();
       });
-      window.close();
     });
   }
 
@@ -136,6 +140,22 @@ document.addEventListener('DOMContentLoaded', async function () {
         stationBtn.textContent = '📻 ステーション開始';
         setTimeout(function () { window.close(); }, 350);
       });
+    });
+  }
+
+  // 別タブを開いたらミニプレイヤーを自動表示 ON/OFF
+  const autoMpToggle = document.getElementById('auto-mp-toggle');
+  if (autoMpToggle) {
+    autoMpToggle.addEventListener('change', function () {
+      const enabled = autoMpToggle.checked;
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ autoMiniPlayer: enabled });
+      }
+      chrome.tabs.sendMessage(tab.id, {
+        target: 'SC_FRESH_STATION',
+        action: 'SET_AUTO_MINI_PLAYER',
+        enabled: enabled
+      }, function () { void chrome.runtime.lastError; });
     });
   }
 
@@ -220,6 +240,15 @@ function renderData(tabId, data) {
   }
 
   updateDiscoveryUI(data.discoveryEnabled !== false);
+
+  const autoMpToggleEl = document.getElementById('auto-mp-toggle');
+  if (autoMpToggleEl) {
+    autoMpToggleEl.checked = data.autoMiniPlayer !== false;
+    if (data.autoPipSupported === false) {
+      autoMpToggleEl.disabled = true;
+      autoMpToggleEl.parentElement.title = 'このブラウザはミニプレイヤーの自動表示に対応していません';
+    }
+  }
 
   const statLikes = document.getElementById('stat-likes');
   if (statLikes) statLikes.textContent = data.likedCount || 0;

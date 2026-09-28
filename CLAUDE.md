@@ -13,6 +13,9 @@ Chromium MV3 extension + UserScript. Full spec, data-storage map and message pro
 - Call SoundCloud API v2 only through `scApi()` and get the token only through `getAuthToken()`. Never cache the OAuth token: SoundCloud rotates it.
 - Change volume only through `setSoundCloudVolume()` (drives SoundCloud's own volume module; writing `audio.volume` is undone on the next track).
 - Media Session: do not override SoundCloud's own play/pause/next/prev/seek handlers or metadata; only add position state, `seekto` and `stop` (`syncMediaSession()`).
+- Opening the mini player (Document PiP / window.open) needs a click inside the page. Popup clicks do not count: `openMiniPlayer()` falls back to the in-page launch button (`showMiniPlayerLaunchPrompt()`). Auto-open on tab switch uses the Media Session `enterpictureinpicture` handler (`registerAutoMiniPlayerHandler()`, setting `autoMiniPlayer`).
+- The ➕ playlist button toggles: add if the current track is not in the target playlist, remove if it is (decided from a fresh GET of the playlist, not the cache).
+- Repost from the mini player: `PUT me/track_reposts/:id`, then `PUT me/track_reposts/:id/caption` with `{caption}` (max 140 chars), same as SoundCloud.
 - Find SoundCloud internals with `findScModule()` by shape, never by webpack module id.
 - Never let `undefined` / `null` / empty keys into the dislike maps (causes skip-everything loops).
 
