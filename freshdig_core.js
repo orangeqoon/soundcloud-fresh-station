@@ -84,7 +84,77 @@
     return ARTIST_SUBPAGES.indexOf(sub) !== -1;
   }
 
+
+  // ---- 自分の API 呼び出しの間隔・上限（ロボット確認を出にくくする） ----
+  // reserve(now) は「何ミリ秒待ってから送るか」を返し、その送信枠を予約する。
+  function createRateLimiter(opts) {
+    const minGapMs = (opts && opts.minGapMs) || 250;
+    const perMinute = (opts && opts.perMinute) || 60;
+    const times = [];
+    let last = -Infinity;
+    return {
+      reserve: function (now) {
+        let t = Math.max(now, last + minGapMs);
+        for (;;) {
+          while (times.length && times[0] <= t - 60000) times.shift();
+          if (times.length < perMinute) break;
+          t = Math.max(t, times[times.length - perMinute] + 60000);
+        }
+        times.push(t);
+        last = t;
+        return t - now;
+      }
+    };
+  }
+
+  // 403 / 429 が来たら 60 秒 → 2 分 → 5 分と待ちを伸ばす。成功したら戻す
+  function createBackoff(steps) {
+    const list = steps || [60000, 120000, 300000];
+    let idx = -1;
+    let until = 0;
+    return {
+      fail: function (now) {
+        idx = Math.min(idx + 1, list.length - 1);
+        until = now + list[idx];
+        return list[idx];
+      },
+      ok: function () { idx = -1; until = 0; },
+      remaining: function (now) { return Math.max(0, until - now); },
+      isBlocked: function (now) { return until > now; }
+    };
+  }
+
+  // 「SoundCloud のロボット確認（DataDome）」の応答か。403 かつ DataDome の印があるものだけ
+  function isRobotCheckResponse(status, getHeader, bodyText) {
+    if (status !== 403) return false;
+    const h = function (n) { try { return (getHeader && getHeader(n)) || ''; } catch (e) { return ''; } };
+    if (h('x-datadome') || h('x-datadome-cid') || h('x-dd-b')) return true;
+    return /captcha-delivery\.com|datadome/i.test(String(bodyText || ''));
+  }
+
+  // 診断ログ（輪の形）。複数タブの記録を時刻順に混ぜて最新 max 件だけ残す
+  function mergeLogs(stored, pending, max) {
+    const all = (Array.isArray(stored) ? stored : []).concat(pending || []);
+    all.sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+    return all.length > max ? all.slice(all.length - max) : all;
+  }
+
+  // 全件同期が必要か（6 時間以内なら不要。force は常に必要）
+  function shouldFullSync(lastSyncAt, now, opts) {
+    const ttl = (opts && opts.ttlMs) || 6 * 3600 * 1000;
+    if (opts && opts.force) return true;
+    if (!opts || !opts.hasCache) return true;
+    const last = Number(lastSyncAt);
+    if (!isFinite(last) || last <= 0) return true;
+    return now - last >= ttl || now < last;
+  }
+
   return {
+    createRateLimiter: createRateLimiter,
+    createBackoff: createBackoff,
+    isRobotCheckResponse: isRobotCheckResponse,
+    mergeLogs: mergeLogs,
+    shouldFullSync: shouldFullSync,
     toNumId: toNumId,
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,

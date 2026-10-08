@@ -4,7 +4,7 @@ Chromium MV3 extension + UserScript. Full spec, data-storage map and message pro
 
 ## Rules
 - On every code change, bump the version in all four places together: `manifest.json` (`"version"`), `popup.html` (`vX.Y.Z`), `station_hook.js` (console.log `FreshDig vX.Y.Z`), `soundcloud_fresh_station.user.js` (`@version`).
-- `soundcloud_fresh_station.user.js` = its 10-line UserScript header + the full `station_hook.js`. Regenerate it after editing `station_hook.js`.
+- `soundcloud_fresh_station.user.js` is generated: run `node tools/build_userscript.js` (header + `i18n.js` + `freshdig_core.js` + `station_hook.js`). Regenerate it after editing any of them.
 - Every action handled in `station_hook.js`'s `SC_FRESH_STATION_POPUP_ACTION` listener must reply via `ack(...)` / `replyToBridge(...)`, otherwise the popup callback hangs until the bridge's 60s timeout.
 - Only accept `postMessage` where `event.source === window`; post to `window.location.origin`, never `'*'`.
 - Discovery skipping happens in `onScCurrentSoundChanged()` (SoundCloud playback manager's `change:currentSound` event, fires before audio starts) with `getSkipReason()` as the single rule set; `monitorPlaybackWithMargin()` is only the DOM fallback. SoundCloud uses XHR, not fetch, so the fetch-hook station/stream filters are effectively inactive.
@@ -16,10 +16,14 @@ Chromium MV3 extension + UserScript. Full spec, data-storage map and message pro
 - Opening the mini player (Document PiP / window.open) needs a click inside the page. Popup clicks do not count: `openMiniPlayer()` falls back to the in-page launch button (`showMiniPlayerLaunchPrompt()`). Auto-open on tab switch uses the Media Session `enterpictureinpicture` handler (`registerAutoMiniPlayerHandler()`, setting `autoMiniPlayer`).
 - The ➕ playlist button toggles: add if the current track is not in the target playlist, remove if it is (decided from a fresh GET of the playlist, not the cache).
 - Repost from the mini player: `PUT me/track_reposts/:id`, then `PUT me/track_reposts/:id/caption` with `{caption}` (max 140 chars), same as SoundCloud.
+- Every own API call goes through `apiFetch()` (via `scApi()`, or directly for station refill and `/resolve`): min 250ms gap, 60/min, back-off after 403/429. Never call `originalFetch` for api-v2 directly. When a robot check is detected (`state.robotBlocked`), auto-skip and own API calls stay paused; never try to solve or bypass it.
+- Full sync (likes/follows/playlists) runs in one tab only (Web Locks) and at most every 6 hours; other tabs read the cache and get `cache-updated` over `BroadcastChannel('freshdig')`. Only the popup's 🔄 forces it.
+- Skip rules live in `freshdig_core.js` (pure, tested with `node --test "tests/*.test.js"`). Skip reasons are i18n keys (`skipReason...`), translated at display time.
 - Find SoundCloud internals with `findScModule()` by shape, never by webpack module id.
 - Never let `undefined` / `null` / empty keys into the dislike maps (causes skip-everything loops).
 
 ## Check
 ```bash
-for f in *.js; do node --check "$f"; done
+for f in *.js tools/*.js tests/*.js; do node --check "$f"; done
+node --test "tests/*.test.js"   # (Node 22: `node --test tests/` does not work)
 ```

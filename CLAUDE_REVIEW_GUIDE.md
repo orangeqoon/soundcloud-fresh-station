@@ -151,6 +151,11 @@ flowchart TD
 | OAuth トークン | **保存しない**。毎回 Cookie `oauth_token` → SoundCloud 認証モジュール → 通信から捕捉した値 → background 注入値 の順で最新を取得（`getAuthToken()`） | — | SoundCloud はトークンを定期更新するため、キャッシュを優先すると失効トークンを送り続けてアカウント接続に失敗する（v1.7.5 以前の不具合）。旧キー `sc_fresh_station_cache_oauth_token` は起動時に削除 |
 | Dislike クラウドバックアップ | SoundCloud 上の非公開プレイリスト **`[FreshDig] Disliked Tracks`** | `exportDislikesToPlaylist()` | 数値IDの曲のみ書き出し。読み込み時は名前に `dislike` を含むプレイリストもフォールバック対象 |
 
+| 診断ログ | MAIN `localStorage` : `sc_fresh_station_diag_log` | `dlog()` | 最新 300 件（時刻・タブID・種類・詳細）。ポップアップ「診断ログをコピー」で取り出す |
+| 最後の全件同期の時刻 | MAIN `localStorage` : `sc_fresh_station_last_full_sync` | `doInitUserData()` | ms。6 時間以内なら全件同期しない（全タブ共通） |
+| 自分のアカウント情報 | MAIN `localStorage` : `sc_fresh_station_cache_me` | `doInitUserData()` | `{id, username, permalink}`。キャッシュだけで動くタブ用 |
+| リポスト済みキャッシュ | MAIN `localStorage` : `sc_fresh_station_cache_reposts` | `saveCacheData()` | トラックID配列 |
+
 - MAIN `localStorage` = soundcloud.com オリジンの localStorage（SoundCloud のページ自身と共有）。UserScript 版は `chrome.storage` を持たないため localStorage のみで動作する。
 - `content_bridge.js` が MAIN から `chrome.storage.local` に書き込めるキーは `targetPlaylistId`, `playbackMode`, `discoveryEnabled`, `autoMiniPlayer` のみ（ホワイトリスト）。
 

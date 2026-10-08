@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.1
+// @version      1.9.2
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -66,6 +66,13 @@
       skipReasonManyTracks: '投稿曲が多い作者',
       skipReasonManyPlays: '再生回数が多い曲',
       skipReasonOldTrack: '古い曲',
+      robotBanner: 'SoundCloud のロボット確認が出ています。ページで確認を済ませてください',
+      robotShort: 'ロボット確認中',
+      advancedSettings: '⚙ 詳細設定',
+      btnCopyLog: '📋 診断ログをコピー',
+      logCopied: 'コピーしました。止まった時の状況と一緒に貼ってください',
+      logCopyFailed: 'コピーできませんでした',
+      logHint: '音が止まった直後に押して、貼り付けてください',
 
       dislikeSection: '🚫 Dislike曲のプレイリスト連携',
       btnExportDislikes: '📤 SCへ書き出し',
@@ -173,6 +180,13 @@
       skipReasonManyTracks: 'Artist with many tracks',
       skipReasonManyPlays: 'Track with many plays',
       skipReasonOldTrack: 'Old track',
+      robotBanner: 'SoundCloud is showing a robot check. Please complete it on the page.',
+      robotShort: 'Robot check',
+      advancedSettings: '⚙ Advanced settings',
+      btnCopyLog: '📋 Copy diagnostic log',
+      logCopied: 'Copied. Paste it together with what happened.',
+      logCopyFailed: 'Could not copy',
+      logHint: 'Press right after the sound stops, then paste it',
 
       dislikeSection: '🚫 Sync Dislikes with SC Playlist',
       btnExportDislikes: '📤 Export to SC',
@@ -344,7 +358,77 @@
     return ARTIST_SUBPAGES.indexOf(sub) !== -1;
   }
 
+
+  // ---- 自分の API 呼び出しの間隔・上限（ロボット確認を出にくくする） ----
+  // reserve(now) は「何ミリ秒待ってから送るか」を返し、その送信枠を予約する。
+  function createRateLimiter(opts) {
+    const minGapMs = (opts && opts.minGapMs) || 250;
+    const perMinute = (opts && opts.perMinute) || 60;
+    const times = [];
+    let last = -Infinity;
+    return {
+      reserve: function (now) {
+        let t = Math.max(now, last + minGapMs);
+        for (;;) {
+          while (times.length && times[0] <= t - 60000) times.shift();
+          if (times.length < perMinute) break;
+          t = Math.max(t, times[times.length - perMinute] + 60000);
+        }
+        times.push(t);
+        last = t;
+        return t - now;
+      }
+    };
+  }
+
+  // 403 / 429 が来たら 60 秒 → 2 分 → 5 分と待ちを伸ばす。成功したら戻す
+  function createBackoff(steps) {
+    const list = steps || [60000, 120000, 300000];
+    let idx = -1;
+    let until = 0;
+    return {
+      fail: function (now) {
+        idx = Math.min(idx + 1, list.length - 1);
+        until = now + list[idx];
+        return list[idx];
+      },
+      ok: function () { idx = -1; until = 0; },
+      remaining: function (now) { return Math.max(0, until - now); },
+      isBlocked: function (now) { return until > now; }
+    };
+  }
+
+  // 「SoundCloud のロボット確認（DataDome）」の応答か。403 かつ DataDome の印があるものだけ
+  function isRobotCheckResponse(status, getHeader, bodyText) {
+    if (status !== 403) return false;
+    const h = function (n) { try { return (getHeader && getHeader(n)) || ''; } catch (e) { return ''; } };
+    if (h('x-datadome') || h('x-datadome-cid') || h('x-dd-b')) return true;
+    return /captcha-delivery\.com|datadome/i.test(String(bodyText || ''));
+  }
+
+  // 診断ログ（輪の形）。複数タブの記録を時刻順に混ぜて最新 max 件だけ残す
+  function mergeLogs(stored, pending, max) {
+    const all = (Array.isArray(stored) ? stored : []).concat(pending || []);
+    all.sort(function (a, b) { return (a.t || 0) - (b.t || 0); });
+    return all.length > max ? all.slice(all.length - max) : all;
+  }
+
+  // 全件同期が必要か（6 時間以内なら不要。force は常に必要）
+  function shouldFullSync(lastSyncAt, now, opts) {
+    const ttl = (opts && opts.ttlMs) || 6 * 3600 * 1000;
+    if (opts && opts.force) return true;
+    if (!opts || !opts.hasCache) return true;
+    const last = Number(lastSyncAt);
+    if (!isFinite(last) || last <= 0) return true;
+    return now - last >= ttl || now < last;
+  }
+
   return {
+    createRateLimiter: createRateLimiter,
+    createBackoff: createBackoff,
+    isRobotCheckResponse: isRobotCheckResponse,
+    mergeLogs: mergeLogs,
+    shouldFullSync: shouldFullSync,
     toNumId: toNumId,
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,
@@ -357,7 +441,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.2)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -422,7 +506,9 @@
             skipReasonGenre: '除外したジャンル',
             skipReasonOwn: '自分の曲',
             skipReasonLiked: 'ライク済み',
-            skipReasonFollowing: 'フォロー中のアーティスト'
+            skipReasonFollowing: 'フォロー中のアーティスト',
+            robotBanner: 'SoundCloud のロボット確認が出ています。ページで確認を済ませてください',
+            robotShort: 'ロボット確認中'
         };
     }
 
@@ -469,7 +555,8 @@
         targetPlaylistId: localStorage.getItem(TARGET_PLAYLIST_KEY) || null,
         currentTrack: null,
         lastSkippedTrackKey: null,
-        repostedTrackIds: new Set()
+        repostedTrackIds: new Set(),
+        robotBlocked: false      // SoundCloud のロボット確認が出ている間 true（自動スキップと自分の API 呼び出しを止める）
     };
 
     // 1. キャッシュから即時復元（ページ表示0秒後から除外有効化）
@@ -502,6 +589,12 @@
             const cachedPls = localStorage.getItem(CACHE_PLAYLISTS_KEY);
             if (cachedPls) {
                 state.myPlaylists = JSON.parse(cachedPls);
+            }
+
+            const cachedReposts = localStorage.getItem(CACHE_REPOSTS_KEY);
+            if (cachedReposts) {
+                const arr = JSON.parse(cachedReposts);
+                state.repostedTrackIds = new Set((Array.isArray(arr) ? arr : []).map(Number).filter(function (n) { return n > 0; }));
             }
 
             if (state.likedTrackIds.size > 0 || state.followingUserIds.size > 0) {
@@ -552,6 +645,7 @@
             localStorage.setItem(CACHE_LIKES_KEY, JSON.stringify(Array.from(state.likedTrackIds)));
             localStorage.setItem(CACHE_FOLLOWS_KEY, JSON.stringify(Array.from(state.followingUserIds)));
             localStorage.setItem(CACHE_PLAYLISTS_KEY, JSON.stringify(state.myPlaylists));
+            localStorage.setItem(CACHE_REPOSTS_KEY, JSON.stringify(Array.from(state.repostedTrackIds)));
             if (state.clientId) {
                 localStorage.setItem(CACHE_CLIENT_ID_KEY, state.clientId);
             }
@@ -687,6 +781,189 @@
         return null;
     }
 
+    // =========================================================================
+    // 🩺 診断ログ・タブ間連絡・API 呼び出しの上限・ロボット確認の検出（v2.0 P1）
+    //    ・診断ログ: 最新 300 件の出来事を localStorage に残す（ポップアップからコピー）
+    //    ・自分の API 呼び出しは apiFetch() を通す（間隔 250ms 以上・1 分 60 回まで・403/429 で待つ）
+    //    ・ロボット確認（DataDome）を見つけたら自動スキップと API 呼び出しを止め、消えたら再開（突破はしない）
+    // =========================================================================
+    const TAB_ID = Math.random().toString(36).slice(2, 8);
+    const DIAG_LOG_KEY = 'sc_fresh_station_diag_log';
+    const LAST_FULL_SYNC_KEY = 'sc_fresh_station_last_full_sync';
+    const CACHE_ME_KEY = 'sc_fresh_station_cache_me';
+    const CACHE_REPOSTS_KEY = 'sc_fresh_station_cache_reposts';
+    const DIAG_MAX = 300;
+    let diagPending = [];
+    let diagTimer = null;
+
+    function flushDiagLog() {
+        diagTimer = null;
+        if (!diagPending.length) return;
+        const batch = diagPending;
+        diagPending = [];
+        try {
+            let stored = [];
+            try { stored = JSON.parse(localStorage.getItem(DIAG_LOG_KEY) || '[]'); } catch (e) {}
+            localStorage.setItem(DIAG_LOG_KEY, JSON.stringify(FreshDigCore.mergeLogs(stored, batch, DIAG_MAX)));
+        } catch (e) {}
+    }
+
+    function dlog(type, detail) {
+        try {
+            diagPending.push({ t: Date.now(), tab: TAB_ID, type: type, d: detail === undefined ? '' : detail });
+            if (diagPending.length > DIAG_MAX) diagPending.shift();
+            if (!diagTimer) diagTimer = setTimeout(flushDiagLog, 2000);
+        } catch (e) {}
+    }
+    window.addEventListener('pagehide', flushDiagLog);
+
+    function getDiagLogText() {
+        flushDiagLog();
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(DIAG_LOG_KEY) || '[]'); } catch (e) {}
+        const head = 'FreshDig diag log (' + list.length + ' entries) UA=' + navigator.userAgent + ' url=' + location.pathname;
+        return head + '\n' + list.map(function (x) {
+            const dt = new Date(x.t);
+            const hms = dt.toTimeString().slice(0, 8) + '.' + String(dt.getMilliseconds()).padStart(3, '0');
+            return hms + ' [' + x.tab + '] ' + x.type + (x.d === '' ? '' : ' ' + JSON.stringify(x.d));
+        }).join('\n');
+    }
+
+    // 同じ soundcloud.com の全タブへの連絡（拡張の裏側を通さない）。自分が送ったものは受け取らない
+    const fdBus = (function () {
+        const handlers = {};
+        let ch = null;
+        try { ch = new BroadcastChannel('freshdig'); } catch (e) {}
+        if (ch) {
+            ch.onmessage = function (ev) {
+                const m = ev && ev.data;
+                if (!m || typeof m.type !== 'string' || m.fromTabId === TAB_ID) return;
+                (handlers[m.type] || []).forEach(function (fn) { try { fn(m); } catch (e) {} });
+            };
+        }
+        return {
+            on: function (type, fn) { (handlers[type] = handlers[type] || []).push(fn); },
+            post: function (type, payload) {
+                if (!ch) return;
+                try { ch.postMessage(Object.assign({ type: type, fromTabId: TAB_ID }, payload || {})); } catch (e) {}
+            }
+        };
+    })();
+
+    // ---- API の上限 ----
+    const apiLimiter = FreshDigCore.createRateLimiter({ minGapMs: 250, perMinute: 60 });
+    const apiBackoff = FreshDigCore.createBackoff([60000, 120000, 300000]);
+    const robotState = { iframe: false, api: false };
+
+    function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+    function isRobotBlocked() { return robotState.iframe || robotState.api; }
+
+    function refreshRobotState(source) {
+        const was = !!state.robotBlocked;
+        const now = isRobotBlocked();
+        state.robotBlocked = now;
+        if (was === now) return;
+        dlog(now ? 'robot-check-detected' : 'robot-check-cleared', source);
+        console.warn('[SC-FreshStation] robot check ' + (now ? 'detected (' + source + ') - auto-skip and own API calls paused' : 'cleared - resumed'));
+        try {
+            let el = document.getElementById('sc-fresh-station-robot-banner');
+            if (now) {
+                if (!el && document.body) {
+                    el = document.createElement('div');
+                    el.id = 'sc-fresh-station-robot-banner';
+                    el.style.cssText = 'position:fixed;top:56px;left:50%;transform:translateX(-50%);z-index:2147483646;background:#b71c1c;color:#fff;padding:8px 16px;border-radius:6px;font-size:13px;font-weight:bold;box-shadow:0 4px 15px rgba(0,0,0,0.5);';
+                    document.body.appendChild(el);
+                }
+                if (el) el.textContent = '⚠️ ' + getI18nTexts().robotBanner;
+            } else if (el) {
+                el.remove();
+            }
+        } catch (e) {}
+        try { syncMiniPlayerUI(); } catch (e) {}
+    }
+
+    function blockedApiResponse() {
+        return new Response('{"freshdig":"paused"}', { status: 503, statusText: 'FreshDig paused' });
+    }
+
+    function apiPathForLog(url) {
+        try { return new URL(url, 'https://api-v2.soundcloud.com').pathname; } catch (e) { return String(url).slice(0, 60); }
+    }
+
+    // 自分の API 呼び出し（scApi・ステーション補充・/resolve）はすべてここを通す
+    async function apiFetch(url, init) {
+        if (robotState.iframe || apiBackoff.isBlocked(Date.now())) return blockedApiResponse();
+        const wait = apiLimiter.reserve(Date.now());
+        if (wait > 0) await sleepMs(wait);
+        const res = await originalFetch(url, init);
+        try {
+            if (res.status === 403 || res.status === 429) {
+                let body = '';
+                if (res.status === 403) { try { body = await res.clone().text(); } catch (e) {} }
+                const isRobot = FreshDigCore.isRobotCheckResponse(res.status, function (n) { return res.headers.get(n); }, body);
+                const waitMs = apiBackoff.fail(Date.now());
+                dlog('api-blocked', { status: res.status, robot: isRobot, path: apiPathForLog(url), waitMs: waitMs });
+                if (isRobot) { robotState.api = true; refreshRobotState('api'); }
+            } else if (res.ok) {
+                apiBackoff.ok();
+                if (robotState.api) { robotState.api = false; refreshRobotState('api-ok'); }
+            } else if (res.status !== 401) {
+                dlog('api-error', { status: res.status, path: apiPathForLog(url) });
+            }
+        } catch (e) {}
+        return res;
+    }
+
+    // SoundCloud 本体の通信（XHR）が 403 + DataDome の時も気づく
+    function observeScXhr(xhr) {
+        try {
+            if (xhr.status === 403) {
+                let body = '';
+                try { body = (xhr.responseType === '' || xhr.responseType === 'text') ? xhr.responseText : ''; } catch (e) {}
+                if (FreshDigCore.isRobotCheckResponse(403, function (n) { return xhr.getResponseHeader(n); }, body)) {
+                    dlog('sc-xhr-robot-check', { path: apiPathForLog(xhr._scUrl) });
+                    robotState.api = true;
+                    apiBackoff.fail(Date.now());
+                    refreshRobotState('sc-xhr');
+                }
+            } else if (xhr.status >= 200 && xhr.status < 300 && robotState.api && !apiBackoff.isBlocked(Date.now())) {
+                robotState.api = false;
+                apiBackoff.ok();
+                refreshRobotState('sc-xhr-ok');
+            }
+        } catch (e) {}
+    }
+
+    // 3 秒ごとに、ロボット確認の画面（iframe）があるか見る。API 側で止まっている時は待ちが終わったら 1 回だけ試す
+    setInterval(function () {
+        try {
+            const found = !!document.querySelector('iframe[src*="captcha-delivery.com"]');
+            if (found !== robotState.iframe) {
+                robotState.iframe = found;
+                refreshRobotState('iframe');
+            }
+            if (robotState.api && !robotState.iframe && !apiBackoff.isBlocked(Date.now()) && !document.hidden) {
+                scApi('me').catch(function () {});
+            }
+        } catch (e) {}
+    }, 3000);
+
+    // 音声要素の出来事（音が止まる不具合の調査用）。イベントは親へ伝わらないので capture で受ける
+    ['pause', 'waiting', 'stalled', 'error', 'ended', 'volumechange'].forEach(function (evName) {
+        document.addEventListener(evName, function (ev) {
+            const m = ev.target;
+            if (!m || (m.tagName !== 'AUDIO' && m.tagName !== 'VIDEO')) return;
+            try {
+                const d = { ct: Math.round((m.currentTime || 0) * 10) / 10, dur: isFinite(m.duration) ? Math.round(m.duration) : null,
+                    vol: Math.round((m.volume || 0) * 100) / 100, muted: !!m.muted, ready: m.readyState, net: m.networkState };
+                if (m.error) d.err = m.error.code;
+                dlog('audio-' + evName, d);
+            } catch (e) {}
+        }, true);
+    });
+    document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
+
     // SoundCloud API v2 呼び出しの共通処理：client_id と最新トークンを付与し、401 なら最新トークンで1回だけ再試行
     async function scApi(pathOrUrl, options) {
         options = options || {};
@@ -705,7 +982,7 @@
                 init.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
                 headers['Content-Type'] = 'application/json';
             }
-            return originalFetch(buildUrl(), init);
+            return apiFetch(buildUrl(), init);
         };
         let res = await doFetch();
         if (res.status === 401) {
@@ -835,6 +1112,8 @@
                 } else if (action === 'TOGGLE_MUTE') {
                     toggleSoundCloudMute();
                     ack({ success: true, volume: getSoundCloudVolume() });
+                } else if (action === 'GET_DIAG_LOG') {
+                    ack({ success: true, text: getDiagLogText() });
                 } else if (action === 'GET_DATA') {
                     loadCachedData();
                     extractAuthTokenFromCookie();
@@ -925,6 +1204,10 @@
     XMLHttpRequest.prototype.open = function (method, url) {
         this._scUrl = typeof url === 'string' ? url : '';
         if (this._scUrl.indexOf('api-v2.soundcloud.com') !== -1) {
+            if (!this._scObserved) {
+                this._scObserved = true;
+                this.addEventListener('loadend', function () { observeScXhr(this); });
+            }
             try {
                 const parsed = new URL(this._scUrl, window.location.origin);
                 if (parsed.searchParams.has('client_id')) {
@@ -1071,7 +1354,7 @@
                     while (data.collection.length < 10 && nextHref && extraPages < MAX_STATION_EXTRA_PAGES) {
                         extraPages++;
                         const nextUrl = nextHref.indexOf('client_id=') !== -1 ? nextHref : (nextHref + '&client_id=' + state.clientId);
-                        const nextRes = await originalFetch(nextUrl, {
+                        const nextRes = await apiFetch(nextUrl, {
                             headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {}
                         });
                         if (!nextRes.ok) break;
@@ -1136,6 +1419,8 @@
     let lastUserDataSyncAttempt = 0;
 
     // options.force: クールダウンを無視して必ず同期（ポップアップの「同期」ボタン等）
+    // 全件同期は全タブで 1 回だけ: Web Locks で 1 タブだけが行い、6 時間以内の同期済みならキャッシュを読むだけ。
+    // 終わったら BroadcastChannel で他のタブにキャッシュの読み直しを知らせる
     function initUserData(options) {
         const force = !!(options && options.force);
         if (userDataSyncPromise) return userDataSyncPromise;
@@ -1143,11 +1428,52 @@
             return Promise.resolve();
         }
         lastUserDataSyncAttempt = Date.now();
-        userDataSyncPromise = doInitUserData().finally(function () {
+        userDataSyncPromise = runUserDataSync(force).finally(function () {
             userDataSyncPromise = null;
         });
         return userDataSyncPromise;
     }
+
+    function restoreMeFromCache() {
+        try {
+            const me = JSON.parse(localStorage.getItem(CACHE_ME_KEY) || 'null');
+            if (me && me.id) {
+                state.myUserId = me.id;
+                state.myUsername = me.username || null;
+                state.myPermalink = me.permalink || null;
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    async function runUserDataSync(force) {
+        const needsFull = function () {
+            loadCachedData();
+            const hasCache = (state.likedTrackIds.size > 0 || state.followingUserIds.size > 0) && !!localStorage.getItem(CACHE_ME_KEY);
+            return FreshDigCore.shouldFullSync(localStorage.getItem(LAST_FULL_SYNC_KEY), Date.now(), { force: force, hasCache: hasCache });
+        };
+        if (!needsFull()) {
+            restoreMeFromCache();
+            updatePlaylistButtonUI();
+            dlog('sync-skipped-recent');
+            return;
+        }
+        if (!(navigator.locks && navigator.locks.request)) return doInitUserData();
+        return navigator.locks.request('freshdig-sync', force ? {} : { ifAvailable: true }, async function (lock) {
+            if (!lock) { dlog('sync-skipped-other-tab'); return; }
+            // 順番待ちの間に別のタブが終えていたら、それを使う
+            if (!needsFull()) { restoreMeFromCache(); updatePlaylistButtonUI(); return; }
+            dlog('sync-start', { force: force });
+            await doInitUserData();
+        });
+    }
+
+    fdBus.on('cache-updated', function () {
+        loadCachedData();
+        restoreMeFromCache();
+        updatePlaylistButtonUI();
+    });
 
     // ページングAPIから全件取得。途中で失敗したら null を返す（既存キャッシュを壊さないため）
     async function fetchPaged(firstPath, maxCount, onItem) {
@@ -1178,6 +1504,7 @@
     }
 
     async function doInitUserData() {
+        if (state.robotBlocked) return;
         extractAuthTokenFromCookie();
         if (!state.clientId) {
             await discoverClientId();
@@ -1207,6 +1534,7 @@
                 state.myUserId = meData.id;
                 state.myUsername = meData.username || meData.permalink || null;
                 state.myPermalink = meData.permalink ? String(meData.permalink).toLowerCase() : null;
+                try { localStorage.setItem(CACHE_ME_KEY, JSON.stringify({ id: state.myUserId, username: state.myUsername, permalink: state.myPermalink })); } catch (e) {}
             } else {
                 // ログインしていない（またはトークンが無効）なら、他人のデータで判定しないよう打ち切る
                 state.myUsername = null;
@@ -1259,6 +1587,11 @@
                 state.isUserDataLoaded = true;
             }
             saveCacheData();
+            if (likes && followings) {
+                try { localStorage.setItem(LAST_FULL_SYNC_KEY, String(Date.now())); } catch (e) {}
+            }
+            dlog('sync-finished', { likes: state.likedTrackIds.size, follows: state.followingUserIds.size, partial: !(likes && followings) });
+            fdBus.post('cache-updated');
             console.log('[SC-FreshStation] Sync finished (@' + state.myUsername + '): ' + state.myPlaylists.length + ' playlists, ' + state.likedTrackIds.size + ' likes, ' + state.followingUserIds.size + ' followings.' + (likes && followings ? '' : ' (partial)'));
         } catch (e) {
             console.error('[SC-FreshStation] Failed to sync user data:', e);
@@ -1356,6 +1689,7 @@
     // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由のキー（skipReason...）、しないなら null
     // 判定の中身は freshdig_core.js（Node でテスト済み）
     function getSkipReason(info) {
+        if (state.robotBlocked) return null;
         return FreshDigCore.getSkipReasonKey(info, {
             discoveryEnabled: state.discoveryEnabled,
             playbackMode: state.playbackMode,
@@ -1373,10 +1707,15 @@
     const MAX_CONSECUTIVE_AUTO_SKIPS = 20;
 
     // 自動スキップ実行。連続しすぎたら（全部既知などの異常時）1曲だけそのまま流す
+    // 5 曲を超えて連続したら 1 回ごとに 1.5 秒空ける（短時間の大量リクエストを避ける）
+    const SKIP_SLOWDOWN_AFTER = 5;
+    const SKIP_SLOWDOWN_MS = 1500;
     function doAutoSkip(reason, info) {
+        if (state.robotBlocked) return false;
         if (marginGuard.consecutiveSkips >= MAX_CONSECUTIVE_AUTO_SKIPS) {
             console.warn('[SC-FreshStation] ⚠️ 連続スキップが' + MAX_CONSECUTIVE_AUTO_SKIPS + '曲に達したため、この曲はそのまま再生します。');
             showGlobalToast('⚠️ 知っている曲が続いたため、この曲はそのまま再生します');
+            dlog('skip-brake', MAX_CONSECUTIVE_AUTO_SKIPS);
             marginGuard.consecutiveSkips = 0;
             return false;
         }
@@ -1386,17 +1725,34 @@
         const reasonText = getI18nTexts()[reason] || reason;
         console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
         showGlobalToast('⏩ ' + (getI18nTexts().skipToastPrefix || 'スキップ') + '（' + reasonText + '）' + (title ? '：' + title : ''));
+        dlog('auto-skip', { reason: reason, id: info && info.id, n: marginGuard.consecutiveSkips });
 
-        const skipBtn = document.querySelector('.playControls__next');
-        if (skipBtn) {
-            skipBtn.click();
+        const run = function () {
+            const skipBtn = document.querySelector('.playControls__next');
+            if (skipBtn) {
+                skipBtn.click();
+                return true;
+            }
+            const pm = getScPlaybackManager();
+            if (pm) {
+                try { pm.playNext({ userInitiated: false }); return true; } catch (e) {}
+            }
+            return false;
+        };
+
+        if (marginGuard.consecutiveSkips > SKIP_SLOWDOWN_AFTER) {
+            const expectId = info && toNumId(info.id);
+            try { const pm0 = getScPlaybackManager(); if (pm0 && pm0.pauseCurrent) pm0.pauseCurrent(); } catch (e) {}
+            setTimeout(function () {
+                if (state.robotBlocked) return;
+                // 待っている間にユーザーが別の曲へ動かしていたら何もしない
+                const cur = getScCurrentSound();
+                if (expectId && cur && toNumId(cur.id) !== expectId) return;
+                run();
+            }, SKIP_SLOWDOWN_MS);
             return true;
         }
-        const pm = getScPlaybackManager();
-        if (pm) {
-            try { pm.playNext({ userInitiated: false }); return true; } catch (e) {}
-        }
-        return false;
+        return run();
     }
 
     // ---- 曲の切替を SoundCloud 本体から即座に受け取る（再生が始まる前に判定・スキップできる） ----
@@ -1465,6 +1821,18 @@
         } catch (e) {}
     }
 
+    // 今の曲の再生位置（ミリ秒）。分からなければ 0
+    function getPlaybackPositionMs() {
+        try {
+            const snd = getScCurrentSound();
+            if (snd && typeof snd.currentTime === 'function') {
+                const v = Number(snd.currentTime());
+                return isFinite(v) && v > 0 ? v : 0;
+            }
+        } catch (e) {}
+        return 0;
+    }
+
     // 定期監視（フォールバック）：切替通知が使えない場合や、DOM の Like 表示での判定用
     function monitorPlaybackWithMargin() {
         const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
@@ -1520,6 +1888,11 @@
 
         marginGuard.hasChecked = true;
         if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return;
+        // 曲の途中（再生開始から 5 秒より後）では自動スキップしない（聴いている曲を後から飛ばさない）
+        if (getPlaybackPositionMs() > 5000) {
+            dlog('monitor-skip-ignored-midtrack', getPlaybackPositionMs());
+            return;
+        }
 
         const pathNow = normalizeTrackPath(currentHref);
         const alreadyDecided = soundChangeState.decidedPath === pathNow && now - soundChangeState.decidedAt < 15000;
@@ -2119,7 +2492,7 @@
                 const resolveUrl = 'https://api-v2.soundcloud.com/resolve?url=' + encodeURIComponent(fullUrl) + '&client_id=' + state.clientId;
                 extractAuthTokenFromCookie();
 
-                let rRes = await originalFetch(resolveUrl, {
+                let rRes = await apiFetch(resolveUrl, {
                     headers: state.oauthToken ? { 'Authorization': state.oauthToken } : {},
                     credentials: 'include'
                 });
@@ -2128,7 +2501,7 @@
                 if (!rRes.ok && (rRes.status === 401 || rRes.status === 403)) {
                     console.warn('[SC-FreshStation] Resolve with token returned ' + rRes.status + ', retrying as public request...');
                     requestAuthFromExtension();
-                    rRes = await originalFetch(resolveUrl, {
+                    rRes = await apiFetch(resolveUrl, {
                         credentials: 'include'
                     });
                 }
@@ -2417,6 +2790,7 @@
 
     function setSoundCloudVolume(vol) {
         const v = Math.max(0, Math.min(1, Number(vol) || 0));
+        dlog('freshdig-set-volume', { v: v });
         if (v > 0) {
             lastNonZeroVolume = v;
         }
@@ -3137,9 +3511,11 @@
             const onClose = function () {
                 if (miniPlayerWindow === win) miniPlayerWindow = null;
             };
+            win.addEventListener('pagehide', function () { dlog('miniplayer-closed'); });
             win.addEventListener('pagehide', onClose);
             win.addEventListener('beforeunload', onClose);
 
+            dlog('miniplayer-opened', { auto: isAuto });
             syncMiniPlayerUI();
             updatePlaylistButtonUI();
             console.log('[SC-FreshStation] 🪟 Mini Player opened successfully' + (isAuto ? ' (auto on tab switch)' : ''));
@@ -3852,7 +4228,7 @@
         if (mpStatus) {
             const isOn = state.discoveryEnabled;
             const isDiscovery = state.playbackMode === 'DISCOVERY';
-            const label = !isOn ? '⏸ 発掘 OFF' : (isDiscovery ? '🔍 発掘 ON' : '👥 フォロー新曲');
+            const label = state.robotBlocked ? ('⚠️ ' + getI18nTexts().robotShort) : (!isOn ? '⏸ 発掘 OFF' : (isDiscovery ? '🔍 発掘 ON' : '👥 フォロー新曲'));
             if (mpStatus.textContent !== label) mpStatus.textContent = label;
             const tStatus = getI18nTexts(); mpStatus.title = isOn ? tStatus.mpStatusToggleOff : tStatus.mpStatusToggleOn;
             mpStatus.classList.toggle('off', !isOn);

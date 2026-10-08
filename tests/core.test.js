@@ -97,3 +97,47 @@ test('i18n: keys used in code exist in the dictionary', () => {
     for (const k of used) assert.ok(k in dict, f + ' uses missing key: ' + k);
   }
 });
+
+test('rate limiter: min gap and per-minute cap', () => {
+  const rl = core.createRateLimiter({ minGapMs: 250, perMinute: 3 });
+  assert.strictEqual(rl.reserve(1000), 0);
+  assert.strictEqual(rl.reserve(1000), 250);
+  assert.strictEqual(rl.reserve(1100), 400); // 1500
+  // 4 本目は 1 本目から 60 秒後以降
+  assert.strictEqual(rl.reserve(1200), 61000 - 1200);
+});
+
+test('backoff: 60s -> 2min -> 5min, reset on ok', () => {
+  const b = core.createBackoff();
+  assert.strictEqual(b.fail(0), 60000);
+  assert.ok(b.isBlocked(59999) && !b.isBlocked(60000));
+  assert.strictEqual(b.fail(60000), 120000);
+  assert.strictEqual(b.fail(0), 300000);
+  assert.strictEqual(b.fail(0), 300000);
+  b.ok();
+  assert.ok(!b.isBlocked(1));
+  assert.strictEqual(b.fail(0), 60000);
+});
+
+test('robot check detection', () => {
+  assert.ok(core.isRobotCheckResponse(403, (n) => n === 'x-datadome' ? 'protected' : '', ''));
+  assert.ok(core.isRobotCheckResponse(403, () => '', '{"url":"https://geo.captcha-delivery.com/captcha/?x"}'));
+  assert.ok(!core.isRobotCheckResponse(403, () => '', '{"error":"forbidden"}'));
+  assert.ok(!core.isRobotCheckResponse(200, () => 'protected', 'captcha-delivery'));
+});
+
+test('mergeLogs keeps newest max in time order', () => {
+  const m = core.mergeLogs([{ t: 1 }, { t: 5 }], [{ t: 3 }, { t: 7 }], 3);
+  assert.deepStrictEqual(m.map((x) => x.t), [3, 5, 7]);
+  assert.deepStrictEqual(core.mergeLogs(null, null, 3), []);
+});
+
+test('shouldFullSync: 6h, force, no cache', () => {
+  const now = 10 * 3600 * 1000;
+  assert.ok(!core.shouldFullSync(now - 3600 * 1000, now, { hasCache: true }));
+  assert.ok(core.shouldFullSync(now - 7 * 3600 * 1000, now, { hasCache: true }));
+  assert.ok(core.shouldFullSync(now - 1000, now, { hasCache: true, force: true }));
+  assert.ok(core.shouldFullSync(now - 1000, now, { hasCache: false }));
+  assert.ok(core.shouldFullSync(null, now, { hasCache: true }));
+  assert.ok(core.shouldFullSync(now + 5000, now, { hasCache: true })); // 時計が戻った
+});

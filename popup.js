@@ -57,6 +57,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btn-export-dislikes').textContent = t.btnExportDislikes;
     document.getElementById('btn-import-dislikes').textContent = t.btnImportDislikes;
 
+    document.getElementById('label-advanced').textContent = t.advancedSettings;
+    document.getElementById('btn-copy-log').textContent = t.btnCopyLog;
+    document.getElementById('log-hint').textContent = t.logHint;
+
     document.getElementById('label-stat-likes').textContent = t.statLikes;
     document.getElementById('label-stat-follows').textContent = t.statFollow;
     document.getElementById('label-stat-dislikes').textContent = t.statDislike;
@@ -123,6 +127,26 @@ document.addEventListener('DOMContentLoaded', async function () {
         void chrome.runtime.lastError;
         syncBtn.textContent = t.btnSync;
         requestData();
+      });
+    });
+  }
+
+  // 診断ログのコピー
+  const copyLogBtn = document.getElementById('btn-copy-log');
+  if (copyLogBtn) {
+    copyLogBtn.addEventListener('click', function () {
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DIAG_LOG' }, async function (response) {
+        const hint = document.getElementById('log-hint');
+        if (chrome.runtime.lastError || !response || !response.text) {
+          hint.textContent = t.logCopyFailed;
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(response.text);
+          hint.textContent = t.logCopied;
+        } catch (e) {
+          hint.textContent = t.logCopyFailed;
+        }
       });
     });
   }
