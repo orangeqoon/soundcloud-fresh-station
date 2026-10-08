@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.2
+// @version      1.9.3
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -347,6 +347,21 @@
     return null;
   }
 
+  // 再生待ち行列の先読み。infos: 行列の順に並べた曲情報（分からないものは null）、curPos: 今の曲の位置。
+  // remove: 先に外してよい位置、firstKeep: 次に流してよい最初の位置（無ければ -1）
+  function planQueueAhead(infos, curPos, reasonFn, maxLook) {
+    const remove = [];
+    let firstKeep = -1;
+    const last = Math.min(infos.length - 1, curPos + (maxLook || 30));
+    for (let i = curPos + 1; i <= last; i++) {
+      const info = infos[i];
+      if (!info) { if (firstKeep < 0) firstKeep = i; continue; }
+      if (reasonFn(info)) remove.push(i);
+      else if (firstKeep < 0) firstKeep = i;
+    }
+    return { remove: remove, firstKeep: firstKeep };
+  }
+
   // 作者のページ（/<作者>、/tracks など）か。予約パスと、reposts は除く
   const RESERVED_TOP = ['you', 'discover', 'stream', 'feed', 'search', 'upload', 'messages', 'notifications', 'charts',
     'settings', 'terms-of-use', 'pages', 'popular', 'tags', 'mobile', 'jobs', 'imprint', 'creator-pro', 'stations', 'people', 'logout'];
@@ -424,6 +439,7 @@
   }
 
   return {
+    planQueueAhead: planQueueAhead,
     createRateLimiter: createRateLimiter,
     createBackoff: createBackoff,
     isRobotCheckResponse: isRobotCheckResponse,
@@ -441,7 +457,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.2)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.3)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1706,6 +1722,79 @@
 
     const MAX_CONSECUTIVE_AUTO_SKIPS = 20;
 
+    // ---- 再生待ち行列の先読み（飛ばす曲を、音を読み込む前に行列から外す / 一気に飛ぶ） ----
+    // SoundCloud の再生管理モジュールの行列（getQueue().models。各要素は .sound を持つ）。
+    // removeItem(item) は今の曲以外を外せ、setCurrentItem(item, opts) は行列内の好きな曲へ直接移れる。
+    const QUEUE_LOOKAHEAD = 30;
+    const queueWatch = { queue: null, timer: null };
+
+    function readScQueue(pm) {
+        try {
+            if (!pm || typeof pm.getQueue !== 'function' || typeof pm.getCurrentQueueItem !== 'function') return null;
+            const q = pm.getQueue();
+            const models = q && q.models;
+            if (!Array.isArray(models)) return null;
+            const curPos = models.indexOf(pm.getCurrentQueueItem());
+            if (curPos < 0) return null;
+            const infos = models.map(function (it) {
+                try {
+                    const i = soundToTrackInfo(it && it.sound);
+                    return (i.id && (!i.kind || i.kind === 'track')) ? i : null;
+                } catch (e) { return null; }
+            });
+            return { q: q, models: models, curPos: curPos, infos: infos };
+        } catch (e) { return null; }
+    }
+
+    function pruneQueueAhead(source) {
+        if (state.robotBlocked || !state.discoveryEnabled || state.playbackMode !== 'DISCOVERY' || !state.isUserDataLoaded) return 0;
+        const pm = getScPlaybackManager();
+        if (!pm || typeof pm.removeItem !== 'function') return 0;
+        const qi = readScQueue(pm);
+        if (!qi) return 0;
+        const plan = FreshDigCore.planQueueAhead(qi.infos, qi.curPos, getSkipReason, QUEUE_LOOKAHEAD);
+        let removed = 0;
+        plan.remove.map(function (pos) { return qi.models[pos]; }).forEach(function (item) {
+            try { pm.removeItem(item); removed++; } catch (e) {}
+        });
+        if (removed) dlog('queue-prune', { removed: removed, source: source });
+        return removed;
+    }
+
+    // 今の曲を飛ばすとき、次に流してよい曲まで一気に移る。移れたら true
+    function jumpToNextAllowedInQueue() {
+        try {
+            const pm = getScPlaybackManager();
+            if (!pm || typeof pm.setCurrentItem !== 'function') return false;
+            const qi = readScQueue(pm);
+            if (!qi) return false;
+            const plan = FreshDigCore.planQueueAhead(qi.infos, qi.curPos, getSkipReason, QUEUE_LOOKAHEAD);
+            if (plan.firstKeep < 0 || plan.firstKeep === qi.curPos + 1) return false; // 隣なら普通の「次へ」でよい
+            pm.setCurrentItem(qi.models[plan.firstKeep], { seek: 0, userInitiated: false });
+            dlog('queue-jump', { over: plan.firstKeep - qi.curPos - 1 });
+            return true;
+        } catch (e) { return false; }
+    }
+
+    function scheduleQueuePrune() {
+        if (queueWatch.timer) return;
+        queueWatch.timer = setTimeout(function () {
+            queueWatch.timer = null;
+            try { pruneQueueAhead('queue-change'); } catch (e) {}
+        }, 150);
+    }
+
+    // 行列に曲が足された時（ステーションの補充など）も先読みする
+    function watchScQueue() {
+        try {
+            const pm = getScPlaybackManager();
+            const q = pm && typeof pm.getQueue === 'function' ? pm.getQueue() : null;
+            if (!q || typeof q.on !== 'function' || q === queueWatch.queue) return;
+            queueWatch.queue = q;
+            q.on('add reset', scheduleQueuePrune);
+        } catch (e) {}
+    }
+
     // 自動スキップ実行。連続しすぎたら（全部既知などの異常時）1曲だけそのまま流す
     // 5 曲を超えて連続したら 1 回ごとに 1.5 秒空ける（短時間の大量リクエストを避ける）
     const SKIP_SLOWDOWN_AFTER = 5;
@@ -1728,6 +1817,8 @@
         dlog('auto-skip', { reason: reason, id: info && info.id, n: marginGuard.consecutiveSkips });
 
         const run = function () {
+            // 行列の先まで飛ばす曲が続くなら、1 曲ずつ「次へ」せず一気に移る（音の読み込みを減らす）
+            if (jumpToNextAllowedInQueue()) return true;
             const skipBtn = document.querySelector('.playControls__next');
             if (skipBtn) {
                 skipBtn.click();
@@ -1803,6 +1894,8 @@
         } else if (state.discoveryEnabled) {
             marginGuard.consecutiveSkips = 0;
         }
+        watchScQueue();
+        pruneQueueAhead('sound-change');
     }
 
     function hookScCurrentSoundChange() {

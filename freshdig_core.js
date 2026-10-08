@@ -73,6 +73,21 @@
     return null;
   }
 
+  // 再生待ち行列の先読み。infos: 行列の順に並べた曲情報（分からないものは null）、curPos: 今の曲の位置。
+  // remove: 先に外してよい位置、firstKeep: 次に流してよい最初の位置（無ければ -1）
+  function planQueueAhead(infos, curPos, reasonFn, maxLook) {
+    const remove = [];
+    let firstKeep = -1;
+    const last = Math.min(infos.length - 1, curPos + (maxLook || 30));
+    for (let i = curPos + 1; i <= last; i++) {
+      const info = infos[i];
+      if (!info) { if (firstKeep < 0) firstKeep = i; continue; }
+      if (reasonFn(info)) remove.push(i);
+      else if (firstKeep < 0) firstKeep = i;
+    }
+    return { remove: remove, firstKeep: firstKeep };
+  }
+
   // 作者のページ（/<作者>、/tracks など）か。予約パスと、reposts は除く
   const RESERVED_TOP = ['you', 'discover', 'stream', 'feed', 'search', 'upload', 'messages', 'notifications', 'charts',
     'settings', 'terms-of-use', 'pages', 'popular', 'tags', 'mobile', 'jobs', 'imprint', 'creator-pro', 'stations', 'people', 'logout'];
@@ -150,6 +165,7 @@
   }
 
   return {
+    planQueueAhead: planQueueAhead,
     createRateLimiter: createRateLimiter,
     createBackoff: createBackoff,
     isRobotCheckResponse: isRobotCheckResponse,

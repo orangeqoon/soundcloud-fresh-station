@@ -141,3 +141,21 @@ test('shouldFullSync: 6h, force, no cache', () => {
   assert.ok(core.shouldFullSync(null, now, { hasCache: true }));
   assert.ok(core.shouldFullSync(now + 5000, now, { hasCache: true })); // 時計が戻った
 });
+
+test('planQueueAhead: removes known tracks ahead and finds the first one to play', () => {
+  const known = new Set([2, 3, 4, 6]);
+  const infos = [1, 2, 3, 4, 5, 6, 7].map((id) => ({ id }));
+  const reasonFn = (i) => (known.has(i.id) ? 'x' : null);
+  // 今の曲は位置 1（id 2）
+  const plan = core.planQueueAhead(infos, 1, reasonFn, 30);
+  assert.deepStrictEqual(plan.remove, [2, 3, 5]);
+  assert.strictEqual(plan.firstKeep, 4);
+  // 先読みの上限
+  assert.deepStrictEqual(core.planQueueAhead(infos, 1, reasonFn, 2).remove, [2, 3]);
+  // 全部既知
+  assert.strictEqual(core.planQueueAhead([{ id: 2 }, { id: 3 }], 0, reasonFn, 30).firstKeep, -1);
+  // 情報が無い曲は外さず、流してよい扱い
+  const p2 = core.planQueueAhead([{ id: 2 }, null, { id: 3 }], 0, reasonFn, 30);
+  assert.strictEqual(p2.firstKeep, 1);
+  assert.deepStrictEqual(p2.remove, [2]);
+});
