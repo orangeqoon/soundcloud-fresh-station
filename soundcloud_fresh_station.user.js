@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.4
+// @version      1.9.5
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -129,6 +129,88 @@
       mpStatusToggleOff: 'クリックで発掘モードを OFF（SoundCloud 通常再生）',
       mpStatusToggleOn: 'クリックで発掘モードを ON（知っている曲を自動スキップ）',
 
+      // Messages (toasts, tooltips, results)
+      m_streakStop: '⚠️ 知っている曲が続いたため、この曲はそのまま再生します',
+      m_savedTo: '保存先',
+      m_plBtnNoTarget: '➕ プレイリストに一発追加（クリックで保存先を選択）',
+      m_plBtnIn: '✔ 「{name}」に追加済み（クリックで外す／右クリックで保存先変更）',
+      m_plBtnOut: '➕ 「{name}」に一発追加（もう一度押すと外す／右クリックで保存先変更）',
+      m_plFetching: '🔄 プレイリスト一覧を取得中...',
+      m_plNoLogin: '⚠️ SoundCloudにログインしていないため、プレイリストを取得できません',
+      m_plNone: '⚠️ プレイリストがありません。先にSoundCloudでプレイリストを作成してください',
+      m_plTargetSet: '📋 保存先を「{name}」に設定しました！',
+      m_noTrackInfo: '⚠️ 再生中の曲情報が取得できません',
+      m_loginToken: '⚠️ SoundCloudにログインしてください（認証トークンが見つかりません）',
+      m_pickTarget: '📋 追加先を選んでください',
+      m_plAborted: '⚠️ プレイリストへの追加を中断しました',
+      m_plDefaultName: '指定プレイリスト',
+      m_plTargetMissing: '⚠️ 保存先プレイリストが見つかりません。選び直してください',
+      m_plNoTargetAbort: '⚠️ 追加先が設定されなかったため中断しました',
+      m_authFail: '❌ アカウント認証に失敗しました ({s})。SoundCloudを再読み込み／再ログインしてください',
+      m_plFull: '⚠️ 「{name}」は500曲の上限に達しています',
+      m_plRemoved: '➖ 「{track}」を「{name}」から外しました',
+      m_plAdded: '✅ 「{track}」を「{name}」に追加しました（もう一度押すと外せます）',
+      m_plUpdateFail: '❌ プレイリストの更新に失敗しました ({s})',
+      m_error: '❌ エラー: {msg}',
+      m_errorOcc: 'エラーが発生しました: {msg}',
+      m_exLogin: 'SoundCloudにログインしていないため書き出せません。SoundCloudでログインしてから再試行してください。',
+      m_exNone: 'エクスポートできるDislike曲がありません（曲IDが取得できた曲のみ書き出せます）。',
+      m_connectFail: 'SoundCloudアカウントに接続できませんでした。ページを再読み込みしてください。',
+      m_exPlFail: 'Dislikeプレイリストの取得に失敗しました (HTTP {s})',
+      m_exUpdated: 'プレイリスト「{name}」に書き出しました（合計 {n} 曲{cap}）',
+      m_exCap: '・上限500曲',
+      m_exUpdateFail: 'エクスポート更新に失敗しました (HTTP {s})',
+      m_exCreated: '非公開プレイリスト「{name}」を作成し、{n} 曲を書き出しました！',
+      m_exCreateFail: 'プレイリスト新規作成に失敗しました (HTTP {s})',
+      m_imLogin: 'SoundCloudにログインしていないため読み込めません。SoundCloudでログインしてから再試行してください。',
+      m_imNotFound: '「{name}」という名前のプレイリストが見つかりませんでした。先に書き出しを行ってください。',
+      m_imFail: 'プレイリスト取得失敗 (HTTP {s})',
+      m_imEmpty: 'プレイリスト「{name}」には曲がありませんでした。',
+      m_imDone: 'プレイリスト「{name}」から {n} 曲を確認し、新たに {c} 件をDislikeリストに追加しました！',
+      m_volRestored: '🔊 音量を復元しました ({n}%)',
+      m_muted: '🔇 ミュートしました',
+      m_unmute: 'ミュート解除',
+      m_discOn: '🔍 発掘モード ON（知っている曲を自動スキップ）',
+      m_discOff: '⏸ 発掘モード OFF（SoundCloud 通常再生）',
+      m_toDiscovery: '🔍 発掘モード（未知のアーティスト）に切替',
+      m_toFollowing: '👥 フォロー新曲モード（新曲のみ）に切替',
+      m_stOff: '⏸ 発掘 OFF',
+      m_stOn: '🔍 発掘 ON',
+      m_stFollow: '👥 フォロー新曲',
+      m_stationStarted: '📻 ステーションを開始しました！',
+      m_stationStartedMsg: 'ステーションを開始しました',
+      m_stationLoading: '📻 ステーションを読込中...',
+      m_stationPlaying: '📻 ステーションを再生開始しました！',
+      m_stationNoTrack: '⚠️ 現在再生中の曲情報を取得できませんでした',
+      m_stationNoTrackMsg: '曲情報を取得できませんでした',
+      m_repostHead: '🔁 リポスト',
+      m_repostPh: 'コメント（任意・{n}文字まで）',
+      m_send: '送信',
+      m_reposting: '🔁 リポスト中...',
+      m_repostFail: '⚠️ リポストに失敗しました ({s})',
+      m_repostCapFail: '⚠️ リポストしましたが、コメントの追加に失敗しました ({s})',
+      m_repostedCap: '🔁 コメント付きでリポストしました！',
+      m_reposted: '🔁 リポストしました！',
+      m_commErr: '⚠️ 通信エラーが発生しました',
+      m_tabNoReply: '⚠️ 音を出しているタブが応答しません',
+      m_noLikeBtn: '⚠️ Likeボタンが見つかりません',
+      m_trackLoading: '⚠️ トラック情報を取得中...',
+      m_loginPlease: '⚠️ SoundCloudにログインしてください',
+      m_unreposting: '🔁 リポスト解除中...',
+      m_unrepostFail: '⚠️ リポスト解除に失敗しました ({s})',
+      m_artistDefault: 'アーティスト',
+      m_artistLoading: '⚠️ アーティストIDを確認中...',
+      m_unfollowing: '👤 フォロー解除中...',
+      m_following: '👤 フォロー中...',
+      m_unfollowed: '👤 {name} のフォローを解除しました',
+      m_followed: '👤 {name} をフォローしました！',
+      m_followFail: '⚠️ フォロー通信失敗 ({s})',
+      m_notPlaying: '未再生',
+      m_repostedTip: 'リポスト済み（クリックで解除）',
+      m_repostTip: 'リポスト（コメントを付けられます）',
+      m_followingLbl: '👤✓ フォロー中',
+      m_untitled: '(無題)',
+
       // Playlist picker popup
       pickerTitle: '➕ ワンクリック追加先を選択',
       pickerCancel: 'キャンセル'
@@ -242,6 +324,88 @@
       mpToastUnfollowed: '👤 Unfollowed artist',
       mpStatusToggleOff: 'Click to turn Discovery OFF (Standard playback)',
       mpStatusToggleOn: 'Click to turn Discovery ON (Skip known tracks)',
+
+      // Messages (toasts, tooltips, results)
+      m_streakStop: '⚠️ Many known tracks in a row - playing this one as is',
+      m_savedTo: 'Target',
+      m_plBtnNoTarget: '➕ One-click add to playlist (click to choose the target)',
+      m_plBtnIn: '✔ Already in "{name}" (click to remove / right-click to change target)',
+      m_plBtnOut: '➕ One-click add to "{name}" (press again to remove / right-click to change target)',
+      m_plFetching: '🔄 Fetching playlists...',
+      m_plNoLogin: '⚠️ Not logged in to SoundCloud - cannot fetch playlists',
+      m_plNone: '⚠️ No playlists. Create one on SoundCloud first',
+      m_plTargetSet: '📋 Target set to "{name}"!',
+      m_noTrackInfo: '⚠️ Cannot get the current track info',
+      m_loginToken: '⚠️ Please log in to SoundCloud (no auth token found)',
+      m_pickTarget: '📋 Please choose a playlist',
+      m_plAborted: '⚠️ Adding to the playlist was cancelled',
+      m_plDefaultName: 'the playlist',
+      m_plTargetMissing: '⚠️ Target playlist not found. Please choose again',
+      m_plNoTargetAbort: '⚠️ Cancelled because no playlist was chosen',
+      m_authFail: '❌ Account authentication failed ({s}). Reload SoundCloud or log in again',
+      m_plFull: '⚠️ "{name}" has reached the 500-track limit',
+      m_plRemoved: '➖ Removed "{track}" from "{name}"',
+      m_plAdded: '✅ Added "{track}" to "{name}" (press again to remove)',
+      m_plUpdateFail: '❌ Failed to update the playlist ({s})',
+      m_error: '❌ Error: {msg}',
+      m_errorOcc: 'An error occurred: {msg}',
+      m_exLogin: 'Not logged in to SoundCloud, so nothing can be exported. Log in and try again.',
+      m_exNone: 'No disliked tracks to export (only tracks with a known ID can be exported).',
+      m_connectFail: 'Could not connect to the SoundCloud account. Please reload the page.',
+      m_exPlFail: 'Failed to fetch the Dislike playlist (HTTP {s})',
+      m_exUpdated: 'Exported to playlist "{name}" ({n} tracks in total{cap})',
+      m_exCap: ', 500-track limit',
+      m_exUpdateFail: 'Failed to update the export (HTTP {s})',
+      m_exCreated: 'Created private playlist "{name}" and exported {n} tracks!',
+      m_exCreateFail: 'Failed to create the playlist (HTTP {s})',
+      m_imLogin: 'Not logged in to SoundCloud, so nothing can be imported. Log in and try again.',
+      m_imNotFound: 'No playlist named "{name}" was found. Export first.',
+      m_imFail: 'Failed to fetch the playlist (HTTP {s})',
+      m_imEmpty: 'Playlist "{name}" has no tracks.',
+      m_imDone: 'Checked {n} tracks in playlist "{name}" and added {c} new ones to the Dislike list!',
+      m_volRestored: '🔊 Volume restored ({n}%)',
+      m_muted: '🔇 Muted',
+      m_unmute: 'Unmute',
+      m_discOn: '🔍 Discovery Mode ON (known tracks are skipped)',
+      m_discOff: '⏸ Discovery Mode OFF (normal SoundCloud playback)',
+      m_toDiscovery: '🔍 Switched to Discovery Mode (unknown artists)',
+      m_toFollowing: '👥 Switched to Following Only Mode (new tracks only)',
+      m_stOff: '⏸ Discovery OFF',
+      m_stOn: '🔍 Discovery ON',
+      m_stFollow: '👥 Following only',
+      m_stationStarted: '📻 Station started!',
+      m_stationStartedMsg: 'Station started',
+      m_stationLoading: '📻 Loading station...',
+      m_stationPlaying: '📻 Station is now playing!',
+      m_stationNoTrack: '⚠️ Could not get the current track info',
+      m_stationNoTrackMsg: 'Could not get the track info',
+      m_repostHead: '🔁 Repost',
+      m_repostPh: 'Comment (optional, up to {n} characters)',
+      m_send: 'Send',
+      m_reposting: '🔁 Reposting...',
+      m_repostFail: '⚠️ Repost failed ({s})',
+      m_repostCapFail: '⚠️ Reposted, but adding the comment failed ({s})',
+      m_repostedCap: '🔁 Reposted with a comment!',
+      m_reposted: '🔁 Reposted!',
+      m_commErr: '⚠️ A communication error occurred',
+      m_tabNoReply: '⚠️ The tab that is playing does not respond',
+      m_noLikeBtn: '⚠️ Like button not found',
+      m_trackLoading: '⚠️ Getting the track info...',
+      m_loginPlease: '⚠️ Please log in to SoundCloud',
+      m_unreposting: '🔁 Removing the repost...',
+      m_unrepostFail: '⚠️ Failed to remove the repost ({s})',
+      m_artistDefault: 'the artist',
+      m_artistLoading: '⚠️ Checking the artist ID...',
+      m_unfollowing: '👤 Unfollowing...',
+      m_following: '👤 Following...',
+      m_unfollowed: '👤 Unfollowed {name}',
+      m_followed: '👤 Followed {name}!',
+      m_followFail: '⚠️ Follow failed ({s})',
+      m_notPlaying: 'Not playing',
+      m_repostedTip: 'Reposted (click to remove)',
+      m_repostTip: 'Repost (you can add a comment)',
+      m_followingLbl: '👤✓ Following',
+      m_untitled: '(untitled)',
 
       // Playlist picker popup
       pickerTitle: '➕ Select 1-Click Target Playlist',
@@ -457,7 +621,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.4)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.5)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -471,6 +635,14 @@
     const DISCOVERY_ENABLED_KEY = 'sc_fresh_station_discovery_enabled';
     const AUTO_MINI_PLAYER_KEY = 'sc_fresh_station_auto_miniplayer';
     const PREFERRED_LANGUAGE_KEY = 'sc_fresh_station_preferred_language';
+
+    // 画面に出す文字を辞書(i18n.js)から取る。{name} などは vars で差し込む
+    function tt(key, vars) {
+        let v = getI18nTexts()[key];
+        if (typeof v !== 'string') return key;
+        if (vars) v = v.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] === undefined || vars[k] === null ? '' : String(vars[k]); });
+        return v;
+    }
 
     function getI18nTexts() {
         if (typeof FreshDigI18n !== 'undefined' && FreshDigI18n.getTexts) {
@@ -1102,8 +1274,8 @@
                 } else if (action === 'SET_LANGUAGE') {
                     state.preferredLanguage = event.data.language || 'auto';
                     try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, state.preferredLanguage); } catch (e) {}
-                    updatePlayerBarTitles();
-                    syncMiniPlayerUI();
+                    applyLanguage();
+                    fdBus.post('lang', { language: state.preferredLanguage });
                     ack({ success: true, preferredLanguage: state.preferredLanguage });
                 } else if (action === 'SET_AUTO_MINI_PLAYER') {
                     setAutoMiniPlayer(event.data.enabled !== false);
@@ -1159,7 +1331,7 @@
                 }
             } catch (e) {
                 console.error('[SC-FreshStation] Popup action error (' + action + '):', e);
-                ack({ success: false, message: 'エラーが発生しました: ' + (e && e.message) });
+                ack({ success: false, message: tt('m_errorOcc', { msg: e && e.message }) });
             }
         }
     });
@@ -1561,7 +1733,7 @@
             const playlists = [];
             const plOk = await fetchPaged('users/' + state.myUserId + '/playlists?limit=50&linked_partitioning=1', 200, function (p) {
                 if (!p || !p.id) return false;
-                playlists.push({ id: p.id, title: p.title || '(無題)', trackCount: p.track_count || 0 });
+                playlists.push({ id: p.id, title: p.title || tt('m_untitled'), trackCount: p.track_count || 0 });
             });
             if (plOk !== null) {
                 state.myPlaylists = playlists;
@@ -1806,7 +1978,7 @@
         if (state.robotBlocked) return false;
         if (marginGuard.consecutiveSkips >= MAX_CONSECUTIVE_AUTO_SKIPS) {
             console.warn('[SC-FreshStation] ⚠️ 連続スキップが' + MAX_CONSECUTIVE_AUTO_SKIPS + '曲に達したため、この曲はそのまま再生します。');
-            showGlobalToast('⚠️ 知っている曲が続いたため、この曲はそのまま再生します');
+            showGlobalToast(tt('m_streakStop'));
             dlog('skip-brake', MAX_CONSECUTIVE_AUTO_SKIPS);
             marginGuard.consecutiveSkips = 0;
             return false;
@@ -1816,7 +1988,7 @@
         const title = (info && info.title) || '';
         const reasonText = getI18nTexts()[reason] || reason;
         console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
-        showGlobalToast('⏩ ' + (getI18nTexts().skipToastPrefix || 'スキップ') + '（' + reasonText + '）' + (title ? '：' + title : ''));
+        showGlobalToast('⏩ ' + tt('skipToastPrefix') + ' (' + reasonText + ')' + (title ? ': ' + title : ''));
         dlog('auto-skip', { reason: reason, id: info && info.id, n: marginGuard.consecutiveSkips });
 
         const run = function () {
@@ -2074,7 +2246,7 @@
                 e.preventDefault();
                 toggleDiscoveryEnabled();
             });
-            menuGroup.appendChild(modeBtn);
+            addMain(modeBtn);
         }
         updateModeButtonUI();
 
@@ -2126,7 +2298,7 @@
                 e.preventDefault();
                 handleHateClick();
             });
-            addMain(hateBtn);
+            menuGroup.appendChild(hateBtn);
         }
 
         // 4. プレイリスト一発挿入ボタン (アイコン1個: ➕)
@@ -2168,9 +2340,46 @@
                 e.preventDefault();
                 toggleMiniPlayer();
             });
-            menuGroup.appendChild(mpBtn);
+            addMain(mpBtn);
         }
     }
+
+    // 言語を変えたとき: ページのボタン・開いているミニプレイヤーの文字をすぐ入れ替える（R2）
+    function applyLanguage() {
+        try { updatePlayerBarTitles(); } catch (e) {}
+        try { updatePlaylistButtonUI(); } catch (e) {}
+        try {
+            if (miniPlayerWindow && !miniPlayerWindow.closed) {
+                const doc = miniPlayerWindow.document;
+                const tx = getI18nTexts();
+                doc.title = tx.mpTitle;
+                const set = function (id, key, withText) {
+                    const el = doc.getElementById(id);
+                    if (!el) return;
+                    el.title = (tx)[key];
+                    if (withText) el.textContent = (tx)[withText];
+                };
+                set('mp-follow', 'mpFollowBtnTitle', null);
+                set('mp-station', 'mpStationBtnTitle', 'mpStationBtn');
+                set('mp-prev', 'mpPrevTitle');
+                set('mp-play', 'mpPlayTitle');
+                set('mp-next', 'mpNextTitle');
+                set('mp-like', 'mpLikeTitle');
+                set('mp-add-pl', 'mpAddPlTitle');
+                set('mp-dislike', 'mpDislikeTitle');
+                set('mp-hate', 'mpHateTitle');
+                set('mp-vol-icon', 'volMute');
+                set('mp-vol-input', 'volSliderTitle');
+            }
+        } catch (e) {}
+        try { syncMiniPlayerUI(); } catch (e) {}
+    }
+    fdBus.on('lang', function (m) {
+        if (!m.language || m.language === state.preferredLanguage) return;
+        state.preferredLanguage = m.language;
+        try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, state.preferredLanguage); } catch (e) {}
+        applyLanguage();
+    });
 
     function updatePlayerBarTitles() {
         const tx = getI18nTexts();
@@ -2250,7 +2459,7 @@
 
     function getTargetPlaylistName() {
         const found = state.myPlaylists.find(function (p) { return String(p.id) === String(state.targetPlaylistId); });
-        return found ? found.title : '保存先';
+        return found ? found.title : tt('m_savedTo');
     }
 
     // 今の曲が追加先プレイリストに入っているか（キャッシュ基準。不明なら false）
@@ -2289,10 +2498,10 @@
         const inPl = isCurrentTrackInTargetPlaylist();
         const name = state.targetPlaylistId ? getTargetPlaylistName() : '';
         const title = !state.targetPlaylistId
-            ? '➕ プレイリストに一発追加（クリックで保存先を選択）'
+            ? tt('m_plBtnNoTarget')
             : (inPl
-                ? '✔ 「' + name + '」に追加済み（クリックで外す／右クリックで保存先変更）'
-                : '➕ 「' + name + '」に一発追加（もう一度押すと外す／右クリックで保存先変更）');
+                ? tt('m_plBtnIn', { name: name })
+                : tt('m_plBtnOut', { name: name }));
 
         const btn = document.getElementById('sc-fresh-station-playlist-btn');
         if (btn && btn.innerHTML !== '⏳') {
@@ -2373,23 +2582,23 @@
     async function chooseTargetPlaylistPrompt(doc) {
         doc = doc || document;
         if (!state.myPlaylists || state.myPlaylists.length === 0) {
-            showGlobalToast('🔄 プレイリスト一覧を取得中...');
+            showGlobalToast(tt('m_plFetching'));
             await initUserData({ force: true });
         }
 
         if (!state.myUserId) {
-            showGlobalToast('⚠️ SoundCloudにログインしていないため、プレイリストを取得できません');
+            showGlobalToast(tt('m_plNoLogin'));
             return null;
         }
         if (!state.myPlaylists || state.myPlaylists.length === 0) {
-            showGlobalToast('⚠️ プレイリストがありません。先にSoundCloudでプレイリストを作成してください');
+            showGlobalToast(tt('m_plNone'));
             return null;
         }
 
         const selected = await showPlaylistPicker(doc, state.myPlaylists, state.targetPlaylistId);
         if (!selected) return null;
         saveTargetPlaylist(selected.id);
-        showGlobalToast('📋 保存先を「' + selected.title + '」に設定しました！');
+        showGlobalToast(tt('m_plTargetSet', { name: selected.title }));
         return selected;
     }
 
@@ -2412,23 +2621,23 @@
         try {
             const track = await ensureCurrentTrackInfo();
             if (!track || !track.id) {
-                showGlobalToast('⚠️ 再生中の曲情報が取得できません');
+                showGlobalToast(tt('m_noTrackInfo'));
                 return false;
             }
             const trackId = Number(track.id);
 
             // 認証トークンの確認（最新の Cookie / SoundCloud 本体のトークンを使用）
             if (!(await waitForAuthToken(1500))) {
-                showGlobalToast('⚠️ SoundCloudにログインしてください（認証トークンが見つかりません）');
+                showGlobalToast(tt('m_loginToken'));
                 return false;
             }
 
             // 追加先プレイリストのチェック
             if (!state.targetPlaylistId) {
-                showGlobalToast('📋 追加先を選んでください');
+                showGlobalToast(tt('m_pickTarget'));
                 const selected = await chooseTargetPlaylistPrompt(doc);
                 if (!selected) {
-                    showGlobalToast('⚠️ プレイリストへの追加を中断しました');
+                    showGlobalToast(tt('m_plAborted'));
                     return false;
                 }
             }
@@ -2442,7 +2651,7 @@
                 if (!plRes.ok) return { notFound: true, status: plRes.status };
 
                 const plData = await plRes.json();
-                const plTitle = plData.title || '指定プレイリスト';
+                const plTitle = plData.title || tt('m_plDefaultName');
                 const currentTrackIds = (plData.tracks || []).map(function (t) { return Number(t.id); }).filter(function (id) { return id > 0; });
                 const isIn = currentTrackIds.indexOf(trackId) !== -1;
 
@@ -2470,21 +2679,21 @@
 
             // プレイリストが見つからない（削除済み・別アカウントのID等）なら再選択して再試行
             if (res.notFound) {
-                showGlobalToast('⚠️ 保存先プレイリストが見つかりません。選び直してください');
+                showGlobalToast(tt('m_plTargetMissing'));
                 const newSelected = await chooseTargetPlaylistPrompt(doc);
                 if (!newSelected) {
-                    showGlobalToast('⚠️ 追加先が設定されなかったため中断しました');
+                    showGlobalToast(tt('m_plNoTargetAbort'));
                     return false;
                 }
                 res = await toggleInPlaylist(state.targetPlaylistId);
             }
 
             if (res.authError) {
-                showGlobalToast('❌ アカウント認証に失敗しました (' + res.status + ')。SoundCloudを再読み込み／再ログインしてください');
+                showGlobalToast(tt('m_authFail', { s: res.status }));
                 return false;
             }
             if (res.full) {
-                showGlobalToast('⚠️ 「' + res.plTitle + '」は500曲の上限に達しています');
+                showGlobalToast(tt('m_plFull', { name: res.plTitle }));
                 return false;
             }
             if (res.success) {
@@ -2492,18 +2701,18 @@
                 if (pl) pl.trackCount = res.count;
                 if (res.removed) {
                     console.log('[SC-FreshStation] Removed track ' + trackId + ' from playlist ' + state.targetPlaylistId);
-                    showGlobalToast('➖ 「' + track.title + '」を「' + res.plTitle + '」から外しました');
+                    showGlobalToast(tt('m_plRemoved', { track: track.title, name: res.plTitle }));
                 } else {
                     console.log('[SC-FreshStation] Added track ' + trackId + ' to playlist ' + state.targetPlaylistId);
-                    showGlobalToast('✅ 「' + track.title + '」を「' + res.plTitle + '」に追加しました（もう一度押すと外せます）');
+                    showGlobalToast(tt('m_plAdded', { track: track.title, name: res.plTitle }));
                 }
                 return true;
             }
-            showGlobalToast('❌ プレイリストの更新に失敗しました (' + res.status + ')');
+            showGlobalToast(tt('m_plUpdateFail', { s: res.status }));
             return false;
         } catch (err) {
             console.error('[SC-FreshStation] Failed to update playlist:', err);
-            showGlobalToast('❌ エラー: ' + err.message);
+            showGlobalToast(tt('m_error', { msg: err.message }));
             return false;
         } finally {
             isAddingToPlaylist = false;
@@ -2687,7 +2896,7 @@
     // Dislike 曲を SoundCloud プレイリストにエクスポート
     async function exportDislikesToPlaylist() {
         if (!(await waitForAuthToken(1500))) {
-            return { success: false, message: 'SoundCloudにログインしていないため書き出せません。SoundCloudでログインしてから再試行してください。' };
+            return { success: false, message: tt('m_exLogin') };
         }
 
         // 数値トラックIDを収集
@@ -2700,20 +2909,20 @@
         }
 
         if (trackIds.length === 0) {
-            return { success: false, message: 'エクスポートできるDislike曲がありません（曲IDが取得できた曲のみ書き出せます）。' };
+            return { success: false, message: tt('m_exNone') };
         }
 
         try {
             await initUserData({ force: true });
             if (!state.myUserId) {
-                return { success: false, message: 'SoundCloudアカウントに接続できませんでした。ページを再読み込みしてください。' };
+                return { success: false, message: tt('m_connectFail') };
             }
             const existingPl = state.myPlaylists.find(function (p) { return (p.title || '').toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase(); });
 
             if (existingPl) {
                 const plRes = await scApi('playlists/' + existingPl.id);
                 if (!plRes.ok) {
-                    return { success: false, message: 'Dislikeプレイリストの取得に失敗しました (HTTP ' + plRes.status + ')' };
+                    return { success: false, message: tt('m_exPlFail', { s: plRes.status }) };
                 }
                 const plData = await plRes.json();
                 const currentIds = (plData.tracks || []).map(function (t) { return Number(t.id); });
@@ -2725,9 +2934,9 @@
                 });
 
                 if (putRes.ok) {
-                    return { success: true, message: 'プレイリスト「' + DISLIKE_PLAYLIST_TITLE + '」に書き出しました（合計 ' + mergedIds.length + ' 曲' + (mergedIds.length >= 500 ? '・上限500曲' : '') + '）' };
+                    return { success: true, message: tt('m_exUpdated', { name: DISLIKE_PLAYLIST_TITLE, n: mergedIds.length, cap: mergedIds.length >= 500 ? tt('m_exCap') : '' }) };
                 }
-                return { success: false, message: 'エクスポート更新に失敗しました (HTTP ' + putRes.status + ')' };
+                return { success: false, message: tt('m_exUpdateFail', { s: putRes.status }) };
             }
 
             const postRes = await scApi('playlists', {
@@ -2743,25 +2952,25 @@
 
             if (postRes.ok) {
                 await initUserData({ force: true });
-                return { success: true, message: '非公開プレイリスト「' + DISLIKE_PLAYLIST_TITLE + '」を作成し、' + Math.min(trackIds.length, 500) + ' 曲を書き出しました！' };
+                return { success: true, message: tt('m_exCreated', { name: DISLIKE_PLAYLIST_TITLE, n: Math.min(trackIds.length, 500) }) };
             }
-            return { success: false, message: 'プレイリスト新規作成に失敗しました (HTTP ' + postRes.status + ')' };
+            return { success: false, message: tt('m_exCreateFail', { s: postRes.status }) };
         } catch (e) {
             console.error('[SC-FreshStation] Export dislikes error:', e);
-            return { success: false, message: 'エラーが発生しました: ' + e.message };
+            return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
 
     // SoundCloud プレイリストから Dislike 曲をインポート
     async function importDislikesFromPlaylist() {
         if (!(await waitForAuthToken(1500))) {
-            return { success: false, message: 'SoundCloudにログインしていないため読み込めません。SoundCloudでログインしてから再試行してください。' };
+            return { success: false, message: tt('m_imLogin') };
         }
 
         try {
             await initUserData({ force: true });
             if (!state.myUserId) {
-                return { success: false, message: 'SoundCloudアカウントに接続できませんでした。ページを再読み込みしてください。' };
+                return { success: false, message: tt('m_connectFail') };
             }
             let targetPl = state.myPlaylists.find(function (p) { return (p.title || '').toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase(); });
             if (!targetPl) {
@@ -2769,18 +2978,18 @@
             }
 
             if (!targetPl) {
-                return { success: false, message: '「' + DISLIKE_PLAYLIST_TITLE + '」という名前のプレイリストが見つかりませんでした。先に書き出しを行ってください。' };
+                return { success: false, message: tt('m_imNotFound', { name: DISLIKE_PLAYLIST_TITLE }) };
             }
 
             const res = await scApi('playlists/' + targetPl.id);
             if (!res.ok) {
-                return { success: false, message: 'プレイリスト取得失敗 (HTTP ' + res.status + ')' };
+                return { success: false, message: tt('m_imFail', { s: res.status }) };
             }
 
             const plData = await res.json();
             const tracks = plData.tracks || [];
             if (tracks.length === 0) {
-                return { success: false, message: 'プレイリスト「' + targetPl.title + '」には曲がありませんでした。' };
+                return { success: false, message: tt('m_imEmpty', { name: targetPl.title }) };
             }
 
             let importedCount = 0;
@@ -2801,10 +3010,10 @@
             });
 
             saveDislikeData();
-            return { success: true, message: 'プレイリスト「' + targetPl.title + '」から ' + tracks.length + ' 曲を確認し、新たに ' + importedCount + ' 件をDislikeリストに追加しました！' };
+            return { success: true, message: tt('m_imDone', { name: targetPl.title, n: tracks.length, c: importedCount }) };
         } catch (e) {
             console.error('[SC-FreshStation] Import dislikes error:', e);
-            return { success: false, message: 'エラーが発生しました: ' + e.message };
+            return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
 
@@ -2968,11 +3177,11 @@
                 if (volMod.getMuted() || volMod.getVolume() === 0) {
                     const restore = volMod.getVolume() > 0 ? volMod.getVolume() : (lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8);
                     volMod.setVolumeAndMuted({ volume: restore, muted: false });
-                    showGlobalToast('🔊 音量を復元しました (' + Math.round(restore * 100) + '%)');
+                    showGlobalToast(tt('m_volRestored', { n: Math.round(restore * 100) }));
                 } else {
                     lastNonZeroVolume = volMod.getVolume();
                     volMod.setMuted(true);
-                    showGlobalToast('🔇 ミュートしました');
+                    showGlobalToast(tt('m_muted'));
                 }
             } catch (e) {}
             syncMiniPlayerVolumeUI(getSoundCloudVolume());
@@ -2982,11 +3191,11 @@
         if (cur > 0) {
             lastNonZeroVolume = cur;
             setSoundCloudVolume(0);
-            showGlobalToast('🔇 ミュートしました');
+            showGlobalToast(tt('m_muted'));
         } else {
             const restore = lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8;
             setSoundCloudVolume(restore);
-            showGlobalToast('🔊 音量を復元しました (' + Math.round(restore * 100) + '%)');
+            showGlobalToast(tt('m_volRestored', { n: Math.round(restore * 100) }));
         }
     }
 
@@ -3005,7 +3214,7 @@
             if (text) text.textContent = pct + '%';
             if (icon) {
                 icon.textContent = vol === 0 ? '🔇' : (vol < 0.5 ? '🔉' : '🔊');
-                icon.title = vol === 0 ? 'ミュート解除' : 'ミュート切替';
+                icon.title = vol === 0 ? tt('m_unmute') : tt('volMute');
             }
         } catch (e) {}
     }
@@ -3098,7 +3307,7 @@
         updateModeButtonUI();
         syncMiniPlayerUI();
         if (!(options && options.silent) || changed) {
-            showGlobalToast(enabled ? '🔍 発掘モード ON（知っている曲を自動スキップ）' : '⏸ 発掘モード OFF（SoundCloud 通常再生）');
+            showGlobalToast(enabled ? tt('m_discOn') : tt('m_discOff'));
         }
         console.log('[SC-FreshStation] Discovery mode:', enabled ? 'ON' : 'OFF');
     }
@@ -3119,8 +3328,8 @@
         console.log('[SC-FreshStation] Toggled mode to:', newMode);
 
         const msg = newMode === 'DISCOVERY'
-            ? '🔍 発掘モード（未知のアーティスト）に切替'
-            : '👥 フォロー新曲モード（新曲のみ）に切替';
+            ? tt('m_toDiscovery')
+            : tt('m_toFollowing');
         showGlobalToast(msg);
 
         updateModeButtonUI();
@@ -3151,8 +3360,8 @@
             const btn = document.querySelector(sel);
             if (btn && btn.id !== 'mp-station' && btn.id !== 'sc-fresh-station-station-btn' && btn.offsetParent !== null) {
                 btn.click();
-                showGlobalToast('📻 ステーションを開始しました！');
-                return { success: true, message: 'ステーションを開始しました' };
+                showGlobalToast(tt('m_stationStarted'));
+                return { success: true, message: tt('m_stationStartedMsg') };
             }
         }
 
@@ -3203,8 +3412,8 @@
 
             if (foundStationItem) {
                 foundStationItem.click();
-                showGlobalToast('📻 ステーションを開始しました！');
-                return { success: true, message: 'ステーションを開始しました' };
+                showGlobalToast(tt('m_stationStarted'));
+                return { success: true, message: tt('m_stationStartedMsg') };
             } else {
                 moreBtn.click(); // メニューを閉じる
             }
@@ -3216,14 +3425,14 @@
             const cardStation = card.querySelector('button.sc-button-station, button[title*="Station" i], button[title*="ステーション"]');
             if (cardStation) {
                 cardStation.click();
-                showGlobalToast('📻 ステーションを開始しました！');
-                return { success: true, message: 'ステーションを開始しました' };
+                showGlobalToast(tt('m_stationStarted'));
+                return { success: true, message: tt('m_stationStartedMsg') };
             }
         }
 
         // Step 4: トラックIDによるSPAナビゲーション + 自動再生
         if (currentTrackId) {
-            showGlobalToast('📻 ステーションを読込中...');
+            showGlobalToast(tt('m_stationLoading'));
             const stationUrl = '/discover/sets/track-stations:' + currentTrackId;
 
             // SPAリンククリックで確実にルーターをキック
@@ -3255,7 +3464,7 @@
                 if (playBtn) {
                     playBtn.click();
                     playStarted = true;
-                    showGlobalToast('📻 ステーションを再生開始しました！');
+                    showGlobalToast(tt('m_stationPlaying'));
                     break;
                 }
             }
@@ -3265,11 +3474,11 @@
                     mainPlay.click();
                 }
             }
-            return { success: true, message: 'ステーションを開始しました' };
+            return { success: true, message: tt('m_stationStartedMsg') };
         }
 
-        showGlobalToast('⚠️ 現在再生中の曲情報を取得できませんでした');
-        return { success: false, message: '曲情報を取得できませんでした' };
+        showGlobalToast(tt('m_stationNoTrack'));
+        return { success: false, message: tt('m_stationNoTrackMsg') };
     }
 
     // =========================================================================
@@ -3498,14 +3707,14 @@
             panel.style.cssText = 'background:#1a1a1a;color:#eee;border:1px solid #ff5500;border-radius:8px;width:min(320px,94vw);padding:8px 10px;box-sizing:border-box;box-shadow:0 8px 30px rgba(0,0,0,0.6);';
 
             const head = doc.createElement('div');
-            head.textContent = '🔁 リポスト' + (trackTitle ? '：' + trackTitle : '');
+            head.textContent = tt('m_repostHead') + (trackTitle ? ': ' + trackTitle : '');
             head.style.cssText = 'font-size:12px;font-weight:bold;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
             panel.appendChild(head);
 
             const ta = doc.createElement('textarea');
             ta.maxLength = REPOST_CAPTION_MAX;
             ta.rows = 3;
-            ta.placeholder = 'コメント（任意・' + REPOST_CAPTION_MAX + '文字まで）';
+            ta.placeholder = tt('m_repostPh', { n: REPOST_CAPTION_MAX });
             ta.style.cssText = 'width:100%;box-sizing:border-box;resize:none;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px;font-size:12px;font-family:inherit;user-select:text;';
             panel.appendChild(ta);
 
@@ -3524,8 +3733,8 @@
                 b.style.cssText = 'flex:none;height:26px;padding:0 10px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid ' + (primary ? '#ff5500' : '#444') + ';background:' + (primary ? '#ff5500' : '#2a2a2a') + ';color:' + (primary ? '#fff' : '#bbb') + ';';
                 return b;
             };
-            const cancelBtn = mkBtn('キャンセル', false);
-            const sendBtn = mkBtn('送信', true);
+            const cancelBtn = mkBtn(tt('pickerCancel'), false);
+            const sendBtn = mkBtn(tt('m_send'), true);
             row.appendChild(counter);
             row.appendChild(cancelBtn);
             row.appendChild(sendBtn);
@@ -3555,11 +3764,11 @@
     // リポスト → （コメントがあれば）コメント設定。SoundCloud 本体と同じ2段階の API
     async function repostTrackWithCaption(trackId, caption, toast) {
         toast = toast || showGlobalToast;
-        toast('🔁 リポスト中...');
+        toast(tt('m_reposting'));
         try {
             const res = await scApi('me/track_reposts/' + trackId, { method: 'PUT' });
             if (!res.ok) {
-                toast('⚠️ リポストに失敗しました (' + res.status + ')');
+                toast(tt('m_repostFail', { s: res.status }));
                 return false;
             }
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
@@ -3571,17 +3780,17 @@
                     body: { caption: caption.slice(0, REPOST_CAPTION_MAX) }
                 });
                 if (!capRes.ok) {
-                    toast('⚠️ リポストしましたが、コメントの追加に失敗しました (' + capRes.status + ')');
+                    toast(tt('m_repostCapFail', { s: capRes.status }));
                     return true;
                 }
-                toast('🔁 コメント付きでリポストしました！');
+                toast(tt('m_repostedCap'));
             } else {
-                toast('🔁 リポストしました！');
+                toast(tt('m_reposted'));
             }
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
-            toast('⚠️ 通信エラーが発生しました');
+            toast(tt('m_commErr'));
             return false;
         }
     }
@@ -4059,12 +4268,12 @@
 
             <!-- ボリュームエリア -->
             <div class="volume-row">
-                <button class="btn-vol-icon" id="mp-vol-icon" title="ミュート切替">🔊</button>
+                <button class="btn-vol-icon" id="mp-vol-icon" title="${tx.volMute}">🔊</button>
                 <div class="volumebar-container">
                     <div class="volumebar-bg">
                         <div class="volumebar-fill" id="mp-vol-fill"></div>
                     </div>
-                    <input type="range" min="0" max="100" value="80" step="1" class="volumebar-input" id="mp-vol-input" title="音量調整">
+                    <input type="range" min="0" max="100" value="80" step="1" class="volumebar-input" id="mp-vol-input" title="${tx.volSliderTitle}">
                 </div>
                 <span class="vol-text" id="mp-vol-text">80%</span>
             </div>
@@ -4200,7 +4409,7 @@
         const likeBtn = document.querySelector('.playbackSoundBadge__like');
         const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
 
-        const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || '未再生';
+        const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || tt('m_notPlaying');
         const artist = (state.currentTrack && state.currentTrack.artistName) || (artistEl ? (artistEl.getAttribute('title') || artistEl.textContent) : '') || 'SoundCloud';
 
         let art = '';
@@ -4280,7 +4489,7 @@
             if (!fdRemote.pending[id]) return;
             delete fdRemote.pending[id];
             if (fdRemote.now && fdRemote.now.tabId === r.tabId) fdRemote.now = null;
-            mpToast('⚠️ 音を出しているタブが応答しません');
+            mpToast(tt('m_tabNoReply'));
         }, 1500);
     }
 
@@ -4312,34 +4521,34 @@
         mute: function () { toggleSoundCloudMute(); },
         like: function (a, toast) {
             const likeBtn = document.querySelector('.playbackSoundBadge__like');
-            if (!likeBtn) { toast('⚠️ Likeボタンが見つかりません'); return; }
+            if (!likeBtn) { toast(tt('m_noLikeBtn')); return; }
             const isCurrentlyLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
             likeBtn.click();
             const likedId = state.currentTrack && toNumId(state.currentTrack.id);
             if (likedId) {
                 if (isCurrentlyLiked) state.likedTrackIds.delete(likedId); else state.likedTrackIds.add(likedId);
             }
-            toast(isCurrentlyLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
+            toast(isCurrentlyLiked ? tt('mpToastUnliked') : tt('mpToastLiked'));
             setTimeout(syncMiniPlayerUI, 300);
         },
         repost: async function (a, toast) {
             const t = await ensureCurrentTrackInfo();
             const trackId = t && toNumId(t.id);
-            if (!trackId) { toast('⚠️ トラック情報を取得中...'); return; }
-            if (!(await waitForAuthToken(1500))) { toast('⚠️ SoundCloudにログインしてください'); return; }
+            if (!trackId) { toast(tt('m_trackLoading')); return; }
+            if (!(await waitForAuthToken(1500))) { toast(tt('m_loginPlease')); return; }
             if (a.unrepost) {
-                toast('🔁 リポスト解除中...');
+                toast(tt('m_unreposting'));
                 try {
                     const res = await scApi('me/track_reposts/' + trackId, { method: 'DELETE' });
                     if (res.ok) {
                         state.repostedTrackIds.delete(trackId);
-                        toast('🔁 リポストを解除しました');
+                        toast(tt('mpToastUnreposted'));
                     } else {
-                        toast('⚠️ リポスト解除に失敗しました (' + res.status + ')');
+                        toast(tt('m_unrepostFail', { s: res.status }));
                     }
                 } catch (err) {
                     console.error('[SC-FreshStation] Unrepost error:', err);
-                    toast('⚠️ 通信エラーが発生しました');
+                    toast(tt('m_commErr'));
                 }
             } else {
                 await repostTrackWithCaption(trackId, typeof a.caption === 'string' ? a.caption : '', toast);
@@ -4349,30 +4558,30 @@
         follow: async function (a, toast) {
             const t = await ensureCurrentTrackInfo();
             const artistId = t && t.artistId;
-            const artistName = (t && t.artistName) || 'アーティスト';
-            if (!artistId) { toast('⚠️ アーティストIDを確認中...'); return; }
+            const artistName = (t && t.artistName) || tt('m_artistDefault');
+            if (!artistId) { toast(tt('m_artistLoading')); return; }
             const isFollowing = state.followingUserIds.has(artistId);
-            toast(isFollowing ? '👤 フォロー解除中...' : '👤 フォロー中...');
+            toast(isFollowing ? tt('m_unfollowing') : tt('m_following'));
             try {
-                if (!(await waitForAuthToken(1500))) { toast('⚠️ SoundCloudにログインしてください'); return; }
+                if (!(await waitForAuthToken(1500))) { toast(tt('m_loginPlease')); return; }
                 // SoundCloud API: フォローは POST、解除は DELETE
                 const res = await scApi('me/followings/' + artistId, { method: isFollowing ? 'DELETE' : 'POST' });
                 if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
                     if (isFollowing) {
                         state.followingUserIds.delete(artistId);
-                        toast('👤 ' + artistName + ' のフォローを解除しました');
+                        toast(tt('m_unfollowed', { name: artistName }));
                     } else {
                         state.followingUserIds.add(artistId);
-                        toast('👤 ' + artistName + ' をフォローしました！');
+                        toast(tt('m_followed', { name: artistName }));
                     }
                     saveCacheData();
                     syncMiniPlayerUI();
                 } else {
-                    toast('⚠️ フォロー通信失敗 (' + res.status + ')');
+                    toast(tt('m_followFail', { s: res.status }));
                 }
             } catch (e) {
                 console.error('[SC-FreshStation] Follow error:', e);
-                toast('⚠️ 通信エラーが発生しました');
+                toast(tt('m_commErr'));
             }
         },
         station: function () { return startTrackStation(); },
@@ -4429,20 +4638,20 @@
 
         // Repost 状態
         if (mpRepost) {
-            mpRepost.title = d.reposted ? 'リポスト済み（クリックで解除）' : 'リポスト（コメントを付けられます）';
+            mpRepost.title = d.reposted ? tt('m_repostedTip') : tt('m_repostTip');
             mpRepost.classList.toggle('reposted', !!d.reposted);
         }
 
         // Follow 状態
         if (mpFollow && d.following !== null && d.following !== undefined) {
-            mpFollow.textContent = d.following ? '👤✓ フォロー中' : '👤 フォロー';
+            mpFollow.textContent = d.following ? tt('m_followingLbl') : tt('mpFollowBtn');
             mpFollow.classList.toggle('following', !!d.following);
         }
 
         if (mpStatus) {
             const isOn = state.discoveryEnabled;
             const isDiscovery = state.playbackMode === 'DISCOVERY';
-            const label = state.robotBlocked ? ('⚠️ ' + getI18nTexts().robotShort) : (!isOn ? '⏸ 発掘 OFF' : (isDiscovery ? '🔍 発掘 ON' : '👥 フォロー新曲'));
+            const label = state.robotBlocked ? ('⚠️ ' + getI18nTexts().robotShort) : (!isOn ? tt('m_stOff') : (isDiscovery ? tt('m_stOn') : tt('m_stFollow')));
             if (mpStatus.textContent !== label) mpStatus.textContent = label;
             const tStatus = getI18nTexts(); mpStatus.title = isOn ? tStatus.mpStatusToggleOff : tStatus.mpStatusToggleOn;
             mpStatus.classList.toggle('off', !isOn);

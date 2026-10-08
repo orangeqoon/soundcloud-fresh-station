@@ -94,7 +94,15 @@ test('i18n: keys used in code exist in the dictionary', () => {
       }
     }
     for (const m of src.matchAll(/getI18nTexts\(\)\.([A-Za-z][A-Za-z0-9]*)/g)) used.add(m[1]);
+    for (const m of src.matchAll(/tt\('([A-Za-z][A-Za-z0-9_]*)'/g)) used.add(m[1]);
     for (const k of used) assert.ok(k in dict, f + ' uses missing key: ' + k);
+  }
+});
+
+test('i18n: {placeholders} match between ja and en', () => {
+  const ph = (v) => (String(v).match(/\{\w+\}/g) || []).sort().join(',');
+  for (const k of Object.keys(i18n.translations.ja)) {
+    assert.strictEqual(ph(i18n.translations.en[k]), ph(i18n.translations.ja[k]), 'placeholders differ: ' + k);
   }
 });
 

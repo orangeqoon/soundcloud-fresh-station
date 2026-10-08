@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
   function applyStaticTranslations() {
+    document.documentElement.lang = FreshDigI18n.resolveLanguage(currentLang);
     document.getElementById('btn-miniplayer').textContent = t.btnMiniPlayer;
     const btnStation = document.getElementById('btn-station');
     btnStation.textContent = t.btnStation;
