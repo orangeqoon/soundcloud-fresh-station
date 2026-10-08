@@ -65,6 +65,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('label-stat-likes').textContent = t.statLikes;
     document.getElementById('label-stat-follows').textContent = t.statFollow;
     document.getElementById('label-stat-dislikes').textContent = t.statDislike;
+
+    const tgl = document.getElementById('discovery-toggle');
+    if (tgl) updateDiscoveryUI(tgl.checked);
+    const badge0 = document.getElementById('conn-badge');
+    if (badge0 && !cachedData) badge0.textContent = t.notConnected;
+    const plSel = document.getElementById('pl-select');
+    if (plSel && plSel.options.length === 1 && plSel.options[0].value === '') plSel.options[0].textContent = t.loadingSC;
   }
 
   applyStaticTranslations();
