@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.3
+// @version      1.9.4
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -457,7 +457,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.3)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.4)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1671,6 +1671,9 @@
             console.warn('[SC-FreshStation] monitorPlayback exception:', e);
         }
         try {
+            broadcastNow();
+        } catch (e) {}
+        try {
             syncMiniPlayerUI();
         } catch (e) {
             console.warn('[SC-FreshStation] syncMiniPlayer exception:', e);
@@ -2016,9 +2019,48 @@
         }
     }
 
+    // R9: FreshDig のボタンは SoundCloud の曲名欄(.playbackSoundBadge__actions)に入れず、プレイヤー部分の専用の枠に置く。
+    // 常に出すのは 👎 🚫 ➕ と「⋯」。残り(🔍 📻 🪟)は「⋯」のメニューに入れる
+    function ensureFreshBar() {
+        const host = document.querySelector('.playControls__elements');
+        if (!host) return null;
+        let bar = document.getElementById('sc-fresh-station-bar');
+        if (bar && bar.parentElement === host) return bar;
+        if (bar) bar.remove();
+        bar = document.createElement('div');
+        bar.id = 'sc-fresh-station-bar';
+        bar.style.cssText = 'position:relative;display:inline-flex;align-items:center;flex:0 0 auto;margin-left:8px;';
+        const menu = document.createElement('div');
+        menu.id = 'sc-fresh-station-menu';
+        menu.style.cssText = 'display:none;position:absolute;bottom:34px;right:0;z-index:2147483645;background:#222;border:1px solid #555;border-radius:6px;padding:4px 6px 4px 1px;box-shadow:0 4px 15px rgba(0,0,0,0.5);white-space:nowrap;';
+        bar.appendChild(menu);
+        const more = document.createElement('button');
+        more.id = 'sc-fresh-station-more-btn';
+        more.type = 'button';
+        more.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+        more.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #777; background: transparent; color: #ccc; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
+        more.textContent = '⋯';
+        more.title = 'FreshDig';
+        more.addEventListener('click', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+        });
+        bar.appendChild(more);
+        document.addEventListener('click', function (e) {
+            if (menu.style.display !== 'none' && !bar.contains(e.target)) menu.style.display = 'none';
+        }, true);
+        const vol = host.querySelector('.playControls__volume');
+        if (vol && vol.nextSibling) host.insertBefore(bar, vol.nextSibling); else host.appendChild(bar);
+        return bar;
+    }
+
     function injectButtons() {
-        const actionGroup = document.querySelector('.playbackSoundBadge__actions');
-        if (!actionGroup) return;
+        const bar = ensureFreshBar();
+        if (!bar) return;
+        const menuGroup = document.getElementById('sc-fresh-station-menu');   // 「⋯」の中
+        const moreBtn = document.getElementById('sc-fresh-station-more-btn');
+        const addMain = function (el) { bar.insertBefore(el, moreBtn); };
 
         // 0. 発掘モード切替ボタン (アイコン: 🔍 または 👥)
         if (!document.getElementById('sc-fresh-station-mode-btn')) {
@@ -2032,7 +2074,7 @@
                 e.preventDefault();
                 toggleDiscoveryEnabled();
             });
-            actionGroup.appendChild(modeBtn);
+            menuGroup.appendChild(modeBtn);
         }
         updateModeButtonUI();
 
@@ -2050,7 +2092,7 @@
                 e.preventDefault();
                 startTrackStation();
             });
-            actionGroup.appendChild(stBtn);
+            menuGroup.appendChild(stBtn);
         }
 
         // 2. Dislikeボタン (アイコン1個: 👎) - この曲だけ除外
@@ -2067,7 +2109,7 @@
                 e.preventDefault();
                 handleDislikeClick();
             });
-            actionGroup.appendChild(btn);
+            addMain(btn);
         }
 
         // 3. Hateボタン (アイコン1個: 🚫) - この作者の曲すべてを除外
@@ -2084,7 +2126,7 @@
                 e.preventDefault();
                 handleHateClick();
             });
-            actionGroup.appendChild(hateBtn);
+            addMain(hateBtn);
         }
 
         // 4. プレイリスト一発挿入ボタン (アイコン1個: ➕)
@@ -2108,7 +2150,7 @@
                 chooseTargetPlaylistPrompt();
             });
 
-            actionGroup.appendChild(plBtn);
+            addMain(plBtn);
             updatePlaylistButtonUI();
         }
 
@@ -2126,7 +2168,7 @@
                 e.preventDefault();
                 toggleMiniPlayer();
             });
-            actionGroup.appendChild(mpBtn);
+            menuGroup.appendChild(mpBtn);
         }
     }
 
@@ -4050,19 +4092,17 @@
             }
         }
 
+        // 操作は run() 経由。音を出している別のタブのミニプレイヤーとして動いているときは、そのタブへ送る（R4）
+        function run(name, args) {
+            if (mpUseRemote()) return mpRemoteCall(name, args || {});
+            const fn = MP_ACTIONS[name];
+            return fn ? fn(args || {}, showToast, doc) : undefined;
+        }
+
         // 基本メディア操作
-        doc.getElementById('mp-prev')?.addEventListener('click', function () {
-            const btn = document.querySelector('.playControls__prev');
-            if (btn) btn.click();
-        });
-        doc.getElementById('mp-play')?.addEventListener('click', function () {
-            const btn = document.querySelector('.playControls__play');
-            if (btn) btn.click();
-        });
-        doc.getElementById('mp-next')?.addEventListener('click', function () {
-            const btn = document.querySelector('.playControls__next');
-            if (btn) btn.click();
-        });
+        doc.getElementById('mp-prev')?.addEventListener('click', function () { run('prev'); });
+        doc.getElementById('mp-play')?.addEventListener('click', function () { run('play'); });
+        doc.getElementById('mp-next')?.addEventListener('click', function () { run('next'); });
 
         // シーク操作
         const seekInput = doc.getElementById('mp-seekbar-input');
@@ -4076,148 +4116,271 @@
 
         seekInput?.addEventListener('change', function (e) {
             const ratio = parseFloat(e.target.value) / 100;
-            seekToSoundCloudRatio(ratio);
+            run('seek', { ratio: ratio });
             setTimeout(() => { isSeekingInMiniPlayer = false; }, 300);
         });
-
 
         // ボリューム操作
         const volInput = doc.getElementById('mp-vol-input');
         volInput?.addEventListener('input', function (e) {
-            const val = parseFloat(e.target.value);
-            setSoundCloudVolume(val / 100);
+            run('vol', { v: parseFloat(e.target.value) / 100 });
         });
+        doc.getElementById('mp-vol-icon')?.addEventListener('click', function () { run('mute'); });
 
-        doc.getElementById('mp-vol-icon')?.addEventListener('click', function () {
-            toggleSoundCloudMute();
-        });
+        doc.getElementById('mp-like')?.addEventListener('click', function () { run('like'); });
 
-        // いいね (Like)
-        doc.getElementById('mp-like')?.addEventListener('click', function () {
-            const likeBtn = document.querySelector('.playbackSoundBadge__like');
-            if (likeBtn) {
-                const isCurrentlyLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
-                likeBtn.click();
-                const likedId = state.currentTrack && toNumId(state.currentTrack.id);
-                if (likedId) {
-                    if (isCurrentlyLiked) state.likedTrackIds.delete(likedId); else state.likedTrackIds.add(likedId);
-                }
-                showToast(isCurrentlyLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
-                setTimeout(syncMiniPlayerUI, 300);
-            } else {
-                showToast('⚠️ Likeボタンが見つかりません');
-            }
-        });
-
-        // リポスト (Repost)：未リポストならコメント入力欄を出して「送信」でリポスト＋コメント、リポスト済みなら解除
+        // リポスト：未リポストならコメント入力欄(このウィンドウ)を出して「送信」でリポスト＋コメント、リポスト済みなら解除
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
-            const t = await ensureCurrentTrackInfo();
-            const trackId = t && toNumId(t.id);
-            if (!trackId) {
-                showToast('⚠️ トラック情報を取得中...');
+            const d = mpCurrentData();
+            if (d.reposted) {
+                run('repost', { unrepost: true });
                 return;
             }
-            if (!(await waitForAuthToken(1500))) {
-                showToast('⚠️ SoundCloudにログインしてください');
-                return;
-            }
-
-            if (isTrackReposted(trackId)) {
-                showToast('🔁 リポスト解除中...');
-                try {
-                    const res = await scApi('me/track_reposts/' + trackId, { method: 'DELETE' });
-                    if (res.ok) {
-                        state.repostedTrackIds.delete(trackId);
-                        showToast('🔁 リポストを解除しました');
-                    } else {
-                        showToast('⚠️ リポスト解除に失敗しました (' + res.status + ')');
-                    }
-                } catch (err) {
-                    console.error('[SC-FreshStation] Unrepost error:', err);
-                    showToast('⚠️ 通信エラーが発生しました');
-                }
-                syncMiniPlayerUI();
-                return;
-            }
-
-            const caption = await showRepostCaptionDialog(doc, t.title || '');
+            const caption = await showRepostCaptionDialog(doc, d.title || '');
             if (caption === null) return; // キャンセル
-            await repostTrackWithCaption(trackId, caption, showToast);
-            syncMiniPlayerUI();
+            run('repost', { caption: caption });
         });
 
-        // フォロー (Follow)
-        doc.getElementById('mp-follow')?.addEventListener('click', async function () {
-            const t = await ensureCurrentTrackInfo();
-            const artistId = t && t.artistId;
-            const artistName = (t && t.artistName) || 'アーティスト';
+        doc.getElementById('mp-follow')?.addEventListener('click', function () { run('follow'); });
 
-            if (!artistId) {
-                showToast('⚠️ アーティストIDを確認中...');
-                return;
-            }
-
-            const isFollowing = state.followingUserIds.has(artistId);
-            showToast(isFollowing ? '👤 フォロー解除中...' : '👤 フォロー中...');
-
-            try {
-                if (!(await waitForAuthToken(1500))) {
-                    showToast('⚠️ SoundCloudにログインしてください');
-                    return;
-                }
-
-                // SoundCloud API: フォローは POST、解除は DELETE（以前は PUT を送っていたためフォローできなかった）
-                const res = await scApi('me/followings/' + artistId, { method: isFollowing ? 'DELETE' : 'POST' });
-
-                if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
-                    if (isFollowing) {
-                        state.followingUserIds.delete(artistId);
-                        showToast('👤 ' + artistName + ' のフォローを解除しました');
-                    } else {
-                        state.followingUserIds.add(artistId);
-                        showToast('👤 ' + artistName + ' をフォローしました！');
-                    }
-                    saveCacheData();
-                    syncMiniPlayerUI();
-                } else {
-                    showToast('⚠️ フォロー通信失敗 (' + res.status + ')');
-                }
-            } catch (e) {
-                console.error('[SC-FreshStation] Follow error:', e);
-                showToast('⚠️ 通信エラーが発生しました');
-            }
-        });
-
-        // ステータスバッジ（発掘モード／フォロー新曲）クリックでモード切替
+        // ステータスバッジ（発掘モード／フォロー新曲）クリックでモード切替（設定は全タブ共通なのでこのタブで行う）
         doc.getElementById('mp-status')?.addEventListener('click', function () {
             toggleDiscoveryEnabled();
         });
 
-        // ステーション開始 (Start Station)
-        doc.getElementById('mp-station')?.addEventListener('click', async function () {
-            await startTrackStation();
-        });
+        doc.getElementById('mp-station')?.addEventListener('click', function () { run('station'); });
 
         // プレイリスト追加 & 設定
         const mpAddPlBtn = doc.getElementById('mp-add-pl');
         if (mpAddPlBtn) {
-            mpAddPlBtn.addEventListener('click', async function () {
-                await handleAddTrackToPlaylist(doc);
-            });
-            mpAddPlBtn.addEventListener('contextmenu', async function (e) {
+            mpAddPlBtn.addEventListener('click', function () { run('addPl'); });
+            mpAddPlBtn.addEventListener('contextmenu', function (e) {
                 e.preventDefault();
-                await chooseTargetPlaylistPrompt(doc);
+                run('pickPl');
             });
         }
-        doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
-            showToast(getI18nTexts().mpToastDislike);
-            await handleDislikeClick();
-        });
-        doc.getElementById('mp-hate')?.addEventListener('click', async function () {
-            showToast(getI18nTexts().mpToastHate);
-            await handleHateClick();
-        });
+        doc.getElementById('mp-dislike')?.addEventListener('click', function () { run('dislike'); });
+        doc.getElementById('mp-hate')?.addEventListener('click', function () { run('hate'); });
     }
+
+    // ---- R4: 複数タブ。音を出しているタブの「今の曲」を BroadcastChannel で流し、ミニプレイヤーはそれを写す ----
+    const fdRemote = { now: null, active: false, seq: 0, pending: {} };
+
+    function isLocalPlaying() {
+        const playBtn = document.querySelector('.playControls__play');
+        return !!(playBtn && playBtn.classList.contains('playing'));
+    }
+
+    function mpToast(msg) {
+        try {
+            const t = miniPlayerWindow && !miniPlayerWindow.closed && miniPlayerWindow.document.getElementById('mp-toast');
+            if (t) {
+                t.textContent = msg;
+                t.classList.add('show');
+                setTimeout(function () { t.classList.remove('show'); }, 1500);
+            }
+        } catch (e) {}
+    }
+
+    // 自分のタブが再生中なら自分の表示。そうでなく、他のタブが最後に再生を知らせてきていればそちら
+    function mpUseRemote() {
+        const r = fdRemote.now;
+        if (!r) return false;
+        if (isLocalPlaying()) return false;
+        return r.d.playing ? (Date.now() - r.at < 5000) : true;
+    }
+
+    function mpCurrentData() {
+        return mpUseRemote() ? fdRemote.now.d : localSnapshot();
+    }
+
+    function localSnapshot() {
+        const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
+        const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
+        const likeBtn = document.querySelector('.playbackSoundBadge__like');
+        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+
+        const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || '未再生';
+        const artist = (state.currentTrack && state.currentTrack.artistName) || (artistEl ? (artistEl.getAttribute('title') || artistEl.textContent) : '') || 'SoundCloud';
+
+        let art = '';
+        const badgeImg = document.querySelector('.playbackSoundBadge__avatar span.sc-artwork');
+        if (badgeImg && badgeImg.style.backgroundImage) {
+            const m = badgeImg.style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
+            if (m) art = m[1];
+        }
+        if (art) art = art.replace(/-t(50|120|200)x(50|120|200)\./, '-t200x200.').replace(/-large\./, '-t200x200.');
+
+        const trackId = state.currentTrack && state.currentTrack.id;
+        let reposted = isTrackReposted(trackId);
+        if (!reposted && repostBtn) reposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
+
+        let following = null;
+        if (state.currentTrack && state.currentTrack.artistId) following = state.followingUserIds.has(state.currentTrack.artistId);
+
+        const timePassedEl = document.querySelector('.playbackTimeline__timePassed span[aria-hidden="true"]');
+        const durationEl = document.querySelector('.playbackTimeline__duration span[aria-hidden="true"]');
+        const progressBar = document.querySelector('.playbackTimeline__progressWrapper');
+        let ratio = 0;
+        if (progressBar) {
+            const ariaVal = parseFloat(progressBar.getAttribute('aria-valuenow'));
+            const ariaMax = parseFloat(progressBar.getAttribute('aria-valuemax')) || 1;
+            if (!isNaN(ariaVal) && ariaMax > 0) ratio = Math.min(1, Math.max(0, ariaVal / ariaMax));
+        }
+
+        return {
+            title: title,
+            artist: artist,
+            art: art,
+            playing: isLocalPlaying(),
+            liked: !!(likeBtn && (likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true')),
+            hasLikeBtn: !!likeBtn,
+            reposted: !!reposted,
+            following: following,
+            passed: timePassedEl ? timePassedEl.textContent.trim() : '0:00',
+            duration: durationEl ? durationEl.textContent.trim() : '0:00',
+            ratio: ratio,
+            vol: getSoundCloudVolume()
+        };
+    }
+
+    // 音を出しているタブが 0.5 秒ごとに呼ぶ（再生が止まってもそのタブが「最後に鳴らしたタブ」の間は流し続ける）
+    function broadcastNow() {
+        if (isLocalPlaying()) fdRemote.active = true;
+        if (!fdRemote.active) return;
+        fdBus.post('now', { d: localSnapshot() });
+    }
+
+    fdBus.on('now', function (m) {
+        if (!m.d) return;
+        if (m.d.playing) {
+            fdRemote.active = false;       // 他のタブが鳴らし始めた
+            fdRemote.now = { tabId: m.fromTabId, at: Date.now(), d: m.d };
+        } else if (!fdRemote.now || fdRemote.now.tabId === m.fromTabId) {
+            fdRemote.now = { tabId: m.fromTabId, at: Date.now(), d: m.d };
+        }
+    });
+
+    fdBus.on('bye', function (m) {
+        if (fdRemote.now && fdRemote.now.tabId === m.fromTabId) fdRemote.now = null;
+    });
+
+    window.addEventListener('pagehide', function () {
+        if (fdRemote.active) fdBus.post('bye');
+    });
+
+    // ミニプレイヤーの操作を、音を出しているタブへ送る
+    function mpRemoteCall(name, args) {
+        const r = fdRemote.now;
+        if (!r) return;
+        const id = ++fdRemote.seq;
+        fdRemote.pending[id] = true;
+        fdBus.post('cmd', { to: r.tabId, id: id, name: name, args: args });
+        setTimeout(function () {
+            if (!fdRemote.pending[id]) return;
+            delete fdRemote.pending[id];
+            if (fdRemote.now && fdRemote.now.tabId === r.tabId) fdRemote.now = null;
+            mpToast('⚠️ 音を出しているタブが応答しません');
+        }, 1500);
+    }
+
+    fdBus.on('cmd', function (m) {
+        if (m.to !== TAB_ID) return;
+        fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id });
+        const fn = MP_ACTIONS[m.name];
+        if (!fn) return;
+        const reply = function (text) { fdBus.post('cmd-toast', { to: m.fromTabId, text: text }); };
+        try {
+            const r = fn(m.args || {}, reply, null);
+            if (r && typeof r.catch === 'function') r.catch(function (e) { dlog('remote-cmd-error', m.name + ' ' + (e && e.message)); });
+        } catch (e) { dlog('remote-cmd-error', m.name + ' ' + (e && e.message)); }
+    });
+    fdBus.on('cmd-ack', function (m) {
+        if (m.to === TAB_ID) delete fdRemote.pending[m.id];
+    });
+    fdBus.on('cmd-toast', function (m) {
+        if (m.to === TAB_ID && typeof m.text === 'string') mpToast(m.text);
+    });
+
+    // ミニプレイヤーの操作の中身。(args, toast, doc) を受ける。doc はこのタブのミニプレイヤー（別タブから呼ばれたときは null）
+    const MP_ACTIONS = {
+        prev: function () { const b = document.querySelector('.playControls__prev'); if (b) b.click(); },
+        play: function () { const b = document.querySelector('.playControls__play'); if (b) b.click(); },
+        next: function () { const b = document.querySelector('.playControls__next'); if (b) b.click(); },
+        seek: function (a) { if (typeof a.ratio === 'number') seekToSoundCloudRatio(a.ratio); },
+        vol: function (a) { if (typeof a.v === 'number') setSoundCloudVolume(a.v); },
+        mute: function () { toggleSoundCloudMute(); },
+        like: function (a, toast) {
+            const likeBtn = document.querySelector('.playbackSoundBadge__like');
+            if (!likeBtn) { toast('⚠️ Likeボタンが見つかりません'); return; }
+            const isCurrentlyLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
+            likeBtn.click();
+            const likedId = state.currentTrack && toNumId(state.currentTrack.id);
+            if (likedId) {
+                if (isCurrentlyLiked) state.likedTrackIds.delete(likedId); else state.likedTrackIds.add(likedId);
+            }
+            toast(isCurrentlyLiked ? '🤍 ライクを解除しました' : '❤️ ライクしました！');
+            setTimeout(syncMiniPlayerUI, 300);
+        },
+        repost: async function (a, toast) {
+            const t = await ensureCurrentTrackInfo();
+            const trackId = t && toNumId(t.id);
+            if (!trackId) { toast('⚠️ トラック情報を取得中...'); return; }
+            if (!(await waitForAuthToken(1500))) { toast('⚠️ SoundCloudにログインしてください'); return; }
+            if (a.unrepost) {
+                toast('🔁 リポスト解除中...');
+                try {
+                    const res = await scApi('me/track_reposts/' + trackId, { method: 'DELETE' });
+                    if (res.ok) {
+                        state.repostedTrackIds.delete(trackId);
+                        toast('🔁 リポストを解除しました');
+                    } else {
+                        toast('⚠️ リポスト解除に失敗しました (' + res.status + ')');
+                    }
+                } catch (err) {
+                    console.error('[SC-FreshStation] Unrepost error:', err);
+                    toast('⚠️ 通信エラーが発生しました');
+                }
+            } else {
+                await repostTrackWithCaption(trackId, typeof a.caption === 'string' ? a.caption : '', toast);
+            }
+            syncMiniPlayerUI();
+        },
+        follow: async function (a, toast) {
+            const t = await ensureCurrentTrackInfo();
+            const artistId = t && t.artistId;
+            const artistName = (t && t.artistName) || 'アーティスト';
+            if (!artistId) { toast('⚠️ アーティストIDを確認中...'); return; }
+            const isFollowing = state.followingUserIds.has(artistId);
+            toast(isFollowing ? '👤 フォロー解除中...' : '👤 フォロー中...');
+            try {
+                if (!(await waitForAuthToken(1500))) { toast('⚠️ SoundCloudにログインしてください'); return; }
+                // SoundCloud API: フォローは POST、解除は DELETE
+                const res = await scApi('me/followings/' + artistId, { method: isFollowing ? 'DELETE' : 'POST' });
+                if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
+                    if (isFollowing) {
+                        state.followingUserIds.delete(artistId);
+                        toast('👤 ' + artistName + ' のフォローを解除しました');
+                    } else {
+                        state.followingUserIds.add(artistId);
+                        toast('👤 ' + artistName + ' をフォローしました！');
+                    }
+                    saveCacheData();
+                    syncMiniPlayerUI();
+                } else {
+                    toast('⚠️ フォロー通信失敗 (' + res.status + ')');
+                }
+            } catch (e) {
+                console.error('[SC-FreshStation] Follow error:', e);
+                toast('⚠️ 通信エラーが発生しました');
+            }
+        },
+        station: function () { return startTrackStation(); },
+        addPl: function (a, toast, doc) { return handleAddTrackToPlaylist(doc || undefined); },
+        pickPl: function (a, toast, doc) { return chooseTargetPlaylistPrompt(doc || undefined); },
+        dislike: function (a, toast) { toast(getI18nTexts().mpToastDislike); return handleDislikeClick(); },
+        hate: function (a, toast) { toast(getI18nTexts().mpToastHate); return handleHateClick(); }
+    };
 
     function syncMiniPlayerUI() {
         if (!miniPlayerWindow) return;
@@ -4239,24 +4402,7 @@
             return;
         }
 
-        const titleEl = document.querySelector('.playbackSoundBadge__titleLink');
-        const artistEl = document.querySelector('.playbackSoundBadge__lightLink');
-        const playBtn = document.querySelector('.playControls__play');
-        const likeBtn = document.querySelector('.playbackSoundBadge__like');
-        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
-
-        const title = (state.currentTrack && state.currentTrack.title) || (titleEl ? (titleEl.getAttribute('title') || titleEl.textContent) : '') || '未再生';
-        const artist = (state.currentTrack && state.currentTrack.artistName) || (artistEl ? (artistEl.getAttribute('title') || artistEl.textContent) : '') || 'SoundCloud';
-
-        let art = '';
-        const badgeImg = document.querySelector('.playbackSoundBadge__avatar span.sc-artwork');
-        if (badgeImg && badgeImg.style.backgroundImage) {
-            const m = badgeImg.style.backgroundImage.match(/url\(["']?([^"']+)["']?\)/);
-            if (m) art = m[1];
-        }
-        if (art) {
-            art = art.replace(/-t(50|120|200)x(50|120|200)\./, '-t200x200.').replace(/-large\./, '-t200x200.');
-        }
+        const d = mpCurrentData();
 
         const mpTitle = doc.getElementById('mp-title');
         const mpArtist = doc.getElementById('mp-artist');
@@ -4267,55 +4413,30 @@
         const mpFollow = doc.getElementById('mp-follow');
         const mpStatus = doc.getElementById('mp-status');
 
-        if (mpTitle && mpTitle.textContent !== title) mpTitle.textContent = title;
-        if (mpArtist && mpArtist.textContent !== artist) mpArtist.textContent = artist;
-        if (mpArt && art && mpArt.dataset.art !== art) {
-            mpArt.dataset.art = art;
-            mpArt.style.backgroundImage = 'url("' + art + '")';
+        if (mpTitle && mpTitle.textContent !== d.title) mpTitle.textContent = d.title;
+        if (mpArtist && mpArtist.textContent !== d.artist) mpArtist.textContent = d.artist;
+        if (mpArt && d.art && mpArt.dataset.art !== d.art) {
+            mpArt.dataset.art = d.art;
+            mpArt.style.backgroundImage = 'url("' + d.art + '")';
         }
-        if (mpPlay && playBtn) {
-            const isPlaying = playBtn.classList.contains('playing');
-            mpPlay.textContent = isPlaying ? '⏸' : '▶';
-        }
+        if (mpPlay) mpPlay.textContent = d.playing ? '⏸' : '▶';
 
         // Like 状態
-        if (mpLike && likeBtn) {
-            const isLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
-            if (isLiked) {
-                mpLike.textContent = '❤️';
-                mpLike.classList.add('liked');
-            } else {
-                mpLike.textContent = '🤍';
-                mpLike.classList.remove('liked');
-            }
+        if (mpLike && d.hasLikeBtn !== false) {
+            mpLike.textContent = d.liked ? '❤️' : '🤍';
+            mpLike.classList.toggle('liked', !!d.liked);
         }
 
         // Repost 状態
         if (mpRepost) {
-            const trackId = state.currentTrack && state.currentTrack.id;
-            let isReposted = isTrackReposted(trackId);
-            if (!isReposted && repostBtn) {
-                isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
-            }
-            mpRepost.title = isReposted ? 'リポスト済み（クリックで解除）' : 'リポスト（コメントを付けられます）';
-
-            if (isReposted) {
-                mpRepost.classList.add('reposted');
-            } else {
-                mpRepost.classList.remove('reposted');
-            }
+            mpRepost.title = d.reposted ? 'リポスト済み（クリックで解除）' : 'リポスト（コメントを付けられます）';
+            mpRepost.classList.toggle('reposted', !!d.reposted);
         }
 
         // Follow 状態
-        if (mpFollow && state.currentTrack && state.currentTrack.artistId) {
-            const isFollowing = state.followingUserIds.has(state.currentTrack.artistId);
-            if (isFollowing) {
-                mpFollow.textContent = '👤✓ フォロー中';
-                mpFollow.classList.add('following');
-            } else {
-                mpFollow.textContent = '👤 フォロー';
-                mpFollow.classList.remove('following');
-            }
+        if (mpFollow && d.following !== null && d.following !== undefined) {
+            mpFollow.textContent = d.following ? '👤✓ フォロー中' : '👤 フォロー';
+            mpFollow.classList.toggle('following', !!d.following);
         }
 
         if (mpStatus) {
@@ -4330,35 +4451,19 @@
 
         // シークバーの同期
         if (!isSeekingInMiniPlayer) {
-            const timePassedEl = document.querySelector('.playbackTimeline__timePassed span[aria-hidden="true"]');
-            const durationEl = document.querySelector('.playbackTimeline__duration span[aria-hidden="true"]');
-            const progressBar = document.querySelector('.playbackTimeline__progressWrapper');
-
-            const passedText = timePassedEl ? timePassedEl.textContent.trim() : '0:00';
-            const durationText = durationEl ? durationEl.textContent.trim() : '0:00';
-
-            let ratio = 0;
-            if (progressBar) {
-                const ariaVal = parseFloat(progressBar.getAttribute('aria-valuenow'));
-                const ariaMax = parseFloat(progressBar.getAttribute('aria-valuemax')) || 1;
-                if (!isNaN(ariaVal) && ariaMax > 0) {
-                    ratio = Math.min(1, Math.max(0, ariaVal / ariaMax));
-                }
-            }
-
             const mpPassed = doc.getElementById('mp-time-passed');
             const mpDuration = doc.getElementById('mp-time-duration');
             const mpFill = doc.getElementById('mp-seekbar-fill');
             const mpInput = doc.getElementById('mp-seekbar-input');
 
-            if (mpPassed && mpPassed.textContent !== passedText) mpPassed.textContent = passedText;
-            if (mpDuration && mpDuration.textContent !== durationText) mpDuration.textContent = durationText;
-            if (mpFill) mpFill.style.width = (ratio * 100) + '%';
-            if (mpInput && !isSeekingInMiniPlayer) mpInput.value = (ratio * 100);
+            if (mpPassed && mpPassed.textContent !== d.passed) mpPassed.textContent = d.passed;
+            if (mpDuration && mpDuration.textContent !== d.duration) mpDuration.textContent = d.duration;
+            if (mpFill) mpFill.style.width = (d.ratio * 100) + '%';
+            if (mpInput) mpInput.value = (d.ratio * 100);
         }
 
         // 音量UIの同期
-        syncMiniPlayerVolumeUI(getSoundCloudVolume());
+        syncMiniPlayerVolumeUI(typeof d.vol === 'number' ? d.vol : getSoundCloudVolume());
     }
 
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
