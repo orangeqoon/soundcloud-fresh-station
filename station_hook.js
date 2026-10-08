@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.6)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.7)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -204,6 +204,7 @@
                 updatedAt: Date.now()
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+            try { fdBus.post('dislike-changed'); } catch (e2) {}
         } catch (e) {
             console.error('[SC-FreshStation] Failed to save dislike data:', e);
         }
@@ -599,6 +600,7 @@
                 localStorage.setItem(PLAYBACK_MODE_KEY, state.playbackMode);
                 updateModeButtonUI();
             }
+            if (d && Array.isArray(d.laterArtists)) setLaterList(d.laterArtists);
             if (d && typeof d.autoMiniPlayer === 'boolean' && d.autoMiniPlayer !== state.autoMiniPlayer) {
                 setAutoMiniPlayer(d.autoMiniPlayer, { noSync: true });
             }
@@ -1194,6 +1196,8 @@
             title: track.title,
             artistId: track.user ? track.user.id : track.user_id,
             artistName: track.user ? track.user.username : 'Unknown',
+            artistPermalink: track.user ? (track.user.permalink || '') : '',
+            avatarUrl: track.user ? (track.user.avatar_url || '') : '',
             genre: (track.genre || '').trim(),
             href: getPlayingTrackHref()
         };
@@ -1223,6 +1227,9 @@
         } catch (e) {
             console.warn('[SC-FreshStation] monitorPlayback exception:', e);
         }
+        try {
+            updateHateButtons();
+        } catch (e) {}
         try {
             broadcastNow();
         } catch (e) {}
@@ -1272,7 +1279,7 @@
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
             inLibrary: isExplicitLibraryPage(),
-            onArtistPage: false
+            onArtistPage: FreshDigCore.isArtistPagePath(window.location.pathname)
         });
     }
 
@@ -1415,6 +1422,8 @@
             artistId: toNumId(a.user_id !== undefined ? a.user_id : user.id),
             title: a.title || '',
             artistName: user.username || '',
+            artistPermalink: user.permalink || '',
+            avatarUrl: user.avatar_url || '',
             genre: (a.genre || '').trim(),
             href: path,
             kind: a.kind || ''
@@ -1432,6 +1441,8 @@
             title: info.title,
             artistId: info.artistId,
             artistName: info.artistName,
+            artistPermalink: info.artistPermalink,
+            avatarUrl: info.avatarUrl,
             genre: info.genre,
             href: info.href
         };
@@ -1556,7 +1567,7 @@
 
         // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
         let reason = alreadyDecided ? null : getSkipReason(info);
-        if (!reason && !isExplicitLibraryPage() && likeBtn) {
+        if (!reason && !isExplicitLibraryPage() && !FreshDigCore.isArtistPagePath(window.location.pathname) && likeBtn) {
             const isSelected = likeBtn.classList.contains('sc-button-selected');
             const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
             const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
@@ -1677,9 +1688,26 @@
             hateBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
-                handleHateClick();
+                handleHateClick().then(function (r) { showGlobalToast(hateToastText(r)); });
             });
             menuGroup.appendChild(hateBtn);
+        }
+
+        // 3.5 後で聴くボタン (🎧)
+        if (!document.getElementById('sc-fresh-station-later-btn')) {
+            const lb = document.createElement('button');
+            lb.id = 'sc-fresh-station-later-btn';
+            lb.type = 'button';
+            lb.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+            lb.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #7e57c2; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
+            lb.innerHTML = '🎧';
+            lb.addEventListener('click', function (e) {
+                e.stopPropagation();
+                e.preventDefault();
+                toggleLater().then(showGlobalToast);
+            });
+            menuGroup.appendChild(lb);
+            updateLaterButton();
         }
 
         // 4. プレイリスト一発挿入ボタン (アイコン1個: ➕)
@@ -2130,6 +2158,8 @@
                         title: info.title,
                         artistId: info.artistId,
                         artistName: info.artistName,
+                        artistPermalink: info.artistPermalink,
+                        avatarUrl: info.avatarUrl,
                         genre: info.genre,
                         href: info.href
                     };
@@ -2430,33 +2460,205 @@
         }
     }
 
-    async function handleHateClick() {
-        const btn = document.getElementById('sc-fresh-station-hate-btn');
-        if (btn) {
-            btn.style.background = '#e53935';
-            btn.style.color = '#fff';
-            setTimeout(function () {
-                btn.style.background = 'transparent';
-                btn.style.color = '#e53935';
-            }, 500);
+    // 除外中の作者の記録のキー（なければ null）
+    function findHatedKey(t) {
+        if (!t) return null;
+        const keys = [];
+        if (t.artistId) keys.push(String(t.artistId));
+        if (t.artistName) keys.push('artist_' + encodeURIComponent(t.artistName), t.artistName);
+        for (let i = 0; i < keys.length; i++) {
+            if (state.dislikedArtists[keys[i]]) return keys[i];
         }
+        return null;
+    }
 
+    function getArtistPermalink(t) {
+        if (t && t.artistPermalink) return String(t.artistPermalink).toLowerCase();
+        try {
+            const a = document.querySelector('.playbackSoundBadge__lightLink');
+            if (a && a.href) return (new URL(a.href).pathname.split('/').filter(Boolean)[0] || '').toLowerCase();
+        } catch (e) {}
+        return '';
+    }
+
+    // 戻り値: { added: true/false, name }。除外中の作者なら解除、そうでなければ除外してスキップ
+    async function handleHateClick() {
         const t = await ensureCurrentTrackInfo();
         const artist = (t && t.artistName) ? t.artistName : (document.querySelector('.playbackSoundBadge__lightLink')?.getAttribute('title') || 'Unknown');
+        const hatedKey = findHatedKey(t);
+        if (hatedKey) {
+            delete state.dislikedArtists[hatedKey];
+            saveDislikeData();
+            updateHateButtons();
+            return { added: false, name: artist };
+        }
         const artistKey = (t && t.artistId) ? t.artistId : ('artist_' + encodeURIComponent(artist));
 
         state.dislikedArtists[artistKey] = {
             name: artist,
-            date: new Date().toLocaleDateString()
+            permalink: getArtistPermalink(t),
+            date: new Date().toLocaleDateString(),
+            ts: Date.now()
         };
 
         saveDislikeData();
+        updateHateButtons();
         console.log('[SC-FreshStation] 🚫 1-Click Hate! Artist completely: "' + artist + '". Skipping immediately...');
 
         const skipBtn = document.querySelector('.playControls__next');
         if (skipBtn) {
             skipBtn.click();
         }
+        return { added: true, name: artist };
+    }
+
+    function hateToastText(r) {
+        return r && r.added ? getI18nTexts().mpToastHate : tt('m_hateOff', { name: (r && r.name) || '' });
+    }
+
+    function isCurrentArtistHated() {
+        return !!findHatedKey(state.currentTrack);
+    }
+
+    // 今の曲の作者が除外中なら 🚫 を塗りつぶしの赤にする（ページのボタン）。ミニプレイヤーは syncMiniPlayerUI
+    function updateHateButtons() {
+        const hated = isCurrentArtistHated();
+        const btn = document.getElementById('sc-fresh-station-hate-btn');
+        if (btn) {
+            btn.title = hated ? tt('m_hateOnTip') : getI18nTexts().barHateTitle;
+            btn.style.background = hated ? '#e53935' : 'transparent';
+            btn.style.color = hated ? '#fff' : '#e53935';
+        }
+        updateLaterButton();
+        updateProfileTag();
+    }
+
+    fdBus.on('dislike-changed', function () {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                state.dislikedTracks = parsed.dislikedTracks || {};
+                state.dislikedArtists = parsed.dislikedArtists || {};
+                state.dislikedGenres = parsed.dislikedGenres || {};
+            }
+        } catch (e) {}
+        try { updateHateButtons(); } catch (e) {}
+    });
+
+    // 作者のプロフィールページ: 除外中の作者には小さな札「🚫 FreshDig で除外中 [解除]」を出す
+    function updateProfileTag() {
+        let tag = document.getElementById('sc-fresh-station-profile-tag');
+        const path = window.location.pathname;
+        let key = null;
+        if (FreshDigCore.isArtistPagePath(path)) {
+            const seg = (path.split('/').filter(Boolean)[0] || '').toLowerCase();
+            const nameEl = document.querySelector('.profileHeaderInfo__userName');
+            const pageName = nameEl ? nameEl.textContent.trim() : '';
+            const ks = Object.keys(state.dislikedArtists);
+            for (let i = 0; i < ks.length; i++) {
+                const rec = state.dislikedArtists[ks[i]] || {};
+                if ((rec.permalink && String(rec.permalink).toLowerCase() === seg) ||
+                    (!rec.permalink && pageName && rec.name === pageName)) { key = ks[i]; break; }
+            }
+            if (key && nameEl) {
+                if (!tag) {
+                    tag = document.createElement('span');
+                    tag.id = 'sc-fresh-station-profile-tag';
+                    tag.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:2px 8px;border-radius:10px;background:#e53935;color:#fff;font-size:12px;font-weight:normal;vertical-align:middle;';
+                    const label = document.createElement('span');
+                    label.className = 'fd-tag-label';
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'fd-tag-btn';
+                    btn.style.cssText = 'border:1px solid #fff;background:transparent;color:#fff;border-radius:8px;font-size:11px;padding:0 6px;cursor:pointer;';
+                    btn.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const k = tag.dataset.key;
+                        if (k && state.dislikedArtists[k]) {
+                            delete state.dislikedArtists[k];
+                            saveDislikeData();
+                            updateHateButtons();
+                        }
+                    });
+                    tag.appendChild(label);
+                    tag.appendChild(btn);
+                    nameEl.parentNode.insertBefore(tag, nameEl.nextSibling);
+                }
+                tag.dataset.key = key;
+                tag.querySelector('.fd-tag-label').textContent = tt('m_profileTag');
+                tag.querySelector('.fd-tag-btn').textContent = tt('m_profileUnban');
+                return;
+            }
+        }
+        if (tag) tag.remove();
+    }
+
+    // ---- R6: 後で聴く作者（保存は chrome.storage.local の laterArtists。書き込みは background.js 経由） ----
+    const laterState = { map: {}, pending: {}, seq: 0 };
+
+    function setLaterList(list) {
+        const m = {};
+        (Array.isArray(list) ? list : []).forEach(function (x) { if (x && x.artistId !== undefined) m[String(x.artistId)] = x; });
+        laterState.map = m;
+        try { updateLaterButton(); } catch (e) {}
+        try { syncMiniPlayerUI(); } catch (e) {}
+    }
+
+    window.addEventListener('message', function (event) {
+        if (event.source !== window || !event.data) return;
+        const d = event.data;
+        if (d.type === 'SC_FRESH_STATION_LATER_CHANGED') setLaterList(d.list);
+        if (d.type === 'SC_FRESH_STATION_LATER_RESULT') {
+            const p = laterState.pending[d.reqId];
+            if (p) { delete laterState.pending[d.reqId]; p(d.result); }
+        }
+    });
+
+    function laterOp(msg) {
+        return new Promise(function (resolve) {
+            const reqId = ++laterState.seq;
+            laterState.pending[reqId] = resolve;
+            setTimeout(function () {
+                if (laterState.pending[reqId]) { delete laterState.pending[reqId]; resolve({ ok: false, reason: 'timeout' }); }
+            }, 5000);
+            window.postMessage(Object.assign({ type: 'SC_FRESH_STATION_LATER_OP', reqId: reqId }, msg), window.location.origin);
+        });
+    }
+
+    function isCurrentArtistSavedLater() {
+        const t = state.currentTrack;
+        return !!(t && t.artistId && laterState.map[String(t.artistId)]);
+    }
+
+    // 戻り値: 画面に出す文
+    async function toggleLater() {
+        const t = await ensureCurrentTrackInfo();
+        if (!t || !t.artistId) return tt('m_artistLoading');
+        const id = String(t.artistId);
+        const name = t.artistName || '';
+        if (laterState.map[id]) {
+            const r = await laterOp({ op: 'remove', artistId: id });
+            if (!r.ok) return tt('m_laterFail');
+            delete laterState.map[id];
+            updateLaterButton();
+            return tt('m_laterRemoved', { name: name });
+        }
+        const r = await laterOp({ op: 'add', item: { artistId: id, name: name, permalink: getArtistPermalink(t), avatarUrl: t.avatarUrl || '', fromTrackTitle: t.title || '' } });
+        if (!r.ok) return r.reason === 'limit' ? tt('m_laterLimit') : tt('m_laterFail');
+        laterState.map[id] = { artistId: id, name: name };
+        updateLaterButton();
+        return tt('m_laterAdded', { name: name });
+    }
+
+    function updateLaterButton() {
+        const btn = document.getElementById('sc-fresh-station-later-btn');
+        if (!btn) return;
+        const saved = isCurrentArtistSavedLater();
+        btn.title = saved ? tt('m_laterRemoveTip') : tt('m_laterAddTip');
+        btn.style.background = saved ? '#7e57c2' : 'transparent';
+        btn.style.color = saved ? '#fff' : '#b39ddb';
     }
 
     // =========================================================================
@@ -3598,6 +3800,14 @@
                     border: 1px solid #e53935;
                     color: #e53935;
                 }
+                .btn-hate.hated {
+                    background: #e53935;
+                    color: #fff;
+                }
+                .btn-later.saved {
+                    background: #7e57c2;
+                    color: #fff;
+                }
                 .toast {
                     position: fixed;
                     bottom: 4px;
@@ -3631,6 +3841,7 @@
                         <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
                         <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">${tx.mpFollowBtn}</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
+                        <button class="btn-station btn-later" id="mp-later" title="">🎧</button>
                     </div>
                 </div>
             </div>
@@ -3751,6 +3962,7 @@
         }
         doc.getElementById('mp-dislike')?.addEventListener('click', function () { run('dislike'); });
         doc.getElementById('mp-hate')?.addEventListener('click', function () { run('hate'); });
+        doc.getElementById('mp-later')?.addEventListener('click', function () { run('later'); });
     }
 
     // ---- R4: 複数タブ。音を出しているタブの「今の曲」を BroadcastChannel で流し、ミニプレイヤーはそれを写す ----
@@ -3830,6 +4042,8 @@
             passed: timePassedEl ? timePassedEl.textContent.trim() : '0:00',
             duration: durationEl ? durationEl.textContent.trim() : '0:00',
             ratio: ratio,
+            hated: isCurrentArtistHated(),
+            later: isCurrentArtistSavedLater(),
             vol: getSoundCloudVolume()
         };
     }
@@ -3969,7 +4183,8 @@
         addPl: function (a, toast, doc) { return handleAddTrackToPlaylist(doc || undefined); },
         pickPl: function (a, toast, doc) { return chooseTargetPlaylistPrompt(doc || undefined); },
         dislike: function (a, toast) { toast(getI18nTexts().mpToastDislike); return handleDislikeClick(); },
-        hate: function (a, toast) { toast(getI18nTexts().mpToastHate); return handleHateClick(); }
+        hate: async function (a, toast) { toast(hateToastText(await handleHateClick())); },
+        later: async function (a, toast) { toast(await toggleLater()); }
     };
 
     function syncMiniPlayerUI() {
@@ -4027,6 +4242,17 @@
         if (mpFollow && d.following !== null && d.following !== undefined) {
             mpFollow.textContent = d.following ? tt('m_followingLbl') : tt('mpFollowBtn');
             mpFollow.classList.toggle('following', !!d.following);
+        }
+
+        const mpHate = doc.getElementById('mp-hate');
+        if (mpHate) {
+            mpHate.classList.toggle('hated', !!d.hated);
+            mpHate.title = d.hated ? tt('m_hateOnTip') : getI18nTexts().mpHateTitle;
+        }
+        const mpLater = doc.getElementById('mp-later');
+        if (mpLater) {
+            mpLater.classList.toggle('saved', !!d.later);
+            mpLater.title = d.later ? tt('m_laterRemoveTip') : tt('m_laterAddTip');
         }
 
         if (mpStatus) {

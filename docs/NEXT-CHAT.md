@@ -1,4 +1,4 @@
-# FreshDig v2.0 引き継ぎ（P4 まで完了 → 次は P5）
+# FreshDig v2.0 引き継ぎ（P5 まで完了 → 次は P6）
 
 正本は `docs/PLAN-v2.0.md`。決まりは `CLAUDE.md`。ここは「今どこまで進んだか」だけ。
 
@@ -9,7 +9,7 @@
 | P1 診断ログ・同期1回・API上限・ロボット確認で止まる・途中で飛ばさない | 済（実機の Edge では未確認） | 1.9.2 |
 | P2 スキップ（行列の先読み除去＋一気に飛ぶ） | 済（実機では未確認） | 1.9.3 |
 | P3 タブとミニプレイヤー（R4・R9） | 済（実機の Edge では未確認） | 1.9.4 |
-| P4 言語（R2） 済（実機では未確認） 1.9.5 / **P5 次** / P5 リスト（R3・R6）/ P6 フレッシュ（R10）/ 出す | 未 | |
+| P4 言語（R2） 済（実機では未確認） 1.9.5 / P5 リスト（R3・R6） 済（実機では未確認） 1.9.7 / **P6 次** / P5 リスト（R3・R6）/ P6 フレッシュ（R10）/ 出す | 未 | |
 
 ## 分かったこと
 - 音が止まる不具合（R7）: ユーザーの観察では「シークバーは進んでいる。次の曲に飛ばしても無音。ページ再読み込みで直る」。計画書の H4（音量・消音・音声経路）寄り。診断ログはまだ無い。**ログが来るまで推測の修正はしない。** ログで見るもの: `audio-volumechange`（vol/muted）、`freshdig-set-volume`、`tab-visibility`、`audio-error`。疑う場所: `HTMLMediaElement.prototype.play` の差し替え（音量モジュールが無い時の代わり処理）、`setSoundCloudVolume`、`restoreVolumePrecisionOnce`。
@@ -35,3 +35,10 @@
 - R2: 画面に出す文字の直書きを `tt('キー', {差し込み})`（station_hook.js）＋ i18n.js の `m_...` キー（ja/en）へ移した。トースト・書き出し結果・リポスト窓・ミニプレイヤーの文字が対象。コンソールログと SoundCloud 画面の検索用セレクタ（ステーション等）は直書きのまま。
 - 言語を変えると `applyLanguage()` が、ページのボタンと開いているミニプレイヤーの title・文字を入れ替え、`fdBus` の `lang` で他タブにも伝える。ポップアップは `<html lang>` も追従。
 - テスト追加: `tt('...')` のキーが辞書にあること、ja/en の `{差し込み}` が一致すること。
+
+## P5（1.9.7）
+- R3: 🚫 はトグルに（除外中の作者なら塗りつぶしの赤＋「除外中（クリックで解除）」、押すと解除。ページ・ミニプレイヤー両方）。除外の記録は `{name, permalink, date, ts}`（古い記録は名前だけ）。保存のたびに `fdBus` の `dislike-changed` で他タブが読み直す。作者ページには札「🚫 FreshDig で除外中 [解除]」（`updateProfileTag`）。解除は既存の `REMOVE`（targetType artist）を使った（新しい `UNBAN_ARTIST` は作っていない）。
+- R6: 保存先は `chrome.storage.local.laterArtists`（上限 500）。追加・削除は `background.js` の `LATER_ADD` / `LATER_REMOVE` で順番に処理（content_bridge 経由は `SC_FRESH_STATION_LATER_OP` / `_RESULT`、変更は `storage.onChanged` → `SC_FRESH_STATION_LATER_CHANGED`）。ボタン 🎧 は「⋯」メニューとミニプレイヤーのバッジ行。
+- R6-4: 作者のページから再生中は、ライク済み・フォロー中で飛ばさない（`freshdig_core.js` の `onArtistPage`。`isArtistPagePath`）。曲単位の 👎、作者の 🚫、ジャンル除外、自分の曲は効く。
+- ポップアップに「リスト」カード（タブ 2 つ、検索、50 件ずつ「もっと見る」）。除外リストは SoundCloud タブが無いと出ない（文言あり）。後で聴くはタブ無しでも出る。
+- テスト追加: `tests/later.test.js`（偽 chrome で background の保存を確認）。

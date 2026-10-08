@@ -201,6 +201,28 @@
       m_followingLbl: '👤✓ フォロー中',
       m_untitled: '(無題)',
 
+      // Lists (R3, R6)
+      m_hateOff: '🚫 「{name}」の除外を解除しました',
+      m_hateOnTip: '🚫 除外中（クリックで解除）',
+      m_laterAdded: '🎧 「{name}」を後で聴くに保存しました',
+      m_laterRemoved: '🎧 「{name}」を後で聴くから外しました',
+      m_laterLimit: '⚠️ 後で聴くは500件までです',
+      m_laterFail: '⚠️ 後で聴くを保存できませんでした',
+      m_laterAddTip: '🎧 後で聴く（この作者を保存）',
+      m_laterRemoveTip: '🎧 保存済み（クリックで外す）',
+      m_profileTag: '🚫 FreshDig で除外中',
+      m_profileUnban: '解除',
+      listsTitle: '📚 リスト',
+      tabHated: '🚫 除外した作者',
+      tabLater: '🎧 後で聴く',
+      listSearch: '検索',
+      listMore: 'もっと見る',
+      listUnban: '解除 ✕',
+      listLaterDelete: '✕ 削除',
+      listEmpty: '(まだありません)',
+      listNeedTab: 'SoundCloudのタブを開くと一覧が出ます',
+      listFrom: 'きっかけ',
+
       // Playlist picker popup
       pickerTitle: '➕ ワンクリック追加先を選択',
       pickerCancel: 'キャンセル'
@@ -396,6 +418,28 @@
       m_repostTip: 'Repost (you can add a comment)',
       m_followingLbl: '👤✓ Following',
       m_untitled: '(untitled)',
+
+      // Lists (R3, R6)
+      m_hateOff: '🚫 Removed "{name}" from the excluded artists',
+      m_hateOnTip: '🚫 Excluded (click to remove)',
+      m_laterAdded: '🎧 Saved "{name}" to Listen later',
+      m_laterRemoved: '🎧 Removed "{name}" from Listen later',
+      m_laterLimit: '⚠️ Listen later holds up to 500 artists',
+      m_laterFail: '⚠️ Could not save Listen later',
+      m_laterAddTip: '🎧 Listen later (save this artist)',
+      m_laterRemoveTip: '🎧 Saved (click to remove)',
+      m_profileTag: '🚫 Excluded by FreshDig',
+      m_profileUnban: 'Remove',
+      listsTitle: '📚 Lists',
+      tabHated: '🚫 Excluded artists',
+      tabLater: '🎧 Listen later',
+      listSearch: 'Search',
+      listMore: 'Show more',
+      listUnban: 'Remove ✕',
+      listLaterDelete: '✕ Delete',
+      listEmpty: '(nothing yet)',
+      listNeedTab: 'Open a SoundCloud tab to see this list',
+      listFrom: 'From',
 
       // Playlist picker popup
       pickerTitle: '➕ Select 1-Click Target Playlist',

@@ -71,12 +71,127 @@ document.addEventListener('DOMContentLoaded', async function () {
     const badge0 = document.getElementById('conn-badge');
     if (badge0 && !cachedData) badge0.textContent = t.notConnected;
     const plSel = document.getElementById('pl-select');
+    if (typeof renderLists === 'function') renderLists();
     if (plSel && plSel.options.length === 1 && plSel.options[0].value === '') plSel.options[0].textContent = t.loadingSC;
+  }
+
+  let tab = null;
+
+  // ---- リスト（R3 除外した作者 / R6 後で聴く） ----
+  let listTab = 'hated';
+  let listLimit = 50;
+  let laterList = [];
+
+  function rowEl(nameText, href, sub, btnText, onBtn) {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    const nm = document.createElement(href ? 'a' : 'span');
+    nm.className = 'nm';
+    nm.textContent = nameText;
+    if (href) {
+      nm.href = href;
+      nm.addEventListener('click', function (e) { e.preventDefault(); chrome.tabs.create({ url: href }); });
+    }
+    row.appendChild(nm);
+    if (sub) {
+      const sb = document.createElement('span');
+      sb.className = 'sub';
+      sb.textContent = sub;
+      row.appendChild(sb);
+    }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = btnText;
+    b.addEventListener('click', onBtn);
+    row.appendChild(b);
+    return row;
+  }
+
+  function renderLists() {
+    const body = document.getElementById('list-body');
+    if (!body) return;
+    const q = (document.getElementById('list-search').value || '').trim().toLowerCase();
+    document.getElementById('tab-hated').textContent = t.tabHated;
+    document.getElementById('tab-later').textContent = t.tabLater;
+    document.getElementById('tab-hated').classList.toggle('active', listTab === 'hated');
+    document.getElementById('tab-later').classList.toggle('active', listTab === 'later');
+    document.getElementById('list-search').placeholder = t.listSearch;
+    body.textContent = '';
+    let rows = [];
+    if (listTab === 'hated') {
+      if (!cachedData) {
+        rows = null;
+      } else {
+        const da = cachedData.dislikedArtists || {};
+        const items = Object.keys(da).map(function (k) { return { key: k, rec: da[k] || {} }; });
+        items.sort(function (a, b) { return (b.rec.ts || 0) - (a.rec.ts || 0); });
+        rows = items.filter(function (it) { return !q || String(it.rec.name || '').toLowerCase().indexOf(q) !== -1; }).map(function (it) {
+          return function () {
+            const href = it.rec.permalink ? 'https://soundcloud.com/' + encodeURIComponent(it.rec.permalink) : '';
+            return rowEl(it.rec.name || it.key, href, it.rec.date || '', t.listUnban, function () {
+              if (!tab) return;
+              chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'REMOVE', targetType: 'artist', targetId: it.key }, function () {
+                void chrome.runtime.lastError;
+                delete cachedData.dislikedArtists[it.key];
+                renderLists();
+              });
+            });
+          };
+        });
+      }
+    } else {
+      rows = laterList.filter(function (x) { return !q || String(x.name || '').toLowerCase().indexOf(q) !== -1; }).map(function (x) {
+        return function () {
+          const href = x.permalink ? 'https://soundcloud.com/' + encodeURIComponent(x.permalink) + '/tracks' : '';
+          const d = x.addedAt ? new Date(x.addedAt).toLocaleDateString() : '';
+          const row = rowEl(x.name || x.artistId, href, d, t.listLaterDelete, function () {
+            chrome.runtime.sendMessage({ action: 'LATER_REMOVE', artistId: x.artistId }, function () { void chrome.runtime.lastError; });
+          });
+          if (x.fromTrackTitle) row.title = t.listFrom + ': ' + x.fromTrackTitle;
+          return row;
+        };
+      });
+    }
+    const more = document.getElementById('list-more');
+    if (rows === null) {
+      const e = document.createElement('div');
+      e.className = 'list-empty';
+      e.textContent = t.listNeedTab;
+      body.appendChild(e);
+      more.style.display = 'none';
+      return;
+    }
+    if (rows.length === 0) {
+      const e = document.createElement('div');
+      e.className = 'list-empty';
+      e.textContent = t.listEmpty;
+      body.appendChild(e);
+    }
+    rows.slice(0, listLimit).forEach(function (mk) { body.appendChild(mk()); });
+    more.style.display = rows.length > listLimit ? '' : 'none';
+    more.textContent = t.listMore + ' (' + (rows.length - listLimit) + ')';
+  }
+
+  document.getElementById('tab-hated').addEventListener('click', function () { listTab = 'hated'; listLimit = 50; renderLists(); });
+  document.getElementById('tab-later').addEventListener('click', function () { listTab = 'later'; listLimit = 50; renderLists(); });
+  document.getElementById('list-search').addEventListener('input', function () { listLimit = 50; renderLists(); });
+  document.getElementById('list-more').addEventListener('click', function () { listLimit += 50; renderLists(); });
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get('laterArtists', function (st) {
+      laterList = (st && Array.isArray(st.laterArtists)) ? st.laterArtists : [];
+      renderLists();
+    });
+    chrome.storage.onChanged.addListener(function (changes, area) {
+      if (area === 'local' && changes.laterArtists) {
+        laterList = changes.laterArtists.newValue || [];
+        renderLists();
+      }
+    });
   }
 
   applyStaticTranslations();
 
-  let tab = null;
+
   const currentTabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (currentTabs[0] && currentTabs[0].url && currentTabs[0].url.indexOf('soundcloud.com') !== -1) {
     tab = currentTabs[0];
@@ -333,6 +448,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     updateDiscoveryUI(data.discoveryEnabled !== false);
+    renderLists();
 
     const autoMpToggleEl = document.getElementById('auto-mp-toggle');
     if (autoMpToggleEl) {

@@ -81,6 +81,16 @@
       background: #ff5500;
       color: #fff;
     }
+    .list-tab { flex:1; background:#2a2a2a; border:1px solid #444; color:#ccc; border-radius:4px; padding:4px; font-size:12px; cursor:pointer; }
+    .list-tab.active { border-color:#ff5500; color:#ff7700; }
+    .list-search { width:100%; box-sizing:border-box; background:#242424; border:1px solid #444; color:#eee; border-radius:4px; padding:4px 6px; font-size:12px; margin-bottom:4px; }
+    .list-body { max-height:170px; overflow-y:auto; }
+    .list-row { display:flex; align-items:center; gap:6px; padding:3px 0; border-bottom:1px solid #2a2a2a; font-size:12px; }
+    .list-row .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#ddd; }
+    .list-row a.nm { color:#ff9a55; text-decoration:none; cursor:pointer; }
+    .list-row .sub { font-size:10px; color:#888; }
+    .list-row button { background:transparent; border:1px solid #666; color:#ccc; border-radius:4px; font-size:10px; padding:1px 5px; cursor:pointer; flex-shrink:0; }
+    .list-empty { color:#777; font-size:11px; padding:4px 0; }
     .card {
       background: #202020;
       border: 1px solid #333;
@@ -243,7 +253,7 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.6</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.7</span>
     </div>
     <div class="header-right">
       <select id="lang-select" class="lang-select" title="Language / 言語">
@@ -316,6 +326,17 @@
       <button id="btn-import-dislikes" class="sync-btn">📥 SCから読み込み</button>
     </div>
     <div id="dislike-sync-msg" class="sync-msg"></div>
+  </div>
+
+  <!-- リスト（除外した作者 / 後で聴く） -->
+  <div class="card" id="lists-card">
+    <div style="display:flex; gap:6px; margin-bottom:6px;">
+      <button id="tab-hated" class="list-tab active" type="button">🚫</button>
+      <button id="tab-later" class="list-tab" type="button">🎧</button>
+    </div>
+    <input id="list-search" type="text" class="list-search" autocomplete="off">
+    <div id="list-body" class="list-body"></div>
+    <button id="list-more" type="button" class="sync-sub-btn" style="display:none; width:100%; margin-top:4px;"></button>
   </div>
 
   <!-- 詳細設定（閉じた状態） -->

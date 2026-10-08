@@ -68,8 +68,48 @@
         });
     }
 
+    // 「後で聴く作者」: 読み出し→変更→保存を、ここ(サービスワーカー)の 1 か所で順番に行う（タブ同士の上書き事故を防ぐ）
+    const LATER_MAX = 500;
+    let laterChain = Promise.resolve();
+
+    function cleanStr(v, n) { return String(v === undefined || v === null ? '' : v).slice(0, n); }
+
+    async function doLater(req) {
+        const store = await chrome.storage.local.get('laterArtists');
+        const list = Array.isArray(store.laterArtists) ? store.laterArtists : [];
+        if (req.action === 'LATER_ADD') {
+            const it = req.item || {};
+            const id = cleanStr(it.artistId, 40);
+            if (!id) return { ok: false, reason: 'bad-item' };
+            if (list.some(function (x) { return String(x.artistId) === id; })) return { ok: true, exists: true };
+            if (list.length >= LATER_MAX) return { ok: false, reason: 'limit' };
+            list.unshift({
+                artistId: id,
+                name: cleanStr(it.name, 200),
+                permalink: cleanStr(it.permalink, 200),
+                avatarUrl: cleanStr(it.avatarUrl, 500),
+                addedAt: Date.now(),
+                fromTrackTitle: cleanStr(it.fromTrackTitle, 300)
+            });
+            await chrome.storage.local.set({ laterArtists: list });
+            return { ok: true };
+        }
+        if (req.action === 'LATER_REMOVE') {
+            const id = cleanStr(req.artistId, 40);
+            const next = list.filter(function (x) { return String(x.artistId) !== id; });
+            if (next.length !== list.length) await chrome.storage.local.set({ laterArtists: next });
+            return { ok: true };
+        }
+        return { ok: false, reason: 'unknown' };
+    }
+
     // 3. content_bridge や popup からの要求に応答
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+        if (request && (request.action === 'LATER_ADD' || request.action === 'LATER_REMOVE')) {
+            laterChain = laterChain.then(function () { return doLater(request); }).catch(function (e) { return { ok: false, reason: 'error' }; });
+            laterChain.then(function (res) { try { sendResponse(res); } catch (e) {} });
+            return true; // 非同期レスポンス
+        }
         if (request && request.action === 'GET_AUTH_TOKEN') {
             getSoundCloudAuthToken(function (token) {
                 sendResponse({ token: token });

@@ -5,6 +5,9 @@
     // MAIN world から chrome.storage.local へ書き込みを許可するキー（それ以外は無視）
     const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled', 'autoMiniPlayer', 'preferredLanguage'];
 
+    // MAIN world へ渡す（読み出し）キー。書き込みを許すのは SYNCABLE_KEYS だけ
+    const READ_KEYS = SYNCABLE_KEYS.concat(['laterArtists']);
+
     // 応答待ちのタイムアウト（エクスポート等の長い処理も考慮）
     const RESPONSE_TIMEOUT_MS = 60000;
 
@@ -13,7 +16,7 @@
 
     function sendStoredSettingsToMainWorld() {
         if (!chrome.storage || !chrome.storage.local) return;
-        chrome.storage.local.get(SYNCABLE_KEYS, function (items) {
+        chrome.storage.local.get(READ_KEYS, function (items) {
             if (chrome.runtime.lastError || !items) return;
             window.postMessage({
                 type: 'SC_FRESH_STATION_RESTORE_STORAGE',
@@ -76,6 +79,21 @@
             }
         }
 
+        // 後で聴く作者の追加・削除（実際の保存は background.js の 1 か所）
+        if (event.data.type === 'SC_FRESH_STATION_LATER_OP') {
+            const op = event.data.op === 'remove' ? 'LATER_REMOVE' : 'LATER_ADD';
+            const reqId = event.data.reqId;
+            const reply = function (result) {
+                window.postMessage({ type: 'SC_FRESH_STATION_LATER_RESULT', reqId: reqId, result: result }, window.location.origin);
+            };
+            try {
+                chrome.runtime.sendMessage({ action: op, item: event.data.item, artistId: event.data.artistId }, function (res) {
+                    if (chrome.runtime.lastError) { reply({ ok: false, reason: 'error' }); return; }
+                    reply(res || { ok: false, reason: 'error' });
+                });
+            } catch (e) { reply({ ok: false, reason: 'error' }); }
+        }
+
         // Response from MAIN world for a relayed popup action (matched by requestId)
         if (event.data.type === 'SC_FRESH_STATION_DATA_RESPONSE' || event.data.type === 'SC_FRESH_STATION_ACTION_RESULT') {
             const pending = pendingResponses.get(event.data.requestId);
@@ -87,6 +105,14 @@
             } catch (e) {}
         }
     });
+
+    // 後で聴く作者が変わったら（どのタブ・ポップアップからでも）MAIN world へ知らせる
+    try {
+        chrome.storage.onChanged.addListener(function (changes, area) {
+            if (area !== 'local' || !changes.laterArtists) return;
+            window.postMessage({ type: 'SC_FRESH_STATION_LATER_CHANGED', list: changes.laterArtists.newValue || [] }, window.location.origin);
+        });
+    } catch (e) {}
 
     // 3. Relay messages from popup / background to window (MAIN world)
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
