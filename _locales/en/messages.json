@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig for SoundCloud - Discover New Artists",
+    "description": "Extension title"
+  },
+  "extensionDesc": {
+    "message": "Zero familiar tracks! Continuously discover unplayed new artists with 1-click playlist add, dislike skips, and floating mini player.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "SoundCloud Fresh Station Settings",
+    "description": "Extension action icon tooltip"
+  }
+}

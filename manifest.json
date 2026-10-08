@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "FreshDig for SoundCloud - 新アーティスト自動発掘",
-  "version": "1.8.2",
-  "description": "知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー",
+  "name": "__MSG_extensionName__",
+  "version": "1.9.1",
+  "default_locale": "en",
+  "description": "__MSG_extensionDesc__",
   "permissions": [
     "storage",
     "tabs",
@@ -30,12 +31,12 @@
       "128": "icons/icon-128.png"
     },
     "default_popup": "popup.html",
-    "default_title": "SoundCloud Fresh Station 設定"
+    "default_title": "__MSG_actionTitle__"
   },
   "content_scripts": [
     {
       "matches": ["https://soundcloud.com/*"],
-      "js": ["station_hook.js"],
+      "js": ["i18n.js", "freshdig_core.js", "station_hook.js"],
       "world": "MAIN",
       "run_at": "document_start"
     },
@@ -46,4 +47,3 @@
     }
   ]
 }
-

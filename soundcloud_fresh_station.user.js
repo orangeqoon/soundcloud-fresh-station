@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.8.2
+// @version      1.9.1
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -8,11 +8,356 @@
 // @grant        none
 // ==/UserScript==
 
+// Internationalization (i18n) Dictionary for FreshDig
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.FreshDigI18n = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  const translations = {
+    ja: {
+      appName: 'FreshDig',
+      notConnected: 'SoundCloud未接続',
+      notLoggedIn: '⚠️ SoundCloud未ログイン',
+      notLoggedInDesc: 'SoundCloudにログインすると、Likes/フォローの除外やプレイリスト追加が使えます',
+      connecting: '🔄 アカウント接続中...',
+      connectingDesc: '接続できない場合は [🔄 同期] を押すか、SoundCloudを再読み込みしてください',
+      connectedReady: 'アカウント接続済み・稼働中',
+      connectedSyncing: 'アカウント接続済み・同期中',
+      reloadRequired: '⚠️ SoundCloudタブを再読み込みしてください',
+      reloadRequiredDesc: '拡張機能の更新後は、開いているSoundCloudタブの再読み込みが必要です',
+      openSCTab: 'SoundCloudタブを開いてください',
+      loadingSC: 'SoundCloud読込中...',
+
+      // Buttons & Controls
+      btnMiniPlayer: '🪟 ミニプレイヤー',
+      btnStation: '📻 ステーション開始',
+      btnStationTitle: '現在再生中の曲のステーションを開始',
+      autoMpLabel: '別のタブを開いたらミニプレイヤーを自動表示',
+      autoMpTitle: '音楽の再生中に別のタブへ切り替えると、ミニプレイヤーが自動で表示されます（Edge / Chrome の自動ピクチャー イン ピクチャー機能）',
+      autoMpNotSupported: 'このブラウザはミニプレイヤーの自動表示に対応していません',
+
+      volControl: '🔊 音量コントロール',
+      volMute: 'ミュート切替',
+      volSliderTitle: '音量調整',
+
+      discoveryMode: '🔍 発掘モード',
+      discoveryOnDesc: '知っている曲（Likes・フォロー中・Dislike）を自動スキップ',
+      discoveryOffDesc: 'OFF：自動スキップせず SoundCloud 通常再生',
+
+      targetPlaylist: '➕ ワンクリック追加先プレイリスト',
+      btnSync: '🔄 同期',
+      btnSyncing: '⏳ 同期中...',
+      noPlaylistFound: '（プレイリストが見つかりません）',
+      playlistSyncing: '同期中... [🔄 同期] を押してください',
+      trackCountSuffix: '曲',
+      skipToastPrefix: 'スキップ',
+      skipReasonDisliked: 'Dislike登録した曲',
+      skipReasonHated: '除外した作者',
+      skipReasonGenre: '除外したジャンル',
+      skipReasonOwn: '自分の曲',
+      skipReasonLiked: 'ライク済み',
+      skipReasonFollowing: 'フォロー中のアーティスト',
+      skipReasonManyFollowers: 'フォロワーが多い作者',
+      skipReasonManyTracks: '投稿曲が多い作者',
+      skipReasonManyPlays: '再生回数が多い曲',
+      skipReasonOldTrack: '古い曲',
+
+      dislikeSection: '🚫 Dislike曲のプレイリスト連携',
+      btnExportDislikes: '📤 SCへ書き出し',
+      btnExportingDislikes: '⏳ 書き出し中...',
+      btnImportDislikes: '📥 SCから読み込み',
+      btnImportingDislikes: '⏳ 読み込み中...',
+      exportingMsg: 'SoundCloudへプレイリストを作成/更新しています...',
+      importingMsg: 'SoundCloudプレイリストからDislike曲を取得中...',
+      commErrorMsg: 'SoundCloudとの通信に失敗しました。ページを再読み込みしてください。',
+
+      statLikes: '除外Likes',
+      statFollow: '除外Follow',
+      statDislike: 'Dislike',
+
+      langLabel: '🌐 言語',
+
+      // In-page Player Bar
+      barStationTitle: '📻 この曲のステーションを開始',
+      barDislikeTitle: '👎 Dislike (この曲だけ二度と流さない＆スキップ)',
+      barHateTitle: '🚫 Hate (この作者の曲すべてを二度と流さない＆スキップ)',
+      barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
+      barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
+      barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
+      barFollowingModeTitle: '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)',
+
+      // Mini Player
+      mpTitle: 'FreshDig - アーティスト発掘ミニプレイヤー',
+      mpPromptOpen: '🪟 ここをクリックしてミニプレイヤーを開く',
+      mpLoadingTrack: '曲を読み込み中...',
+      mpStatusWaiting: '再生待機中',
+      mpStatusDigging: '発掘中',
+      mpFollowBtn: '👤 フォロー',
+      mpFollowBtnTitle: 'アーティストをフォロー',
+      mpStationBtn: '📻 ステーション',
+      mpStationBtnTitle: 'この曲のステーションを開始',
+      mpPrevTitle: '前の曲',
+      mpPlayTitle: '再生 / 一時停止',
+      mpNextTitle: '次の曲',
+      mpLikeTitle: 'いいね (Like)',
+      mpRepostTitle: 'リポスト (Repost)',
+      mpAddPlTitle: 'プレイリストに追加',
+      mpDislikeTitle: 'この曲だけ除外＆スキップ',
+      mpHateTitle: 'この作者の曲全除外＆スキップ',
+      mpToastDislike: '👎 曲を除外してスキップ',
+      mpToastHate: '🚫 作者を除外してスキップ',
+      mpToastAddedPl: '➕ プレイリストに追加しました',
+      mpToastRemovedPl: '➖ プレイリストから解除しました',
+      mpToastLiked: '❤️ いいねしました',
+      mpToastUnliked: '🤍 いいねを解除しました',
+      mpToastReposted: '🔁 リポストしました',
+      mpToastUnreposted: '↩️ リポストを解除しました',
+      mpToastFollowed: '👤 フォローしました',
+      mpToastUnfollowed: '👤 フォローを解除しました',
+      mpStatusToggleOff: 'クリックで発掘モードを OFF（SoundCloud 通常再生）',
+      mpStatusToggleOn: 'クリックで発掘モードを ON（知っている曲を自動スキップ）',
+
+      // Playlist picker popup
+      pickerTitle: '➕ ワンクリック追加先を選択',
+      pickerCancel: 'キャンセル'
+    },
+    en: {
+      appName: 'FreshDig',
+      notConnected: 'SoundCloud Not Connected',
+      notLoggedIn: '⚠️ Not Logged In',
+      notLoggedInDesc: 'Log in to SoundCloud to skip Liked/Followed tracks and enable 1-click playlist add.',
+      connecting: '🔄 Connecting Account...',
+      connectingDesc: 'If connection fails, click [🔄 Sync] or reload SoundCloud.',
+      connectedReady: 'Account Connected & Active',
+      connectedSyncing: 'Account Connected & Syncing',
+      reloadRequired: '⚠️ Please reload SoundCloud tab',
+      reloadRequiredDesc: 'After extension update, the open SoundCloud tab must be reloaded.',
+      openSCTab: 'Please open a SoundCloud tab',
+      loadingSC: 'Loading SoundCloud...',
+
+      // Buttons & Controls
+      btnMiniPlayer: '🪟 Mini Player',
+      btnStation: '📻 Start Station',
+      btnStationTitle: 'Start station from currently playing track',
+      autoMpLabel: 'Auto show Mini Player when switching tabs',
+      autoMpTitle: 'Automatically opens Mini Player when you switch to another tab while music is playing (Document PiP)',
+      autoMpNotSupported: 'This browser does not support automatic picture-in-picture',
+
+      volControl: '🔊 Volume Control',
+      volMute: 'Toggle Mute',
+      volSliderTitle: 'Volume Slider',
+
+      discoveryMode: '🔍 Discovery Mode',
+      discoveryOnDesc: 'Auto-skips known tracks (Likes, Followed, Dislikes)',
+      discoveryOffDesc: 'OFF: Normal SoundCloud playback without skipping',
+
+      targetPlaylist: '➕ 1-Click Target Playlist',
+      btnSync: '🔄 Sync',
+      btnSyncing: '⏳ Syncing...',
+      noPlaylistFound: '(No playlists found)',
+      playlistSyncing: 'Syncing... Please click [🔄 Sync]',
+      trackCountSuffix: 'tracks',
+      skipToastPrefix: 'Skipped',
+      skipReasonDisliked: 'Disliked track',
+      skipReasonHated: 'Excluded artist',
+      skipReasonGenre: 'Excluded genre',
+      skipReasonOwn: 'Your own track',
+      skipReasonLiked: 'Already liked',
+      skipReasonFollowing: 'Artist you follow',
+      skipReasonManyFollowers: 'Artist with many followers',
+      skipReasonManyTracks: 'Artist with many tracks',
+      skipReasonManyPlays: 'Track with many plays',
+      skipReasonOldTrack: 'Old track',
+
+      dislikeSection: '🚫 Sync Dislikes with SC Playlist',
+      btnExportDislikes: '📤 Export to SC',
+      btnExportingDislikes: '⏳ Exporting...',
+      btnImportDislikes: '📥 Import from SC',
+      btnImportingDislikes: '⏳ Importing...',
+      exportingMsg: 'Creating / updating playlist on SoundCloud...',
+      importingMsg: 'Fetching disliked tracks from SoundCloud playlist...',
+      commErrorMsg: 'Failed to communicate with SoundCloud. Please reload the page.',
+
+      statLikes: 'Skip Likes',
+      statFollow: 'Skip Follows',
+      statDislike: 'Dislikes',
+
+      langLabel: '🌐 Language',
+
+      // In-page Player Bar
+      barStationTitle: '📻 Start station from this track',
+      barDislikeTitle: '👎 Dislike (Skip & blacklist this track)',
+      barHateTitle: '🚫 Hate (Skip & blacklist all tracks by this artist)',
+      barMiniPlayerTitle: '🪟 Mini Player (Floating always-on-top window)',
+      barDiscoveryOffTitle: '🔍 Discovery Mode OFF (Click to turn ON: skip known tracks)',
+      barDiscoveryOnTitle: '🔍 Discovery Mode ON (Click to turn OFF: standard playback)',
+      barFollowingModeTitle: '👥 Following Only Mode (Click to switch to Discovery Mode)',
+
+      // Mini Player
+      mpTitle: 'FreshDig - Discovery Mini Player',
+      mpPromptOpen: '🪟 Click here to open Mini Player',
+      mpLoadingTrack: 'Loading track...',
+      mpStatusWaiting: 'Standby',
+      mpStatusDigging: 'Digging',
+      mpFollowBtn: '👤 Follow',
+      mpFollowBtnTitle: 'Follow artist',
+      mpStationBtn: '📻 Station',
+      mpStationBtnTitle: 'Start station from this track',
+      mpPrevTitle: 'Previous track',
+      mpPlayTitle: 'Play / Pause',
+      mpNextTitle: 'Next track',
+      mpLikeTitle: 'Like',
+      mpRepostTitle: 'Repost',
+      mpAddPlTitle: 'Add to playlist',
+      mpDislikeTitle: 'Skip & blacklist this track',
+      mpHateTitle: 'Skip & blacklist all tracks by artist',
+      mpToastDislike: '👎 Track blacklisted & skipped',
+      mpToastHate: '🚫 Artist blacklisted & skipped',
+      mpToastAddedPl: '➕ Added to playlist',
+      mpToastRemovedPl: '➖ Removed from playlist',
+      mpToastLiked: '❤️ Liked track',
+      mpToastUnliked: '🤍 Unliked track',
+      mpToastReposted: '🔁 Reposted track',
+      mpToastUnreposted: '↩️ Un-reposted track',
+      mpToastFollowed: '👤 Followed artist',
+      mpToastUnfollowed: '👤 Unfollowed artist',
+      mpStatusToggleOff: 'Click to turn Discovery OFF (Standard playback)',
+      mpStatusToggleOn: 'Click to turn Discovery ON (Skip known tracks)',
+
+      // Playlist picker popup
+      pickerTitle: '➕ Select 1-Click Target Playlist',
+      pickerCancel: 'Cancel'
+    }
+  };
+
+  function resolveLanguage(langPref) {
+    if (langPref === 'ja' || langPref === 'en') return langPref;
+    // auto detect from browser/navigator
+    try {
+      const navLang = (typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || 'en';
+      return navLang.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+    } catch (e) {
+      return 'en';
+    }
+  }
+
+  function getTexts(lang) {
+    const code = resolveLanguage(lang);
+    return translations[code] || translations.en;
+  }
+
+  return {
+    translations: translations,
+    resolveLanguage: resolveLanguage,
+    getTexts: getTexts
+  };
+});
+
+// FreshDig の純粋な判定処理（DOM・通信・状態を触らない）。Node からもテストできる。
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.FreshDigCore = factory();
+  }
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  function toNumId(v) {
+    const n = Number(v);
+    return isFinite(n) && n > 0 ? n : null;
+  }
+
+  // 除外記録（Dislike 曲・作者・ジャンル）に空のキーを入れない（全曲スキップ事故の防止）
+  function isValidDislikeKey(key) {
+    if (key === undefined || key === null) return false;
+    const s = String(key).trim();
+    return s !== '' && s !== 'undefined' && s !== 'null' && s !== 'title_' && s !== 'artist_' && s !== '0' && s !== 'NaN';
+  }
+
+  // 曲の除外判定。理由は言語に依存しないキーで返す（表示時に i18n で訳す）。
+  // info: { id, artistId, title, artistName, genre }
+  // ctx: { discoveryEnabled, playbackMode, dislikedTracks, dislikedArtists, dislikedGenres,
+  //        myUserId, likedTrackIds(Set), followingUserIds(Set), inLibrary, onArtistPage }
+  function getSkipReasonKey(info, ctx) {
+    if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
+    const id = toNumId(info.id);
+    const artistId = toNumId(info.artistId);
+    const title = info.title || '';
+    const artist = info.artistName || '';
+    const genre = (info.genre || '').trim().toLowerCase();
+    const dTracks = ctx.dislikedTracks || {};
+    const dArtists = ctx.dislikedArtists || {};
+    const dGenres = ctx.dislikedGenres || {};
+
+    if ((id && dTracks[id]) ||
+        (title && (dTracks['title_' + encodeURIComponent(title)] || dTracks[title]))) {
+      return 'skipReasonDisliked';
+    }
+    if ((artistId && dArtists[artistId]) ||
+        (artist && (dArtists['artist_' + encodeURIComponent(artist)] || dArtists[artist]))) {
+      return 'skipReasonHated';
+    }
+    if (genre && dGenres[genre]) return 'skipReasonGenre';
+    if (artistId && ctx.myUserId && artistId === toNumId(ctx.myUserId)) return 'skipReasonOwn';
+    // 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は、ライク済み・フォロー中では止めない
+    const keepKnown = !!(ctx.inLibrary || ctx.onArtistPage);
+    if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) return 'skipReasonLiked';
+    if (!ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
+      return 'skipReasonFollowing';
+    }
+    return null;
+  }
+
+  // フレッシュさ判定（R10）。info.stats = { followers, trackCount, playCount, createdAt(ms) }（分からない項目は無し）
+  // filter: { followers:{on,n}, trackCount:{on,n}, playCount:{on,n}, ageDays:{on,n} }。分からない値では飛ばさない
+  function getFreshSkipReasonKey(stats, filter, now) {
+    if (!filter || !stats) return null;
+    const num = function (v) { return typeof v === 'number' && isFinite(v) ? v : null; };
+    const over = function (rule, value) {
+      return !!(rule && rule.on && num(rule.n) !== null && value !== null && value > rule.n);
+    };
+    if (over(filter.followers, num(stats.followers))) return 'skipReasonManyFollowers';
+    if (over(filter.trackCount, num(stats.trackCount))) return 'skipReasonManyTracks';
+    if (over(filter.playCount, num(stats.playCount))) return 'skipReasonManyPlays';
+    const created = num(stats.createdAt);
+    if (filter.ageDays && filter.ageDays.on && num(filter.ageDays.n) !== null && created !== null) {
+      const ageDays = ((now || Date.now()) - created) / 86400000;
+      if (ageDays > filter.ageDays.n) return 'skipReasonOldTrack';
+    }
+    return null;
+  }
+
+  // 作者のページ（/<作者>、/tracks など）か。予約パスと、reposts は除く
+  const RESERVED_TOP = ['you', 'discover', 'stream', 'feed', 'search', 'upload', 'messages', 'notifications', 'charts',
+    'settings', 'terms-of-use', 'pages', 'popular', 'tags', 'mobile', 'jobs', 'imprint', 'creator-pro', 'stations', 'people', 'logout'];
+  const ARTIST_SUBPAGES = ['', 'tracks', 'popular-tracks', 'albums', 'sets'];
+  function isArtistPagePath(pathname) {
+    const parts = String(pathname || '').toLowerCase().split('/').filter(Boolean);
+    if (parts.length === 0 || RESERVED_TOP.indexOf(parts[0]) !== -1) return false;
+    const sub = parts[1] || '';
+    return ARTIST_SUBPAGES.indexOf(sub) !== -1;
+  }
+
+  return {
+    toNumId: toNumId,
+    isValidDislikeKey: isValidDislikeKey,
+    getSkipReasonKey: getSkipReasonKey,
+    getFreshSkipReasonKey: getFreshSkipReasonKey,
+    isArtistPagePath: isArtistPagePath
+  };
+});
+
 // SoundCloud Fresh Station & Follower Stream
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.8.2)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -25,6 +370,61 @@
 
     const DISCOVERY_ENABLED_KEY = 'sc_fresh_station_discovery_enabled';
     const AUTO_MINI_PLAYER_KEY = 'sc_fresh_station_auto_miniplayer';
+    const PREFERRED_LANGUAGE_KEY = 'sc_fresh_station_preferred_language';
+
+    function getI18nTexts() {
+        if (typeof FreshDigI18n !== 'undefined' && FreshDigI18n.getTexts) {
+            return FreshDigI18n.getTexts(state.preferredLanguage);
+        }
+        return {
+            barStationTitle: '📻 この曲のステーションを開始',
+            barDislikeTitle: '👎 Dislike (この曲だけ二度と流さない＆スキップ)',
+            barHateTitle: '🚫 Hate (この作者の曲すべてを二度と流さない＆スキップ)',
+            barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
+            barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
+            barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
+            barFollowingModeTitle: '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)',
+            mpTitle: 'FreshDig - アーティスト発掘ミニプレイヤー',
+            mpPromptOpen: '🪟 ここをクリックしてミニプレイヤーを開く',
+            mpLoadingTrack: '曲を読み込み中...',
+            mpStatusWaiting: '再生待機中',
+            mpStatusDigging: '発掘中',
+            mpFollowBtn: '👤 フォロー',
+            mpFollowBtnTitle: 'アーティストをフォロー',
+            mpStationBtn: '📻 ステーション',
+            mpStationBtnTitle: 'この曲のステーションを開始',
+            mpPrevTitle: '前の曲',
+            mpPlayTitle: '再生 / 一時停止',
+            mpNextTitle: '次の曲',
+            mpLikeTitle: 'いいね (Like)',
+            mpRepostTitle: 'リポスト (Repost)',
+            mpAddPlTitle: 'プレイリストに追加',
+            mpDislikeTitle: 'この曲だけ除外＆スキップ',
+            mpHateTitle: 'この作者の曲全除外＆スキップ',
+            mpToastDislike: '👎 曲を除外してスキップ',
+            mpToastHate: '🚫 作者を除外してスキップ',
+            mpToastAddedPl: '➕ プレイリストに追加しました',
+            mpToastRemovedPl: '➖ プレイリストから解除しました',
+            mpToastLiked: '❤️ いいねしました',
+            mpToastUnliked: '🤍 いいねを解除しました',
+            mpToastReposted: '🔁 リポストしました',
+            mpToastUnreposted: '↩️ リポストを解除しました',
+            mpToastFollowed: '👤 フォローしました',
+            mpToastUnfollowed: '👤 フォローを解除しました',
+            mpStatusToggleOff: 'クリックで発掘モードを OFF（SoundCloud 通常再生）',
+            mpStatusToggleOn: 'クリックで発掘モードを ON（知っている曲を自動スキップ）',
+            pickerTitle: '➕ ワンクリック追加先を選択',
+            pickerCancel: 'キャンセル',
+            trackCountSuffix: '曲',
+            skipToastPrefix: 'スキップ',
+            skipReasonDisliked: 'Dislike登録した曲',
+            skipReasonHated: '除外した作者',
+            skipReasonGenre: '除外したジャンル',
+            skipReasonOwn: '自分の曲',
+            skipReasonLiked: 'ライク済み',
+            skipReasonFollowing: 'フォロー中のアーティスト'
+        };
+    }
 
     // 「フォロー新曲のみ（リポスト除外）」モードは現在使わないため無効化（コードは残してある。true で復活）
     const FOLLOWING_NEW_MODE_ENABLED = false;
@@ -61,6 +461,7 @@
         playbackMode: normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY)), // 'DISCOVERY'（'FOLLOWING_NEW' は現在無効）
         discoveryEnabled: readDiscoveryEnabled(), // 発掘モード（自動スキップ・ステーション絞り込み）の ON/OFF
         autoMiniPlayer: (function () { try { return localStorage.getItem(AUTO_MINI_PLAYER_KEY) !== 'false'; } catch (e) { return true; } })(), // 別タブへ切替時にミニプレイヤーを自動表示
+        preferredLanguage: (function () { try { return localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) { return 'auto'; } })(), // 表示言語: auto / ja / en
         dislikedTracks: {},
         dislikedArtists: {},
         dislikedGenres: {},
@@ -84,6 +485,7 @@
             state.targetPlaylistId = localStorage.getItem(TARGET_PLAYLIST_KEY) || null;
             state.playbackMode = normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY));
             state.discoveryEnabled = readDiscoveryEnabled();
+            try { state.preferredLanguage = localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) {}
 
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
             if (cachedLikes) {
@@ -354,6 +756,12 @@
             if (d && typeof d.autoMiniPlayer === 'boolean' && d.autoMiniPlayer !== state.autoMiniPlayer) {
                 setAutoMiniPlayer(d.autoMiniPlayer, { noSync: true });
             }
+            if (d && d.preferredLanguage && d.preferredLanguage !== state.preferredLanguage) {
+                state.preferredLanguage = d.preferredLanguage;
+                try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, state.preferredLanguage); } catch (e) {}
+                updatePlayerBarTitles();
+                syncMiniPlayerUI();
+            }
             if (d && typeof d.discoveryEnabled === 'boolean' && d.discoveryEnabled !== state.discoveryEnabled) {
                 state.discoveryEnabled = d.discoveryEnabled;
                 try { localStorage.setItem(DISCOVERY_ENABLED_KEY, String(state.discoveryEnabled)); } catch (e) {}
@@ -398,6 +806,12 @@
                 } else if (action === 'SET_PLAYBACK_MODE') {
                     savePlaybackMode(event.data.mode);
                     ack();
+                } else if (action === 'SET_LANGUAGE') {
+                    state.preferredLanguage = event.data.language || 'auto';
+                    try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, state.preferredLanguage); } catch (e) {}
+                    updatePlayerBarTitles();
+                    syncMiniPlayerUI();
+                    ack({ success: true, preferredLanguage: state.preferredLanguage });
                 } else if (action === 'SET_AUTO_MINI_PLAYER') {
                     setAutoMiniPlayer(event.data.enabled !== false);
                     ack({ success: true, autoMiniPlayer: state.autoMiniPlayer });
@@ -437,6 +851,7 @@
                         discoveryEnabled: state.discoveryEnabled,
                         autoMiniPlayer: state.autoMiniPlayer,
                         autoPipSupported: 'documentPictureInPicture' in window,
+                        preferredLanguage: state.preferredLanguage,
                         likedCount: state.likedTrackIds.size,
                         followingCount: state.followingUserIds.size,
                         isReady: state.isUserDataLoaded,
@@ -935,42 +1350,24 @@
 
     // ---- 発掘モードの除外判定（曲の切替通知と定期監視の両方から使う共通処理） ----
     function toNumId(v) {
-        const n = Number(v);
-        return isFinite(n) && n > 0 ? n : null;
+        return FreshDigCore.toNumId(v);
     }
 
-    // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由の文字列、しないなら null
+    // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由のキー（skipReason...）、しないなら null
+    // 判定の中身は freshdig_core.js（Node でテスト済み）
     function getSkipReason(info) {
-        if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY' || !info) return null;
-        const id = toNumId(info.id);
-        const artistId = toNumId(info.artistId);
-        const title = info.title || '';
-        const artist = info.artistName || '';
-        const genre = (info.genre || '').trim().toLowerCase();
-        const inLibrary = isExplicitLibraryPage();
-
-        if ((id && state.dislikedTracks[id]) ||
-            (title && (state.dislikedTracks['title_' + encodeURIComponent(title)] || state.dislikedTracks[title]))) {
-            return 'Dislike登録した曲';
-        }
-        if ((artistId && state.dislikedArtists[artistId]) ||
-            (artist && (state.dislikedArtists['artist_' + encodeURIComponent(artist)] || state.dislikedArtists[artist]))) {
-            return '除外した作者';
-        }
-        if (genre && state.dislikedGenres[genre]) {
-            return '除外したジャンル';
-        }
-        if (artistId && state.myUserId && artistId === toNumId(state.myUserId)) {
-            return '自分の曲';
-        }
-        // 自分で Likes / 再生履歴ページを開いて再生している時は、ライク済みでも止めない
-        if (!inLibrary && id && state.likedTrackIds.has(id)) {
-            return 'ライク済み';
-        }
-        if (artistId && state.followingUserIds.has(artistId)) {
-            return 'フォロー中のアーティスト';
-        }
-        return null;
+        return FreshDigCore.getSkipReasonKey(info, {
+            discoveryEnabled: state.discoveryEnabled,
+            playbackMode: state.playbackMode,
+            dislikedTracks: state.dislikedTracks,
+            dislikedArtists: state.dislikedArtists,
+            dislikedGenres: state.dislikedGenres,
+            myUserId: state.myUserId,
+            likedTrackIds: state.likedTrackIds,
+            followingUserIds: state.followingUserIds,
+            inLibrary: isExplicitLibraryPage(),
+            onArtistPage: false
+        });
     }
 
     const MAX_CONSECUTIVE_AUTO_SKIPS = 20;
@@ -986,8 +1383,9 @@
         marginGuard.lastSkipTime = Date.now();
         marginGuard.consecutiveSkips++;
         const title = (info && info.title) || '';
+        const reasonText = getI18nTexts()[reason] || reason;
         console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
-        showGlobalToast('⏩ スキップ（' + reason + '）' + (title ? '：' + title : ''));
+        showGlobalToast('⏩ ' + (getI18nTexts().skipToastPrefix || 'スキップ') + '（' + reasonText + '）' + (title ? '：' + title : ''));
 
         const skipBtn = document.querySelector('.playControls__next');
         if (skipBtn) {
@@ -1141,7 +1539,7 @@
             const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
             const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
             if (isSelected || ariaChecked || titleAttr.indexOf('unlike') !== -1) {
-                reason = 'ライク済み';
+                reason = 'skipReasonLiked';
             }
         }
 
@@ -1178,7 +1576,7 @@
             stBtn.id = 'sc-fresh-station-station-btn';
             stBtn.type = 'button';
             stBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            stBtn.title = '📻 この曲のステーションを開始';
+            stBtn.title = getI18nTexts().barStationTitle;
             stBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #00e676; background: transparent; color: #00e676; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle; transition: all 0.15s ease;';
             stBtn.innerHTML = '📻';
             stBtn.addEventListener('click', function (e) {
@@ -1195,7 +1593,7 @@
             btn.id = 'sc-fresh-station-dislike-btn';
             btn.type = 'button';
             btn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            btn.title = '👎 Dislike (この曲だけ二度と流さない＆スキップ)';
+            btn.title = getI18nTexts().barDislikeTitle;
             btn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; color: #ff5500; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
             btn.innerHTML = '👎';
             btn.addEventListener('click', function (e) {
@@ -1212,7 +1610,7 @@
             hateBtn.id = 'sc-fresh-station-hate-btn';
             hateBtn.type = 'button';
             hateBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            hateBtn.title = '🚫 Hate (この作者の曲すべてを二度と流さない＆スキップ)';
+            hateBtn.title = getI18nTexts().barHateTitle;
             hateBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #e53935; color: #e53935; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
             hateBtn.innerHTML = '🚫';
             hateBtn.addEventListener('click', function (e) {
@@ -1254,7 +1652,7 @@
             mpBtn.id = 'sc-fresh-station-miniplayer-btn';
             mpBtn.type = 'button';
             mpBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            mpBtn.title = '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)';
+            mpBtn.title = getI18nTexts().barMiniPlayerTitle;
             mpBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #777; background: transparent; color: #ccc; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
             mpBtn.innerHTML = '🪟';
             mpBtn.addEventListener('click', function (e) {
@@ -1266,16 +1664,30 @@
         }
     }
 
+    function updatePlayerBarTitles() {
+        const tx = getI18nTexts();
+        const stBtn = document.getElementById('sc-fresh-station-station-btn');
+        if (stBtn) stBtn.title = tx.barStationTitle;
+        const dislikeBtn = document.getElementById('sc-fresh-station-dislike-btn');
+        if (dislikeBtn) dislikeBtn.title = tx.barDislikeTitle;
+        const hateBtn = document.getElementById('sc-fresh-station-hate-btn');
+        if (hateBtn) hateBtn.title = tx.barHateTitle;
+        const mpBtn = document.getElementById('sc-fresh-station-miniplayer-btn');
+        if (mpBtn) mpBtn.title = tx.barMiniPlayerTitle;
+        updateModeButtonUI();
+    }
+
     function updateModeButtonUI() {
         const btn = document.getElementById('sc-fresh-station-mode-btn');
         if (!btn) return;
+        const tx = getI18nTexts();
         if (!state.discoveryEnabled) {
             btn.innerHTML = '🔍';
             btn.style.borderColor = '#555';
             btn.style.color = '#777';
             btn.style.background = 'transparent';
             btn.style.opacity = '0.55';
-            btn.title = '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）';
+            btn.title = tx.barDiscoveryOffTitle;
             return;
         }
         btn.style.opacity = '1';
@@ -1284,13 +1696,13 @@
             btn.style.borderColor = '#ff5500';
             btn.style.color = '#ffaa00';
             btn.style.background = 'rgba(255, 85, 0, 0.15)';
-            btn.title = '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）';
+            btn.title = tx.barDiscoveryOnTitle;
         } else {
             btn.innerHTML = '👥';
             btn.style.borderColor = '#29b6f6';
             btn.style.color = '#4fc3f7';
             btn.style.background = 'rgba(41, 182, 246, 0.15)';
-            btn.title = '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)';
+            btn.title = tx.barFollowingModeTitle;
         }
     }
 
@@ -1398,6 +1810,7 @@
     function showPlaylistPicker(doc, playlists, currentId) {
         doc = doc || document;
         return new Promise(function (resolve) {
+            const tx = getI18nTexts();
             const old = doc.getElementById('sc-fresh-station-pl-picker');
             if (old) old.remove();
 
@@ -1409,7 +1822,7 @@
             panel.style.cssText = 'background:#1a1a1a;color:#eee;border:1px solid #ff5500;border-radius:8px;width:min(320px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,0.6);';
 
             const head = doc.createElement('div');
-            head.textContent = '➕ ワンクリック追加先を選択';
+            head.textContent = tx.pickerTitle;
             head.style.cssText = 'padding:10px 12px;font-size:13px;font-weight:bold;border-bottom:1px solid #333;';
             panel.appendChild(head);
 
@@ -1426,7 +1839,7 @@
                 const item = doc.createElement('button');
                 item.type = 'button';
                 const isCur = String(p.id) === String(currentId);
-                item.textContent = (isCur ? '★ ' : '') + p.title + '（' + p.trackCount + '曲）';
+                const tCount = tx.trackCountSuffix ? (' ' + tx.trackCountSuffix) : '曲'; item.textContent = (isCur ? '★ ' : '') + p.title + ' (' + p.trackCount + tCount + ')';
                 item.style.cssText = 'display:block;width:100%;text-align:left;background:' + (isCur ? 'rgba(255,85,0,0.18)' : 'transparent') + ';color:#eee;border:none;padding:7px 12px;font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
                 item.addEventListener('mouseenter', function () { item.style.background = '#333'; });
                 item.addEventListener('mouseleave', function () { item.style.background = isCur ? 'rgba(255,85,0,0.18)' : 'transparent'; });
@@ -1437,7 +1850,7 @@
 
             const cancel = doc.createElement('button');
             cancel.type = 'button';
-            cancel.textContent = 'キャンセル';
+            cancel.textContent = tx.pickerCancel;
             cancel.style.cssText = 'margin:8px 12px 10px;padding:6px;background:#2a2a2a;color:#bbb;border:1px solid #444;border-radius:4px;cursor:pointer;font-size:12px;';
             cancel.addEventListener('click', function () { done(null); });
             panel.appendChild(cancel);
@@ -2686,7 +3099,7 @@
         const btn = document.createElement('button');
         btn.id = 'sc-fresh-station-mp-launch';
         btn.type = 'button';
-        btn.textContent = '🪟 ここをクリックしてミニプレイヤーを開く';
+        btn.textContent = getI18nTexts().mpPromptOpen;
         btn.style.cssText = 'position:fixed;left:50%;bottom:70px;transform:translateX(-50%);z-index:2147483647;background:#1a1a1a;color:#fff;border:1px solid #ff5500;border-radius:20px;padding:9px 18px;font-size:13px;font-weight:bold;cursor:pointer;box-shadow:0 4px 15px rgba(0,0,0,0.5);';
         btn.addEventListener('click', function () {
             btn.remove();
@@ -2744,7 +3157,8 @@
     let isSeekingInMiniPlayer = false;
 
     function setupMiniPlayerUI(doc) {
-        doc.title = 'FreshDig - アーティスト発掘ミニプレイヤー';
+        const tx = getI18nTexts();
+        doc.title = tx.mpTitle;
         doc.body.innerHTML = `
             <style>
                 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
@@ -3110,12 +3524,12 @@
             <div class="track-info-row">
                 <div class="artwork" id="mp-art"></div>
                 <div class="meta">
-                    <div class="title" id="mp-title">曲を読み込み中...</div>
+                    <div class="title" id="mp-title">${tx.mpLoadingTrack}</div>
                     <div class="artist" id="mp-artist">SoundCloud</div>
                     <div class="badge-row">
-                        <span class="status-badge" id="mp-status">再生待機中</span>
-                        <button class="btn-follow" id="mp-follow" title="アーティストをフォロー">👤 フォロー</button>
-                        <button class="btn-station" id="mp-station" title="この曲のステーションを開始">📻 ステーション</button>
+                        <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
+                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">${tx.mpFollowBtn}</button>
+                        <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
                     </div>
                 </div>
             </div>
@@ -3146,14 +3560,14 @@
 
             <!-- コントロールボタン列 -->
             <div class="controls-row">
-                <button id="mp-prev" title="前の曲">⏮</button>
-                <button class="btn-play" id="mp-play" title="再生 / 一時停止">⏯</button>
-                <button id="mp-next" title="次の曲">⏭</button>
-                <button class="btn-like" id="mp-like" title="いいね (Like)">🤍</button>
-                <button class="btn-repost" id="mp-repost" title="リポスト (Repost)">🔁</button>
-                <button class="btn-pl" id="mp-add-pl" title="プレイリストに追加">➕</button>
-                <button class="btn-dislike" id="mp-dislike" title="この曲だけ除外＆スキップ">👎</button>
-                <button class="btn-hate" id="mp-hate" title="この作者の曲全除外＆スキップ">🚫</button>
+                <button id="mp-prev" title="${tx.mpPrevTitle}">⏮</button>
+                <button class="btn-play" id="mp-play" title="${tx.mpPlayTitle}">⏯</button>
+                <button id="mp-next" title="${tx.mpNextTitle}">⏭</button>
+                <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
+                <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
+                <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
+                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
+                <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🚫</button>
             </div>
             <div class="toast" id="mp-toast"></div>
         `;
@@ -3327,11 +3741,11 @@
             });
         }
         doc.getElementById('mp-dislike')?.addEventListener('click', async function () {
-            showToast('👎 曲を除外してスキップ');
+            showToast(getI18nTexts().mpToastDislike);
             await handleDislikeClick();
         });
         doc.getElementById('mp-hate')?.addEventListener('click', async function () {
-            showToast('🚫 作者を除外してスキップ');
+            showToast(getI18nTexts().mpToastHate);
             await handleHateClick();
         });
     }
@@ -3440,7 +3854,7 @@
             const isDiscovery = state.playbackMode === 'DISCOVERY';
             const label = !isOn ? '⏸ 発掘 OFF' : (isDiscovery ? '🔍 発掘 ON' : '👥 フォロー新曲');
             if (mpStatus.textContent !== label) mpStatus.textContent = label;
-            mpStatus.title = isOn ? 'クリックで発掘モードを OFF（SoundCloud 通常再生）' : 'クリックで発掘モードを ON（知っている曲を自動スキップ）';
+            const tStatus = getI18nTexts(); mpStatus.title = isOn ? tStatus.mpStatusToggleOff : tStatus.mpStatusToggleOn;
             mpStatus.classList.toggle('off', !isOn);
             mpStatus.classList.toggle('following-mode', isOn && !isDiscovery);
         }

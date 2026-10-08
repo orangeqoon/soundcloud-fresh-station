@@ -29,13 +29,28 @@
       align-items: center;
       gap: 5px;
     }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lang-select {
+      background: #242424;
+      color: #bbb;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 10px;
+      padding: 2px 4px;
+      cursor: pointer;
+      outline: none;
+    }
     .badge {
       font-size: 10px;
       background: #282828;
       padding: 2px 6px;
       border-radius: 10px;
       color: #888;
-      max-width: 170px;
+      max-width: 140px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -223,9 +238,16 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.8.2</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.1</span>
     </div>
-    <div class="badge" id="conn-badge">SoundCloud未接続</div>
+    <div class="header-right">
+      <select id="lang-select" class="lang-select" title="Language / 言語">
+        <option value="auto">Auto</option>
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+      </select>
+      <div class="badge" id="conn-badge">SoundCloud未接続</div>
+    </div>
   </div>
 
   <!-- アクションボタン列 -->
@@ -237,15 +259,15 @@
       📻 ステーション開始
     </button>
   </div>
-  <label class="auto-mp-row" for="auto-mp-toggle" title="音楽の再生中に別のタブへ切り替えると、ミニプレイヤーが自動で表示されます（Edge / Chrome の自動ピクチャー イン ピクチャー機能）">
+  <label class="auto-mp-row" id="auto-mp-label-wrapper" for="auto-mp-toggle">
     <input type="checkbox" id="auto-mp-toggle" checked>
-    <span>別のタブを開いたらミニプレイヤーを自動表示</span>
+    <span id="auto-mp-text">別のタブを開いたらミニプレイヤーを自動表示</span>
   </label>
 
   <!-- 音量コントロール -->
   <div class="card" style="border-left: 3px solid #1e88e5;">
     <div class="card-label">
-      <span>🔊 音量コントロール</span>
+      <span id="label-vol-control">🔊 音量コントロール</span>
       <span id="vol-display-text" style="font-size: 11px; color: #4fc3f7; font-weight: bold;">80%</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
@@ -258,7 +280,7 @@
   <div class="card" id="discovery-card" style="border-left: 3px solid #ff5500;">
     <label class="discovery-row" for="discovery-toggle">
       <span>
-        <span class="discovery-title">🔍 発掘モード</span>
+        <span class="discovery-title" id="label-discovery-title">🔍 発掘モード</span>
         <span class="discovery-desc" id="discovery-desc">知っている曲（Likes・フォロー中・Dislike）を自動スキップ</span>
       </span>
       <span class="switch">
@@ -271,7 +293,7 @@
   <!-- 追加先プレイリスト -->
   <div class="card">
     <div class="card-label">
-      <span>➕ ワンクリック追加先プレイリスト</span>
+      <span id="label-target-pl">➕ ワンクリック追加先プレイリスト</span>
       <button id="sync-btn" class="sync-sub-btn">🔄 同期</button>
     </div>
     <select id="pl-select">
@@ -282,7 +304,7 @@
   <!-- Dislike プレイリスト連携 (エクスポート & インポート) -->
   <div class="card sync-card">
     <div class="card-label" style="color: #ff8a80; font-weight: bold;">
-      <span>🚫 Dislike曲のプレイリスト連携</span>
+      <span id="label-dislike-section">🚫 Dislike曲のプレイリスト連携</span>
     </div>
     <div class="sync-btn-group">
       <button id="btn-export-dislikes" class="sync-btn">📤 SCへ書き出し</button>
@@ -293,11 +315,12 @@
 
   <!-- 最小限のステータス情報 -->
   <div class="status-bar">
-    <span>除外Likes: <strong id="stat-likes">-</strong></span>
-    <span>除外Follow: <strong id="stat-followings">-</strong></span>
-    <span>Dislike: <strong id="stat-dislikes">-</strong></span>
+    <span><span id="label-stat-likes">除外Likes</span>: <strong id="stat-likes">-</strong></span>
+    <span><span id="label-stat-follows">除外Follow</span>: <strong id="stat-followings">-</strong></span>
+    <span><span id="label-stat-dislikes">Dislike</span>: <strong id="stat-dislikes">-</strong></span>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
