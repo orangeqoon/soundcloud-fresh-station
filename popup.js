@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (badge0 && !cachedData) badge0.textContent = t.notConnected;
     const plSel = document.getElementById('pl-select');
     if (typeof renderLists === 'function') renderLists();
+    if (typeof renderFresh === 'function') renderFresh();
     if (plSel && plSel.options.length === 1 && plSel.options[0].value === '') plSel.options[0].textContent = t.loadingSC;
   }
 
@@ -186,6 +187,49 @@ document.addEventListener('DOMContentLoaded', async function () {
         laterList = changes.laterArtists.newValue || [];
         renderLists();
       }
+    });
+  }
+
+  // ---- フレッシュさで飛ばす（R10） ----
+  const FRESH_ROWS = [
+    ['followers', 'fresh-followers', 'freshFollowersPre', 'freshFollowersPost'],
+    ['trackCount', 'fresh-tracks', 'freshTracksPre', 'freshTracksPost'],
+    ['playCount', 'fresh-plays', 'freshPlaysPre', 'freshPlaysPost'],
+    ['ageDays', 'fresh-age', 'freshAgePre', 'freshAgePost']
+  ];
+  let freshFilter = FreshDigCore.normalizeFreshFilter(null);
+
+  function renderFresh() {
+    document.getElementById('fresh-title').textContent = t.freshTitle;
+    document.getElementById('fresh-hint').textContent = t.freshHint;
+    FRESH_ROWS.forEach(function (r) {
+      document.getElementById(r[1] + '-pre').textContent = t[r[2]];
+      document.getElementById(r[1] + '-post').textContent = t[r[3]];
+      document.getElementById(r[1] + '-on').checked = !!freshFilter[r[0]].on;
+      const n = document.getElementById(r[1] + '-n');
+      if (document.activeElement !== n) n.value = freshFilter[r[0]].n;
+    });
+  }
+
+  function saveFresh() {
+    FRESH_ROWS.forEach(function (r) {
+      freshFilter[r[0]] = { on: document.getElementById(r[1] + '-on').checked, n: Number(document.getElementById(r[1] + '-n').value) };
+    });
+    freshFilter = FreshDigCore.normalizeFreshFilter(freshFilter);
+    if (chrome.storage && chrome.storage.local) chrome.storage.local.set({ freshFilter: freshFilter });
+    if (tab) {
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'SET_FRESH_FILTER', filter: freshFilter }, function () { void chrome.runtime.lastError; });
+    }
+  }
+
+  FRESH_ROWS.forEach(function (r) {
+    document.getElementById(r[1] + '-on').addEventListener('change', saveFresh);
+    document.getElementById(r[1] + '-n').addEventListener('change', saveFresh);
+  });
+  if (chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get('freshFilter', function (st) {
+      if (st && st.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(st.freshFilter);
+      renderFresh();
     });
   }
 
@@ -448,6 +492,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     updateDiscoveryUI(data.discoveryEnabled !== false);
+    if (data.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(data.freshFilter);
+    renderFresh();
     renderLists();
 
     const autoMpToggleEl = document.getElementById('auto-mp-toggle');

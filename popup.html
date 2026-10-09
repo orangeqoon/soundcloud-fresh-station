@@ -91,6 +91,8 @@
     .list-row .sub { font-size:10px; color:#888; }
     .list-row button { background:transparent; border:1px solid #666; color:#ccc; border-radius:4px; font-size:10px; padding:1px 5px; cursor:pointer; flex-shrink:0; }
     .list-empty { color:#777; font-size:11px; padding:4px 0; }
+    .fresh-row { display:flex; align-items:center; flex-wrap:wrap; gap:4px; font-size:11px; color:#bbb; margin-bottom:3px; }
+    .fresh-n { width:70px; background:#242424; border:1px solid #444; color:#eee; border-radius:4px; font-size:11px; padding:1px 3px; }
     .card {
       background: #202020;
       border: 1px solid #333;
@@ -253,7 +255,7 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.8</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.9</span>
     </div>
     <div class="header-right">
       <select id="lang-select" class="lang-select" title="Language / 言語">
@@ -345,6 +347,14 @@
     <div style="margin-top:8px;">
       <button id="btn-copy-log" class="sync-btn" style="width:100%;">📋 診断ログをコピー</button>
       <div id="log-hint" class="sync-msg" style="margin-top:4px;"></div>
+      <div id="fresh-box" style="margin-top:10px; padding-top:8px; border-top:1px solid #333;">
+        <div id="fresh-title" style="font-size:12px; color:#ddd; margin-bottom:4px;"></div>
+        <label class="fresh-row"><input type="checkbox" id="fresh-followers-on"><span id="fresh-followers-pre"></span><input type="number" min="0" id="fresh-followers-n" class="fresh-n"><span id="fresh-followers-post"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="fresh-tracks-on"><span id="fresh-tracks-pre"></span><input type="number" min="0" id="fresh-tracks-n" class="fresh-n"><span id="fresh-tracks-post"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="fresh-plays-on"><span id="fresh-plays-pre"></span><input type="number" min="0" id="fresh-plays-n" class="fresh-n"><span id="fresh-plays-post"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="fresh-age-on"><span id="fresh-age-pre"></span><input type="number" min="0" id="fresh-age-n" class="fresh-n"><span id="fresh-age-post"></span></label>
+        <div id="fresh-hint" class="sync-msg" style="margin-top:4px;"></div>
+      </div>
     </div>
   </details>
 
@@ -356,6 +366,7 @@
   </div>
 
   <script src="i18n.js"></script>
+  <script src="freshdig_core.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -223,6 +223,18 @@
       listNeedTab: 'SoundCloudのタブを開くと一覧が出ます',
       listFrom: 'きっかけ',
 
+      // Freshness filter (R10)
+      freshTitle: '✨ フレッシュさで飛ばす（発掘モードのとき）',
+      freshFollowersPre: 'フォロワーが',
+      freshFollowersPost: '人より多い作者を飛ばす',
+      freshTracksPre: '投稿曲が',
+      freshTracksPost: '曲より多い作者を飛ばす',
+      freshPlaysPre: '再生回数が',
+      freshPlaysPost: '回より多い曲を飛ばす',
+      freshAgePre: '投稿から',
+      freshAgePost: '日より古い曲を飛ばす',
+      freshHint: '分からないときは飛ばしません。作者の数字は7日間保存します。',
+
       // Playlist picker popup
       pickerTitle: '➕ ワンクリック追加先を選択',
       pickerCancel: 'キャンセル'
@@ -440,6 +452,18 @@
       listEmpty: '(nothing yet)',
       listNeedTab: 'Open a SoundCloud tab to see this list',
       listFrom: 'From',
+
+      // Freshness filter (R10)
+      freshTitle: '✨ Skip by freshness (Discovery Mode)',
+      freshFollowersPre: 'Skip artists with more than',
+      freshFollowersPost: 'followers',
+      freshTracksPre: 'Skip artists with more than',
+      freshTracksPost: 'tracks',
+      freshPlaysPre: 'Skip tracks played more than',
+      freshPlaysPost: 'times',
+      freshAgePre: 'Skip tracks older than',
+      freshAgePost: 'days',
+      freshHint: 'Nothing is skipped when a number is unknown. Artist numbers are kept for 7 days.',
 
       // Playlist picker popup
       pickerTitle: '➕ Select 1-Click Target Playlist',

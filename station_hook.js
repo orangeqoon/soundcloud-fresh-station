@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.8)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.9)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -601,6 +601,7 @@
                 updateModeButtonUI();
             }
             if (d && Array.isArray(d.laterArtists)) setLaterList(d.laterArtists);
+            if (d && d.freshFilter) applyFreshFilter(d.freshFilter, { noSync: true, noBroadcast: true });
             if (d && typeof d.autoMiniPlayer === 'boolean' && d.autoMiniPlayer !== state.autoMiniPlayer) {
                 setAutoMiniPlayer(d.autoMiniPlayer, { noSync: true });
             }
@@ -660,6 +661,9 @@
                     applyLanguage();
                     fdBus.post('lang', { language: state.preferredLanguage });
                     ack({ success: true, preferredLanguage: state.preferredLanguage });
+                } else if (action === 'SET_FRESH_FILTER') {
+                    applyFreshFilter(event.data.filter);
+                    ack({ success: true, freshFilter: state.freshFilter });
                 } else if (action === 'SET_AUTO_MINI_PLAYER') {
                     setAutoMiniPlayer(event.data.enabled !== false);
                     ack({ success: true, autoMiniPlayer: state.autoMiniPlayer });
@@ -702,6 +706,7 @@
                         autoMiniPlayer: state.autoMiniPlayer,
                         autoPipSupported: 'documentPictureInPicture' in window,
                         preferredLanguage: state.preferredLanguage,
+                        freshFilter: state.freshFilter,
                         likedCount: state.likedTrackIds.size,
                         followingCount: state.followingUserIds.size,
                         isReady: state.isUserDataLoaded,
@@ -1269,7 +1274,7 @@
     // 判定の中身は freshdig_core.js（Node でテスト済み）
     function getSkipReason(info) {
         if (state.robotBlocked) return null;
-        return FreshDigCore.getSkipReasonKey(info, {
+        const base = FreshDigCore.getSkipReasonKey(info, {
             discoveryEnabled: state.discoveryEnabled,
             playbackMode: state.playbackMode,
             dislikedTracks: state.dislikedTracks,
@@ -1281,7 +1286,110 @@
             inLibrary: isExplicitLibraryPage(),
             onArtistPage: false
         });
+        if (base) return base;
+        if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return null;
+        return getFreshReason(info);
     }
+
+    // ---- R10: フレッシュさで飛ばす（既定 OFF。ほかの規則の後に見る） ----
+    const FRESH_FILTER_KEY = 'sc_fresh_station_fresh_filter';
+    const AUTHOR_STATS_KEY = 'sc_fresh_station_author_stats_v1';
+    const AUTHOR_STATS_TTL = 7 * 86400000;
+    const AUTHOR_STATS_MAX = 5000;
+    const authorStats = { map: null, pending: {}, pendingCount: 0, saveTimer: null };
+
+    try { state.freshFilter = FreshDigCore.normalizeFreshFilter(JSON.parse(localStorage.getItem(FRESH_FILTER_KEY) || 'null')); }
+    catch (e) { state.freshFilter = FreshDigCore.normalizeFreshFilter(null); }
+
+    function loadAuthorStats() {
+        if (!authorStats.map) {
+            let raw = {};
+            try { raw = JSON.parse(localStorage.getItem(AUTHOR_STATS_KEY) || '{}') || {}; } catch (e) {}
+            authorStats.map = FreshDigCore.pruneAuthorStats(raw, Date.now(), AUTHOR_STATS_TTL, AUTHOR_STATS_MAX);
+        }
+        return authorStats.map;
+    }
+
+    function saveAuthorStatsSoon() {
+        if (authorStats.saveTimer) return;
+        authorStats.saveTimer = setTimeout(function () {
+            authorStats.saveTimer = null;
+            try {
+                authorStats.map = FreshDigCore.pruneAuthorStats(authorStats.map, Date.now(), AUTHOR_STATS_TTL, AUTHOR_STATS_MAX);
+                localStorage.setItem(AUTHOR_STATS_KEY, JSON.stringify(authorStats.map));
+            } catch (e) {}
+        }, 2000);
+    }
+
+    function cachedAuthorStats(id) {
+        const e = id ? loadAuthorStats()[String(id)] : null;
+        return e && Date.now() - e.at < AUTHOR_STATS_TTL ? { followers: e.f, trackCount: e.t } : null;
+    }
+
+    // 作者のフォロワー数・投稿曲数が曲の情報に無いときだけ users/<id> を取りに行く（apiFetch の上限を通る。同時 3 件まで）
+    function fetchAuthorStats(id) {
+        const key = String(id);
+        if (!id || authorStats.pending[key] || authorStats.pendingCount >= 3 || state.robotBlocked) return;
+        if (cachedAuthorStats(id)) return;
+        authorStats.pending[key] = true;
+        authorStats.pendingCount++;
+        scApi('users/' + key).then(function (res) {
+            return res && res.ok ? res.json() : null;
+        }).then(function (u) {
+            if (u && typeof u.followers_count === 'number') {
+                loadAuthorStats()[key] = { f: u.followers_count, t: typeof u.track_count === 'number' ? u.track_count : undefined, at: Date.now() };
+                saveAuthorStatsSoon();
+                onAuthorStatsArrived(key);
+            }
+        }).catch(function () {}).then(function () {
+            delete authorStats.pending[key];
+            authorStats.pendingCount--;
+        });
+    }
+
+    function getFreshReason(info) {
+        const ff = state.freshFilter;
+        if (!ff || !info) return null;
+        if (!(ff.followers.on || ff.trackCount.on || ff.playCount.on || ff.ageDays.on)) return null;
+        if (FreshDigCore.isArtistPagePath(window.location.pathname)) return null; // 作者のページから聴いているときは効かせない
+        const stats = Object.assign({}, info.stats || {});
+        const cached = cachedAuthorStats(info.artistId);
+        if (cached) {
+            if (stats.followers === undefined) stats.followers = cached.followers;
+            if (stats.trackCount === undefined) stats.trackCount = cached.trackCount;
+        }
+        const needFollowers = ff.followers.on && stats.followers === undefined;
+        const needTracks = ff.trackCount.on && stats.trackCount === undefined;
+        if ((needFollowers || needTracks) && info.artistId) fetchAuthorStats(info.artistId);
+        return FreshDigCore.getFreshSkipReasonKey(stats, ff);
+    }
+
+    // 数字が分かった時: 今の曲なら再生開始から 5 秒以内だけ飛ばす。行列の先は先読みし直す
+    function onAuthorStatsArrived(artistId) {
+        try {
+            const sound = getScCurrentSound();
+            if (sound) {
+                const info = soundToTrackInfo(sound);
+                const pos = getPlaybackPositionSeconds();
+                if (String(info.artistId) === String(artistId) && pos && pos.position <= 5 && info.id && (!info.kind || info.kind === 'track')) {
+                    const reason = getSkipReason(info);
+                    if (reason) doAutoSkip(reason, info);
+                }
+            }
+        } catch (e) {}
+        try { scheduleQueuePrune(); } catch (e) {}
+    }
+
+    function applyFreshFilter(raw, opts) {
+        state.freshFilter = FreshDigCore.normalizeFreshFilter(raw);
+        try { localStorage.setItem(FRESH_FILTER_KEY, JSON.stringify(state.freshFilter)); } catch (e) {}
+        if (!(opts && opts.noSync)) {
+            window.postMessage({ type: 'SC_FRESH_STATION_SYNC_STORAGE', key: 'freshFilter', value: state.freshFilter }, window.location.origin);
+        }
+        if (!(opts && opts.noBroadcast)) fdBus.post('fresh-filter', { f: state.freshFilter });
+        try { scheduleQueuePrune(); } catch (e) {}
+    }
+    fdBus.on('fresh-filter', function (m) { applyFreshFilter(m.f, { noSync: true, noBroadcast: true }); });
 
     const MAX_CONSECUTIVE_AUTO_SKIPS = 20;
 
@@ -1417,7 +1525,14 @@
         const user = a.user || {};
         let path = '';
         try { path = a.permalink_url ? new URL(a.permalink_url).pathname : ''; } catch (e) {}
+        const stats = {};
+        if (typeof user.followers_count === 'number') stats.followers = user.followers_count;
+        if (typeof user.track_count === 'number') stats.trackCount = user.track_count;
+        if (typeof a.playback_count === 'number') stats.playCount = a.playback_count;
+        const created = a.created_at ? Date.parse(a.created_at) : NaN;
+        if (isFinite(created)) stats.createdAt = created;
         return {
+            stats: stats,
             id: toNumId(sound && sound.id !== undefined ? sound.id : a.id),
             artistId: toNumId(a.user_id !== undefined ? a.user_id : user.id),
             title: a.title || '',

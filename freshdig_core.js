@@ -73,6 +73,38 @@
     return null;
   }
 
+  // 設定（R10）の形を整える。壊れた値・足りない値は既定に戻す。既定はすべて OFF
+  const FRESH_DEFAULTS = {
+    followers: { on: false, n: 1000 },
+    trackCount: { on: false, n: 100 },
+    playCount: { on: false, n: 10000 },
+    ageDays: { on: false, n: 30 }
+  };
+  function normalizeFreshFilter(raw) {
+    const out = {};
+    Object.keys(FRESH_DEFAULTS).forEach(function (k) {
+      const r = raw && typeof raw === 'object' ? raw[k] : null;
+      const n = r ? Number(r.n) : NaN;
+      out[k] = {
+        on: !!(r && r.on),
+        n: (isFinite(n) && n >= 0 && n <= 1e9) ? Math.floor(n) : FRESH_DEFAULTS[k].n
+      };
+    });
+    return out;
+  }
+
+  // 作者ごとの統計の保存（期限つき・件数上限つき）。map: { id: { f, t, at } }。期限切れを消し、多ければ古い順に消す
+  function pruneAuthorStats(map, now, ttlMs, max) {
+    const entries = Object.keys(map || {}).filter(function (k) {
+      const e = map[k];
+      return e && typeof e.at === 'number' && now - e.at < ttlMs && now >= e.at - 60000;
+    });
+    entries.sort(function (a, b) { return map[b].at - map[a].at; });
+    const out = {};
+    entries.slice(0, max).forEach(function (k) { out[k] = map[k]; });
+    return out;
+  }
+
   // 再生待ち行列の先読み。infos: 行列の順に並べた曲情報（分からないものは null）、curPos: 今の曲の位置。
   // remove: 先に外してよい位置、firstKeep: 次に流してよい最初の位置（無ければ -1）
   function planQueueAhead(infos, curPos, reasonFn, maxLook) {
@@ -175,6 +207,8 @@
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,
     getFreshSkipReasonKey: getFreshSkipReasonKey,
+    normalizeFreshFilter: normalizeFreshFilter,
+    pruneAuthorStats: pruneAuthorStats,
     isArtistPagePath: isArtistPagePath
   };
 });

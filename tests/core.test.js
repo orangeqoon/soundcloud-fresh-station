@@ -167,3 +167,20 @@ test('planQueueAhead: removes known tracks ahead and finds the first one to play
   assert.strictEqual(p2.firstKeep, 1);
   assert.deepStrictEqual(p2.remove, [2]);
 });
+
+test('fresh filter settings are cleaned up (defaults, bad values)', () => {
+  const d = core.normalizeFreshFilter(null);
+  assert.deepStrictEqual([d.followers.on, d.followers.n, d.ageDays.n], [false, 1000, 30]);
+  const f = core.normalizeFreshFilter({ followers: { on: 1, n: '2500.9' }, trackCount: { on: true, n: -5 }, playCount: { n: 'x' }, evil: { on: true } });
+  assert.deepStrictEqual([f.followers.on, f.followers.n], [true, 2500]);
+  assert.strictEqual(f.trackCount.n, 100);
+  assert.strictEqual(f.playCount.on, false);
+  assert.strictEqual(f.evil, undefined);
+});
+
+test('author stats cache: expiry and size cap (oldest removed)', () => {
+  const now = 1e12, ttl = 7 * 86400000;
+  const m = { a: { f: 1, at: now - 1000 }, b: { f: 2, at: now - ttl - 1 }, c: { f: 3, at: now - 500 }, d: { f: 4, at: now - 2000 } };
+  const out = core.pruneAuthorStats(m, now, ttl, 2);
+  assert.deepStrictEqual(Object.keys(out).sort(), ['a', 'c']);
+});
