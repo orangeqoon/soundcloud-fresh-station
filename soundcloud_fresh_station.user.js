@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.9
+// @version      1.9.10
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -723,7 +723,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.9)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.10)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1142,7 +1142,7 @@
     })();
 
     // ---- API の上限 ----
-    const apiLimiter = FreshDigCore.createRateLimiter({ minGapMs: 250, perMinute: 60 });
+    const apiLimiter = FreshDigCore.createRateLimiter({ minGapMs: 250, perMinute: 45 });
     const apiBackoff = FreshDigCore.createBackoff([60000, 120000, 300000]);
     const robotState = { iframe: false, api: false };
 
@@ -2005,7 +2005,7 @@
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
             inLibrary: isExplicitLibraryPage(),
-            onArtistPage: false
+            onArtistPage: isOnLaterArtistPage()
         });
         if (base) return base;
         if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return null;
@@ -2015,6 +2015,7 @@
     // ---- R10: フレッシュさで飛ばす（既定 OFF。ほかの規則の後に見る） ----
     const FRESH_FILTER_KEY = 'sc_fresh_station_fresh_filter';
     const AUTHOR_STATS_KEY = 'sc_fresh_station_author_stats_v1';
+    const FRESH_LATE_SKIP_SEC = 2; // 数字が遅れて分かったとき、再生開始からこの秒数以内なら飛ばす
     const AUTHOR_STATS_TTL = 7 * 86400000;
     const AUTHOR_STATS_MAX = 5000;
     const authorStats = { map: null, pending: {}, pendingCount: 0, saveTimer: null };
@@ -2072,7 +2073,7 @@
         const ff = state.freshFilter;
         if (!ff || !info) return null;
         if (!(ff.followers.on || ff.trackCount.on || ff.playCount.on || ff.ageDays.on)) return null;
-        if (FreshDigCore.isArtistPagePath(window.location.pathname)) return null; // 作者のページから聴いているときは効かせない
+        if (isOnLaterArtistPage()) return null; // 「後で聴く作者」のページから聴いているときは効かせない
         const stats = Object.assign({}, info.stats || {});
         const cached = cachedAuthorStats(info.artistId);
         if (cached) {
@@ -2092,7 +2093,7 @@
             if (sound) {
                 const info = soundToTrackInfo(sound);
                 const pos = getPlaybackPositionSeconds();
-                if (String(info.artistId) === String(artistId) && pos && pos.position <= 5 && info.id && (!info.kind || info.kind === 'track')) {
+                if (String(info.artistId) === String(artistId) && pos && pos.position <= FRESH_LATE_SKIP_SEC && info.id && (!info.kind || info.kind === 'track')) {
                     const reason = getSkipReason(info);
                     if (reason) doAutoSkip(reason, info);
                 }
@@ -2403,7 +2404,7 @@
 
         // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
         let reason = alreadyDecided ? null : getSkipReason(info);
-        if (!reason && !isExplicitLibraryPage() && likeBtn) {
+        if (!reason && !isExplicitLibraryPage() && !isOnLaterArtistPage() && likeBtn) {
             const isSelected = likeBtn.classList.contains('sc-button-selected');
             const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
             const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
@@ -2608,7 +2609,6 @@
                 set('mp-station', 'mpStationBtnTitle', 'mpStationBtn');
                 set('mp-prev', 'mpPrevTitle');
                 set('mp-play', 'mpPlayTitle');
-                set('mp-next', 'mpNextTitle');
                 set('mp-like', 'mpLikeTitle');
                 set('mp-add-pl', 'mpAddPlTitle');
                 set('mp-dislike', 'mpDislikeTitle');
@@ -3468,6 +3468,22 @@
         return !!(t && t.artistId && laterState.map[String(t.artistId)]);
     }
 
+    // いま開いているのが「後で聴く」に入れた作者のページか（そのページから聴くときは、ライク済み・フォロー中でも飛ばさない）
+    function isOnLaterArtistPage() {
+        try {
+            const path = window.location.pathname;
+            if (!FreshDigCore.isArtistPagePath(path)) return false;
+            const seg = (path.split('/').filter(Boolean)[0] || '').toLowerCase();
+            if (!seg) return false;
+            const vals = Object.keys(laterState.map);
+            for (let i = 0; i < vals.length; i++) {
+                const p = laterState.map[vals[i]] && laterState.map[vals[i]].permalink;
+                if (p && String(p).toLowerCase() === seg) return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
     // 戻り値: 画面に出す文
     async function toggleLater() {
         const t = await ensureCurrentTrackInfo();
@@ -3483,7 +3499,7 @@
         }
         const r = await laterOp({ op: 'add', item: { artistId: id, name: name, permalink: getArtistPermalink(t), avatarUrl: t.avatarUrl || '', fromTrackTitle: t.title || '' } });
         if (!r.ok) return r.reason === 'limit' ? tt('m_laterLimit') : tt('m_laterFail');
-        laterState.map[id] = { artistId: id, name: name };
+        laterState.map[id] = { artistId: id, name: name, permalink: getArtistPermalink(t) };
         updateLaterButton();
         return tt('m_laterAdded', { name: name });
     }
@@ -4328,6 +4344,18 @@
                     flex: 1;
                     min-width: 0;
                 }
+                .top-actions {
+                    display: flex;
+                    gap: 4px;
+                    align-self: flex-start;
+                    flex-shrink: 0;
+                }
+                .top-actions button {
+                    flex: none;
+                    width: 34px;
+                    height: 34px;
+                    font-size: 14px;
+                }
                 .title {
                     font-size: 13px;
                     font-weight: bold;
@@ -4683,6 +4711,10 @@
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
                     </div>
                 </div>
+                <div class="top-actions">
+                    <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
+                    <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🚫</button>
+                </div>
             </div>
 
             <!-- シークバーエリア -->
@@ -4713,12 +4745,9 @@
             <div class="controls-row">
                 <button id="mp-prev" title="${tx.mpPrevTitle}">⏮</button>
                 <button class="btn-play" id="mp-play" title="${tx.mpPlayTitle}">⏯</button>
-                <button id="mp-next" title="${tx.mpNextTitle}">⏭</button>
+                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
-                <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
-                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
-                <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🚫</button>
                 <button class="btn-later" id="mp-later" title="">🎧</button>
             </div>
             <div class="toast" id="mp-toast"></div>
