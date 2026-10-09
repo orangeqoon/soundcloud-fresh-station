@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.7
+// @version      1.9.8
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -665,7 +665,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.7)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.8)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1942,7 +1942,7 @@
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
             inLibrary: isExplicitLibraryPage(),
-            onArtistPage: FreshDigCore.isArtistPagePath(window.location.pathname)
+            onArtistPage: false
         });
     }
 
@@ -2230,7 +2230,7 @@
 
         // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
         let reason = alreadyDecided ? null : getSkipReason(info);
-        if (!reason && !isExplicitLibraryPage() && !FreshDigCore.isArtistPagePath(window.location.pathname) && likeBtn) {
+        if (!reason && !isExplicitLibraryPage() && likeBtn) {
             const isSelected = likeBtn.classList.contains('sc-button-selected');
             const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
             const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
@@ -4467,6 +4467,10 @@
                     background: #e53935;
                     color: #fff;
                 }
+                .btn-later {
+                    border: 1px solid #7e57c2;
+                    color: #b39ddb;
+                }
                 .btn-later.saved {
                     background: #7e57c2;
                     color: #fff;
@@ -4504,7 +4508,6 @@
                         <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
                         <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">${tx.mpFollowBtn}</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
-                        <button class="btn-station btn-later" id="mp-later" title="">🎧</button>
                     </div>
                 </div>
             </div>
@@ -4543,6 +4546,7 @@
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
                 <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
                 <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🚫</button>
+                <button class="btn-later" id="mp-later" title="">🎧</button>
             </div>
             <div class="toast" id="mp-toast"></div>
         `;
@@ -4632,8 +4636,18 @@
     const fdRemote = { now: null, active: false, seq: 0, pending: {} };
 
     function isLocalPlaying() {
+        const m = lastPlayedMedia;
+        if (m && m.src && m.readyState > 0 && !m.ended) return !m.paused;
         const playBtn = document.querySelector('.playControls__play');
         return !!(playBtn && playBtn.classList.contains('playing'));
+    }
+
+    function formatClock(sec) {
+        sec = Math.max(0, Math.floor(sec || 0));
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const ss = String(sec % 60).padStart(2, '0');
+        return h > 0 ? (h + ':' + String(m).padStart(2, '0') + ':' + ss) : (m + ':' + ss);
     }
 
     function mpToast(msg) {
@@ -4693,6 +4707,18 @@
             if (!isNaN(ariaVal) && ariaMax > 0) ratio = Math.min(1, Math.max(0, ariaVal / ariaMax));
         }
 
+        // 元のページが裏にあると画面の時間表示が止まるので、再生管理から直接読む
+        let passed = timePassedEl ? timePassedEl.textContent.trim() : '0:00';
+        let duration = durationEl ? durationEl.textContent.trim() : '0:00';
+        try {
+            const pos = getPlaybackPositionSeconds();
+            if (pos && pos.duration > 0) {
+                passed = formatClock(pos.position);
+                duration = formatClock(pos.duration);
+                ratio = Math.min(1, Math.max(0, pos.position / pos.duration));
+            }
+        } catch (e) {}
+
         return {
             title: title,
             artist: artist,
@@ -4702,8 +4728,8 @@
             hasLikeBtn: !!likeBtn,
             reposted: !!reposted,
             following: following,
-            passed: timePassedEl ? timePassedEl.textContent.trim() : '0:00',
-            duration: durationEl ? durationEl.textContent.trim() : '0:00',
+            passed: passed,
+            duration: duration,
             ratio: ratio,
             hated: isCurrentArtistHated(),
             later: isCurrentArtistSavedLater(),
@@ -4769,11 +4795,44 @@
         if (m.to === TAB_ID && typeof m.text === 'string') mpToast(m.text);
     });
 
+    // 前・次: 再生管理があればそれで、なければ画面のボタンを押す
+    function scTransport(method, selector) {
+        try {
+            const pm = getScPlaybackManager();
+            if (pm && typeof pm[method] === 'function') { pm[method]({ userInitiated: true }); return; }
+        } catch (e) {}
+        const b = document.querySelector(selector);
+        if (b) b.click();
+    }
+
+    // 再生/一時停止: 音声そのもの・再生管理を直接動かす。画面のボタンは裏のタブでは反応しないことがあるため、最後の手段にする
+    function scTogglePlay() {
+        const clickBtn = function () { const b = document.querySelector('.playControls__play'); if (b) b.click(); };
+        const media = lastPlayedMedia;
+        if (isLocalPlaying()) {
+            try {
+                const pm = getScPlaybackManager();
+                if (pm && typeof pm.pauseCurrent === 'function') { pm.pauseCurrent(); return; }
+            } catch (e) {}
+            if (media && !media.paused) { try { media.pause(); return; } catch (e) {} }
+            clickBtn();
+            return;
+        }
+        if (media && media.src && media.paused && !media.ended) {
+            let r;
+            try { r = media.play(); } catch (e) { clickBtn(); return; }
+            if (r && typeof r.catch === 'function') r.catch(function (e) { dlog('mini-play-blocked', e && e.name); clickBtn(); });
+            setTimeout(function () { if (media.paused && !isLocalPlaying()) clickBtn(); }, 600);
+            return;
+        }
+        clickBtn();
+    }
+
     // ミニプレイヤーの操作の中身。(args, toast, doc) を受ける。doc はこのタブのミニプレイヤー（別タブから呼ばれたときは null）
     const MP_ACTIONS = {
-        prev: function () { const b = document.querySelector('.playControls__prev'); if (b) b.click(); },
-        play: function () { const b = document.querySelector('.playControls__play'); if (b) b.click(); },
-        next: function () { const b = document.querySelector('.playControls__next'); if (b) b.click(); },
+        prev: function () { scTransport('playPrev', '.playControls__prev'); },
+        play: function () { scTogglePlay(); },
+        next: function () { scTransport('playNext', '.playControls__next'); },
         seek: function (a) { if (typeof a.ratio === 'number') seekToSoundCloudRatio(a.ratio); },
         vol: function (a) { if (typeof a.v === 'number') setSoundCloudVolume(a.v); },
         mute: function () { toggleSoundCloudMute(); },
