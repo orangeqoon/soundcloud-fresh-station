@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.14
+// @version      1.9.15
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -74,7 +74,7 @@
       logCopyFailed: 'コピーできませんでした',
       logHint: '音が止まった直後に押して、貼り付けてください',
 
-      dislikeSection: '⏭️ 不再生 (NoPlay) プレイリスト連携',
+      dislikeSection: '⏭️ 不再生プレイリスト連携',
       btnExportDislikes: '📤 SCへ書き出し',
       btnExportingDislikes: '⏳ 書き出し中...',
       btnImportDislikes: '📥 SCから読み込み',
@@ -85,13 +85,13 @@
 
       statLikes: '除外Likes',
       statFollow: '除外Follow',
-      statDislike: 'NoPlay',
+      statDislike: '不再生',
 
       langLabel: '🌐 言語',
 
       // In-page Player Bar
       barStationTitle: '📻 この曲のステーションを開始',
-      barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+      barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
       barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
       barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
       barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
@@ -114,7 +114,7 @@
       mpLikeTitle: 'いいね (Like)',
       mpRepostTitle: 'リポスト (Repost)',
       mpAddPlTitle: 'プレイリストに追加',
-      mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+      mpDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
       mpHateTitle: '作者除外 & スキップ',
       mpToastDislike: '⏭️ 不再生に登録してスキップ',
       mpToastHate: '🤬 作者を除外してスキップ',
@@ -257,7 +257,7 @@
 
       // Multi-playlist
       m_exMultiDone: '連番プレイリスト「{name}」を含む {c} 件のプレイリストに合計 {n} 曲を書き出しました！',
-      m_imMultiDone: '{c} 個の NoPlay プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
+      m_imMultiDone: '{c} 個の不再生プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
 
     },
     en: {
@@ -332,7 +332,7 @@
 
       // In-page Player Bar
       barStationTitle: '📻 Start station from this track',
-      barDislikeTitle: '⏭️ NoPlay (Skip & do not play this track)',
+      barDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
       barHateTitle: '🤬 Exclude Artist (Skip all tracks by this artist)',
       barMiniPlayerTitle: '🪟 Mini Player (Floating always-on-top window)',
       barDiscoveryOffTitle: '🔍 Discovery Mode OFF (Click to turn ON: skip known tracks)',
@@ -355,7 +355,7 @@
       mpLikeTitle: 'Like',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Add to playlist',
-      mpDislikeTitle: 'NoPlay & skip',
+      mpDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
       mpHateTitle: 'Exclude artist & skip',
       mpToastDislike: '⏭️ Added to NoPlay & skipped',
       mpToastHate: '🤬 Excluded artist & skipped',
@@ -1230,7 +1230,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.14)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.15)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1259,7 +1259,7 @@
         }
         return {
             barStationTitle: '📻 この曲のステーションを開始',
-            barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+            barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
             barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
             barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
             barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
@@ -1280,7 +1280,7 @@
             mpLikeTitle: 'いいね (Like)',
             mpRepostTitle: 'リポスト (Repost)',
             mpAddPlTitle: 'プレイリストに追加',
-            mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+            mpDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
             mpHateTitle: '作者除外 & スキップ',
             mpToastDislike: '⏭️ 不再生に登録してスキップ',
             mpToastHate: '🤬 作者を除外してスキップ',
@@ -4885,6 +4885,49 @@
 
     let isSeekingInMiniPlayer = false;
 
+    // ミニプレイヤー（Document PiP の小窓）ではブラウザ標準の title の吹き出しが出ないため、自前で出す。
+    // title は 0.5 秒ごとの同期で書き直されるので、乗せた時に毎回 data-tip へ移す（標準の吹き出しと二重にならないように）
+    function setupMiniPlayerTooltip(doc) {
+        const tip = doc.getElementById('mp-tip');
+        if (!tip) return;
+        let timer = null;
+        let current = null;
+        const hide = function () {
+            clearTimeout(timer);
+            timer = null;
+            current = null;
+            tip.style.display = 'none';
+        };
+        doc.addEventListener('mouseover', function (e) {
+            const el = e.target && e.target.closest ? e.target.closest('[title],[data-tip]') : null;
+            if (!el || el === doc.body) { hide(); return; }
+            if (el.getAttribute('title')) {
+                el.dataset.tip = el.getAttribute('title');
+                el.removeAttribute('title');
+            }
+            if (el === current) return;
+            hide();
+            current = el;
+            timer = setTimeout(function () {
+                const text = el.dataset.tip || '';
+                if (!text || current !== el) return;
+                tip.textContent = text;
+                tip.style.display = 'block';
+                const win = doc.defaultView;
+                const r = el.getBoundingClientRect();
+                const tw = tip.offsetWidth;
+                const th = tip.offsetHeight;
+                let left = Math.min(Math.max(4, r.left + r.width / 2 - tw / 2), win.innerWidth - tw - 4);
+                let top = r.top - th - 4;
+                if (top < 2) top = Math.min(r.bottom + 4, win.innerHeight - th - 2);
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+            }, 400);
+        });
+        doc.addEventListener('mouseleave', hide);
+        doc.addEventListener('mousedown', hide);
+    }
+
     function setupMiniPlayerUI(doc) {
         const tx = getI18nTexts();
         doc.title = tx.mpTitle;
@@ -5325,7 +5368,10 @@
                 <button class="btn-later" id="mp-later" title="">🧐</button>
             </div>
             <div class="toast" id="mp-toast"></div>
+            <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
         `;
+
+        setupMiniPlayerTooltip(doc);
 
         function showToast(msg) {
             const toast = doc.getElementById('mp-toast');

@@ -64,7 +64,7 @@
       logCopyFailed: 'コピーできませんでした',
       logHint: '音が止まった直後に押して、貼り付けてください',
 
-      dislikeSection: '⏭️ 不再生 (NoPlay) プレイリスト連携',
+      dislikeSection: '⏭️ 不再生プレイリスト連携',
       btnExportDislikes: '📤 SCへ書き出し',
       btnExportingDislikes: '⏳ 書き出し中...',
       btnImportDislikes: '📥 SCから読み込み',
@@ -75,13 +75,13 @@
 
       statLikes: '除外Likes',
       statFollow: '除外Follow',
-      statDislike: 'NoPlay',
+      statDislike: '不再生',
 
       langLabel: '🌐 言語',
 
       // In-page Player Bar
       barStationTitle: '📻 この曲のステーションを開始',
-      barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+      barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
       barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
       barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
       barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
@@ -104,7 +104,7 @@
       mpLikeTitle: 'いいね (Like)',
       mpRepostTitle: 'リポスト (Repost)',
       mpAddPlTitle: 'プレイリストに追加',
-      mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+      mpDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
       mpHateTitle: '作者除外 & スキップ',
       mpToastDislike: '⏭️ 不再生に登録してスキップ',
       mpToastHate: '🤬 作者を除外してスキップ',
@@ -247,7 +247,7 @@
 
       // Multi-playlist
       m_exMultiDone: '連番プレイリスト「{name}」を含む {c} 件のプレイリストに合計 {n} 曲を書き出しました！',
-      m_imMultiDone: '{c} 個の NoPlay プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
+      m_imMultiDone: '{c} 個の不再生プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
 
     },
     en: {
@@ -322,7 +322,7 @@
 
       // In-page Player Bar
       barStationTitle: '📻 Start station from this track',
-      barDislikeTitle: '⏭️ NoPlay (Skip & do not play this track)',
+      barDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
       barHateTitle: '🤬 Exclude Artist (Skip all tracks by this artist)',
       barMiniPlayerTitle: '🪟 Mini Player (Floating always-on-top window)',
       barDiscoveryOffTitle: '🔍 Discovery Mode OFF (Click to turn ON: skip known tracks)',
@@ -345,7 +345,7 @@
       mpLikeTitle: 'Like',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Add to playlist',
-      mpDislikeTitle: 'NoPlay & skip',
+      mpDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
       mpHateTitle: 'Exclude artist & skip',
       mpToastDislike: '⏭️ Added to NoPlay & skipped',
       mpToastHate: '🤬 Excluded artist & skipped',
