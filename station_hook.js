@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.12)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.13)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -31,8 +31,8 @@
         }
         return {
             barStationTitle: '📻 この曲のステーションを開始',
-            barDislikeTitle: '⏭️ もう聴かない (Never Play: この曲を今後再生せずスキップ)',
-            barHateTitle: '🤬 この作者を出禁 (この作者の曲すべてを二度と流さずスキップ)',
+            barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+            barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
             barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
             barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
             barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
@@ -52,10 +52,10 @@
             mpLikeTitle: 'いいね (Like)',
             mpRepostTitle: 'リポスト (Repost)',
             mpAddPlTitle: 'プレイリストに追加',
-            mpDislikeTitle: 'この曲をもう聴かない (Never Play) & スキップ',
-            mpHateTitle: 'この作者を出禁 & スキップ',
-            mpToastDislike: '⏭️ もう聴かない曲に登録してスキップ',
-            mpToastHate: '🤬 作者を出禁にしてスキップ',
+            mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+            mpHateTitle: '作者除外 & スキップ',
+            mpToastDislike: '⏭️ 不再生に登録してスキップ',
+            mpToastHate: '🤬 作者を除外してスキップ',
             mpToastAddedPl: '➕ プレイリストに追加しました',
             mpToastRemovedPl: '➖ プレイリストから解除しました',
             mpToastLiked: '❤️ いいねしました',
@@ -70,8 +70,8 @@
             pickerCancel: 'キャンセル',
             trackCountSuffix: '曲',
             skipToastPrefix: 'スキップ',
-            skipReasonDisliked: 'もう聴かない曲',
-            skipReasonHated: '出禁にした作者',
+            skipReasonDisliked: '不再生の曲',
+            skipReasonHated: '除外した作者',
             skipReasonGenre: '除外したジャンル',
             skipReasonOwn: '自分の曲',
             skipReasonLiked: 'ライク済み',
@@ -2420,7 +2420,8 @@
         return state.currentTrack;
     }
 
-    const NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] Never Play';
+    const NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] NoPlay';
+    const LEGACY_NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] Never Play';
     const LEGACY_DISLIKE_PLAYLIST_PREFIX = '[FreshDig] Disliked Tracks';
 
     function recordStat(type) {
@@ -2441,7 +2442,7 @@
         }
     }
 
-    // Never Play 曲を SoundCloud プレイリストにエクスポート（500曲上限を連番プレイリストで自動突破）
+    // NoPlay 曲を SoundCloud プレイリストにエクスポート（500曲上限を連番プレイリストで自動突破）
     async function exportDislikesToPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_exLogin') };
@@ -2477,9 +2478,12 @@
             for (let idx = 0; idx < chunks.length; idx++) {
                 const chunkTracks = chunks[idx];
                 const plTitle = idx === 0 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
+                const legacyPlTitle = idx === 0 ? LEGACY_NEVER_PLAY_PLAYLIST_PREFIX : (LEGACY_NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
                 const existingPl = state.myPlaylists.find(function (p) {
                     const t = (p.title || '').toLowerCase();
-                    return t === plTitle.toLowerCase() || (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
+                    return t === plTitle.toLowerCase() ||
+                        t === legacyPlTitle.toLowerCase() ||
+                        (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
                 });
 
                 if (existingPl) {
@@ -2512,12 +2516,12 @@
                 message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: trackIds.length })
             };
         } catch (e) {
-            console.error('[SC-FreshStation] Export Never Play error:', e);
+            console.error('[SC-FreshStation] Export NoPlay error:', e);
             return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
 
-    // 全連番プレイリストから Never Play 曲を一括インポート
+    // 全連番プレイリストから NoPlay 曲を一括インポート
     async function importDislikesFromPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_imLogin') };
@@ -2529,10 +2533,10 @@
                 return { success: false, message: tt('m_connectFail') };
             }
 
-            // [FreshDig] Never Play または [FreshDig] Disliked Tracks または dislike を含む全プレイリストを探索
+            // [FreshDig] NoPlay または [FreshDig] Never Play または [FreshDig] Disliked Tracks または dislike を含む全プレイリストを探索
             const matchingPls = state.myPlaylists.filter(function (p) {
                 const t = (p.title || '').toLowerCase();
-                return t.includes('never play') || t.includes('disliked tracks') || t.includes('dislike');
+                return t.includes('noplay') || t.includes('never play') || t.includes('disliked tracks') || t.includes('dislike');
             });
 
             if (matchingPls.length === 0) {
@@ -3511,7 +3515,7 @@
         });
     }
 
-    // リポスト（ワンクリック即時トグル）
+    // リポスト（コメント付きまたは通常リポスト）
     async function repostTrackWithCaption(trackId, caption, toast) {
         toast = toast || showGlobalToast;
         toast(tt('m_reposting'));
@@ -3523,7 +3527,25 @@
             }
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
             state.repostedTrackIds.add(toNumId(trackId));
-            toast(tt('m_reposted'));
+
+            if (caption && caption.trim()) {
+                try {
+                    const cRes = await scApi('tracks/' + trackId + '/comments', {
+                        method: 'POST',
+                        body: { comment: { body: caption.trim().slice(0, REPOST_CAPTION_MAX), timestamp: 0 } }
+                    });
+                    if (cRes.ok) {
+                        toast(tt('m_repostedCap'));
+                    } else {
+                        toast(tt('m_repostCapFail', { s: cRes.status }));
+                    }
+                } catch (cErr) {
+                    console.error('[SC-FreshStation] Repost comment error:', cErr);
+                    toast(tt('m_repostCapFail', { s: 'net' }));
+                }
+            } else {
+                toast(tt('m_reposted'));
+            }
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
@@ -4101,13 +4123,16 @@
 
         doc.getElementById('mp-like')?.addEventListener('click', function () { run('like'); });
 
-        // リポスト：ワンクリック即時トグル（未リポストなら即リポスト、リポスト済みなら解除）
+        // リポスト：未リポストならコメントダイアログを表示してリポスト、リポスト済みなら解除
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
             const d = mpCurrentData();
             if (d.reposted) {
                 run('repost', { unrepost: true });
             } else {
-                run('repost', {});
+                const cap = await showRepostCaptionDialog(doc, d.title || '');
+                if (cap !== null) {
+                    run('repost', { caption: cap });
+                }
             }
         });
 

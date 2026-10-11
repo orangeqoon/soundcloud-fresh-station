@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.12
+// @version      1.9.13
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -56,8 +56,8 @@
       playlistSyncing: '同期中... [🔄 同期] を押してください',
       trackCountSuffix: '曲',
       skipToastPrefix: 'スキップ',
-      skipReasonDisliked: 'もう聴かない曲',
-      skipReasonHated: '出禁にした作者',
+      skipReasonDisliked: '不再生の曲',
+      skipReasonHated: '除外した作者',
       skipReasonGenre: '除外したジャンル',
       skipReasonOwn: '自分の曲',
       skipReasonLiked: 'ライク済み',
@@ -74,7 +74,7 @@
       logCopyFailed: 'コピーできませんでした',
       logHint: '音が止まった直後に押して、貼り付けてください',
 
-      dislikeSection: '⏭️ もう聴かない (Never Play) プレイリスト連携',
+      dislikeSection: '⏭️ 不再生 (NoPlay) プレイリスト連携',
       btnExportDislikes: '📤 SCへ書き出し',
       btnExportingDislikes: '⏳ 書き出し中...',
       btnImportDislikes: '📥 SCから読み込み',
@@ -85,14 +85,14 @@
 
       statLikes: '除外Likes',
       statFollow: '除外Follow',
-      statDislike: 'Never Play',
+      statDislike: 'NoPlay',
 
       langLabel: '🌐 言語',
 
       // In-page Player Bar
       barStationTitle: '📻 この曲のステーションを開始',
-      barDislikeTitle: '⏭️ もう聴かない (Never Play: この曲を今後再生せずスキップ)',
-      barHateTitle: '🤬 この作者を出禁 (この作者の曲すべてを二度と流さずスキップ)',
+      barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+      barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
       barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
       barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
       barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
@@ -114,10 +114,10 @@
       mpLikeTitle: 'いいね (Like)',
       mpRepostTitle: 'リポスト (Repost)',
       mpAddPlTitle: 'プレイリストに追加',
-      mpDislikeTitle: 'この曲をもう聴かない (Never Play) & スキップ',
-      mpHateTitle: 'この作者を出禁 & スキップ',
-      mpToastDislike: '⏭️ もう聴かない曲に登録してスキップ',
-      mpToastHate: '🤬 作者を出禁にしてスキップ',
+      mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+      mpHateTitle: '作者除外 & スキップ',
+      mpToastDislike: '⏭️ 不再生に登録してスキップ',
+      mpToastHate: '🤬 作者を除外してスキップ',
       mpToastAddedPl: '➕ プレイリストに追加しました',
       mpToastRemovedPl: '➖ プレイリストから解除しました',
       mpToastLiked: '❤️ いいねしました',
@@ -184,12 +184,12 @@
       m_stationNoTrack: '⚠️ 現在再生中の曲情報を取得できませんでした',
       m_stationNoTrackMsg: '曲情報を取得できませんでした',
       m_repostHead: '🔁 リポスト',
-      m_repostPh: 'コメント（任意・{n}文字まで）',
+      m_repostPh: '曲へのコメント（任意・{n}文字まで）',
       m_send: '送信',
       m_reposting: '🔁 リポスト中...',
       m_repostFail: '⚠️ リポストに失敗しました ({s})',
-      m_repostCapFail: '⚠️ リポストしましたが、コメントの追加に失敗しました ({s})',
-      m_repostedCap: '🔁 コメント付きでリポストしました！',
+      m_repostCapFail: '⚠️ リポストしましたが、コメント投稿に失敗しました ({s})',
+      m_repostedCap: '🔁 リポスト＆曲へコメントしました！',
       m_reposted: '🔁 リポストしました！',
       m_commErr: '⚠️ 通信エラーが発生しました',
       m_tabNoReply: '⚠️ 音を出しているタブが応答しません',
@@ -212,18 +212,18 @@
       m_untitled: '(無題)',
 
       // Lists (R3, R6)
-      m_hateOff: '🤬 「{name}」の出禁を解除しました',
-      m_hateOnTip: '🤬 出禁中（クリックで解除）',
+      m_hateOff: '🤬 「{name}」の除外を解除しました',
+      m_hateOnTip: '🤬 除外中（クリックで解除）',
       m_laterAdded: '🧐 「{name}」を後で聴くに保存しました',
       m_laterRemoved: '🧐 「{name}」を後で聴くから外しました',
       m_laterLimit: '⚠️ 後で聴くは500件までです',
       m_laterFail: '⚠️ 後で聴くを保存できませんでした',
       m_laterAddTip: '🧐 後で聴く（この作者を保存）',
       m_laterRemoveTip: '🧐 保存済み（クリックで外す）',
-      m_profileTag: '🤬 FreshDig で出禁中',
+      m_profileTag: '🤬 FreshDig で作者除外中',
       m_profileUnban: '解除',
       listsTitle: '📚 リスト',
-      tabHated: '🤬 出禁にした作者',
+      tabHated: '🤬 作者除外',
       tabLater: '🧐 後で聴く',
       listSearch: '検索',
       listMore: 'もっと見る',
@@ -257,7 +257,7 @@
 
       // Multi-playlist
       m_exMultiDone: '連番プレイリスト「{name}」を含む {c} 件のプレイリストに合計 {n} 曲を書き出しました！',
-      m_imMultiDone: '{c} 個の Never Play プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
+      m_imMultiDone: '{c} 個の NoPlay プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
 
     },
     en: {
@@ -297,7 +297,7 @@
       playlistSyncing: 'Syncing... Please click [🔄 Sync]',
       trackCountSuffix: 'tracks',
       skipToastPrefix: 'Skipped',
-      skipReasonDisliked: 'Never Play track',
+      skipReasonDisliked: 'NoPlay track',
       skipReasonHated: 'Blocked artist',
       skipReasonGenre: 'Excluded genre',
       skipReasonOwn: 'Your own track',
@@ -315,7 +315,7 @@
       logCopyFailed: 'Could not copy',
       logHint: 'Press right after the sound stops, then paste it',
 
-      dislikeSection: '⏭️ Sync Never Play with SC Playlist',
+      dislikeSection: '⏭️ Sync NoPlay with SC Playlist',
       btnExportDislikes: '📤 Export to SC',
       btnExportingDislikes: '⏳ Exporting...',
       btnImportDislikes: '📥 Import from SC',
@@ -326,14 +326,14 @@
 
       statLikes: 'Skip Likes',
       statFollow: 'Skip Follows',
-      statDislike: 'Never Play',
+      statDislike: 'NoPlay',
 
       langLabel: '🌐 Language',
 
       // In-page Player Bar
       barStationTitle: '📻 Start station from this track',
-      barDislikeTitle: '⏭️ Never Play (Skip & never play this track again)',
-      barHateTitle: '🤬 Block Artist (Skip & never play any tracks by this artist)',
+      barDislikeTitle: '⏭️ NoPlay (Skip & do not play this track)',
+      barHateTitle: '🤬 Exclude Artist (Skip all tracks by this artist)',
       barMiniPlayerTitle: '🪟 Mini Player (Floating always-on-top window)',
       barDiscoveryOffTitle: '🔍 Discovery Mode OFF (Click to turn ON: skip known tracks)',
       barDiscoveryOnTitle: '🔍 Discovery Mode ON (Click to turn OFF: standard playback)',
@@ -355,10 +355,10 @@
       mpLikeTitle: 'Like',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Add to playlist',
-      mpDislikeTitle: 'Never play this track again & skip',
-      mpHateTitle: 'Block this artist & skip',
-      mpToastDislike: '⏭️ Added to Never Play & skipped',
-      mpToastHate: '🤬 Blocked artist & skipped',
+      mpDislikeTitle: 'NoPlay & skip',
+      mpHateTitle: 'Exclude artist & skip',
+      mpToastDislike: '⏭️ Added to NoPlay & skipped',
+      mpToastHate: '🤬 Excluded artist & skipped',
       mpToastAddedPl: '➕ Added to playlist',
       mpToastRemovedPl: '➖ Removed from playlist',
       mpToastLiked: '❤️ Liked track',
@@ -425,12 +425,12 @@
       m_stationNoTrack: '⚠️ Could not get the current track info',
       m_stationNoTrackMsg: 'Could not get the track info',
       m_repostHead: '🔁 Repost',
-      m_repostPh: 'Comment (optional, up to {n} characters)',
+      m_repostPh: 'Comment on track (optional, up to {n} chars)',
       m_send: 'Send',
       m_reposting: '🔁 Reposting...',
       m_repostFail: '⚠️ Repost failed ({s})',
-      m_repostCapFail: '⚠️ Reposted, but adding the comment failed ({s})',
-      m_repostedCap: '🔁 Reposted with a comment!',
+      m_repostCapFail: '⚠️ Reposted, but comment failed ({s})',
+      m_repostedCap: '🔁 Reposted & posted comment!',
       m_reposted: '🔁 Reposted!',
       m_commErr: '⚠️ A communication error occurred',
       m_tabNoReply: '⚠️ The tab that is playing does not respond',
@@ -453,18 +453,18 @@
       m_untitled: '(untitled)',
 
       // Lists (R3, R6)
-      m_hateOff: '🤬 Unblocked artist "{name}"',
-      m_hateOnTip: '🤬 Blocked (click to unblock)',
+      m_hateOff: '🤬 Removed "{name}" from excluded',
+      m_hateOnTip: '🤬 Excluded (click to remove)',
       m_laterAdded: '🧐 Saved "{name}" to Listen later',
       m_laterRemoved: '🧐 Removed "{name}" from Listen later',
       m_laterLimit: '⚠️ Listen later holds up to 500 artists',
       m_laterFail: '⚠️ Could not save Listen later',
       m_laterAddTip: '🧐 Listen later (save this artist)',
       m_laterRemoveTip: '🧐 Saved (click to remove)',
-      m_profileTag: '🤬 Blocked by FreshDig',
+      m_profileTag: '🤬 Excluded by FreshDig',
       m_profileUnban: 'Remove',
       listsTitle: '📚 Lists',
-      tabHated: '🤬 Blocked artists',
+      tabHated: '🤬 Excluded artists',
       tabLater: '🧐 Listen later',
       listSearch: 'Search',
       listMore: 'Show more',
@@ -498,7 +498,7 @@
 
       // Multi-playlist
       m_exMultiDone: 'Exported {n} tracks across {c} playlists including "{name}"!',
-      m_imMultiDone: 'Checked {n} tracks across {c} Never Play playlists and added {added} new ones!',
+      m_imMultiDone: 'Checked {n} tracks across {c} NoPlay playlists and added {added} new ones!',
 
     },
     de: {
@@ -538,7 +538,7 @@
       playlistSyncing: 'Synchronisierung läuft... Bitte auf [🔄 Synchronisieren] klicken',
       trackCountSuffix: 'Titel',
       skipToastPrefix: 'Übersprungen',
-      skipReasonDisliked: 'Nicht mehr abspielen (Titel)',
+      skipReasonDisliked: 'NoPlay-Titel',
       skipReasonHated: 'Gesperrter Künstler',
       skipReasonGenre: 'Ausgeschlossenes Genre',
       skipReasonOwn: 'Eigener Titel',
@@ -556,7 +556,7 @@
       logCopyFailed: 'Kopieren fehlgeschlagen',
       logHint: 'Direkt nach dem Musikstopp drücken und einfügen',
 
-      dislikeSection: '⏭️ Never Play mit SC-Playlist synchronisieren',
+      dislikeSection: '⏭️ NoPlay mit SC-Playlist synchronisieren',
       btnExportDislikes: '📤 Zu SC exportieren',
       btnExportingDislikes: '⏳ Wird exportiert...',
       btnImportDislikes: '📥 Von SC importieren',
@@ -567,14 +567,14 @@
 
       statLikes: 'Skip Likes',
       statFollow: 'Skip Follows',
-      statDislike: 'Never Play',
+      statDislike: 'NoPlay',
 
       langLabel: '🌐 Sprache',
 
       // In-page Player Bar
       barStationTitle: '📻 Station für diesen Titel starten',
-      barDislikeTitle: '⏭️ Never Play (Diesen Titel sperren & überspringen)',
-      barHateTitle: '🤬 Künstler sperren (Alle Titel dieses Künstlers sperren & überspringen)',
+      barDislikeTitle: '⏭️ NoPlay (Diesen Titel überspringen)',
+      barHateTitle: '🤬 Künstler ausschließen (Alle Titel überspringen)',
       barMiniPlayerTitle: '🪟 Mini-Player (Immer im Vordergrund schwebendes Fenster)',
       barDiscoveryOffTitle: '🔍 Entdeckungsmodus AUS (Klicken zum Einschalten: bekannte Titel überspringen)',
       barDiscoveryOnTitle: '🔍 Entdeckungsmodus AN (Klicken zum Ausschalten: normale Wiedergabe)',
@@ -596,10 +596,10 @@
       mpLikeTitle: 'Gefällt mir (Like)',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Zu Playlist hinzufügen',
-      mpDislikeTitle: 'Diesen Titel nie wieder abspielen & überspringen',
-      mpHateTitle: 'Diesen Künstler sperren & überspringen',
-      mpToastDislike: '⏭️ Zu Never Play hinzugefügt & übersprungen',
-      mpToastHate: '🤬 Künstler gesperrt & übersprungen',
+      mpDislikeTitle: 'NoPlay & überspringen',
+      mpHateTitle: 'Künstler ausschließen & überspringen',
+      mpToastDislike: '⏭️ Zu NoPlay hinzugefügt & übersprungen',
+      mpToastHate: '🤬 Künstler ausgeschlossen & übersprungen',
       mpToastAddedPl: '➕ Zu Playlist hinzugefügt',
       mpToastRemovedPl: '➖ Aus Playlist entfernt',
       mpToastLiked: '❤️ Titel geliked',
@@ -666,12 +666,12 @@
       m_stationNoTrack: '⚠️ Titelinformationen konnten nicht abgerufen werden',
       m_stationNoTrackMsg: 'Titelinformationen konnten nicht abgerufen werden',
       m_repostHead: '🔁 Repost',
-      m_repostPh: 'Kommentar (optional, bis zu {n} Zeichen)',
+      m_repostPh: 'Kommentar zum Titel (optional, bis zu {n} Zeichen)',
       m_send: 'Senden',
       m_reposting: '🔁 Wird repostet...',
       m_repostFail: '⚠️ Repost fehlgeschlagen ({s})',
-      m_repostCapFail: '⚠️ Repostet, aber Kommentar konnte nicht hinzugefügt werden ({s})',
-      m_repostedCap: '🔁 Mit Kommentar repostet!',
+      m_repostCapFail: '⚠️ Repostet, aber Kommentar fehlgeschlagen ({s})',
+      m_repostedCap: '🔁 Repostet & Titel kommentiert!',
       m_reposted: '🔁 Repostet!',
       m_commErr: '⚠️ Ein Kommunikationsfehler ist aufgetreten',
       m_tabNoReply: '⚠️ Der abspielende Tab antwortet nicht',
@@ -694,18 +694,18 @@
       m_untitled: '(Ohne Titel)',
 
       // Lists (R3, R6)
-      m_hateOff: '🤬 Sperre für „{name}“ aufgehoben',
-      m_hateOnTip: '🤬 Gesperrt (Klicken zum Entsperren)',
+      m_hateOff: '🤬 „{name}“ aus ausgeschlossenen entfernt',
+      m_hateOnTip: '🤬 Ausgeschlossen (Klicken zum Entfernen)',
       m_laterAdded: '🧐 „{name}“ für später gespeichert',
       m_laterRemoved: '🧐 „{name}“ aus Später anhören entfernt',
       m_laterLimit: '⚠️ Später anhören fasst maximal 500 Künstler',
       m_laterFail: '⚠️ Konnte nicht für später gespeichert werden',
       m_laterAddTip: '🧐 Später anhören (diesen Künstler merken)',
       m_laterRemoveTip: '🧐 Gespeichert (Klicken zum Entfernen)',
-      m_profileTag: '🤬 Von FreshDig gesperrt',
+      m_profileTag: '🤬 Von FreshDig ausgeschlossen',
       m_profileUnban: 'Entfernen',
       listsTitle: '📚 Listen',
-      tabHated: '🤬 Gesperrte Künstler',
+      tabHated: '🤬 Ausgeschlossene Künstler',
       tabLater: '🧐 Später anhören',
       listSearch: 'Suchen',
       listMore: 'Mehr anzeigen',
@@ -739,7 +739,7 @@
 
       // Multi-playlist
       m_exMultiDone: '{n} Titel in {c} Playlists einschließlich „{name}“ exportiert!',
-      m_imMultiDone: '{n} Titel aus {c} Never Play-Playlists überprüft und {added} neue hinzugefügt!',
+      m_imMultiDone: '{n} Titel aus {c} NoPlay-Playlists überprüft und {added} neue hinzugefügt!',
 
     },
     ru: {
@@ -779,7 +779,7 @@
       playlistSyncing: 'Синхронизация... Нажмите [🔄 Синхронизация]',
       trackCountSuffix: 'треков',
       skipToastPrefix: 'Пропущено',
-      skipReasonDisliked: 'Трек "Больше не воспроизводить"',
+      skipReasonDisliked: 'Трек NoPlay',
       skipReasonHated: 'Заблокированный артист',
       skipReasonGenre: 'Исключенный жанр',
       skipReasonOwn: 'Свой трек',
@@ -797,7 +797,7 @@
       logCopyFailed: 'Не удалось скопировать',
       logHint: 'Нажмите сразу после остановки звука и вставьте',
 
-      dislikeSection: '⏭️ Синхронизация Never Play с плейлистом SC',
+      dislikeSection: '⏭️ Синхронизация NoPlay с плейлистом SC',
       btnExportDislikes: '📤 Экспорт в SC',
       btnExportingDislikes: '⏳ Экспорт...',
       btnImportDislikes: '📥 Импорт из SC',
@@ -814,8 +814,8 @@
 
       // In-page Player Bar
       barStationTitle: '📻 Запустить станцию этого трека',
-      barDislikeTitle: '⏭️ Never Play (Больше не воспроизводить этот трек и пропустить)',
-      barHateTitle: '🤬 Заблокировать артиста (Пропускать все треки артиста)',
+      barDislikeTitle: '⏭️ NoPlay (Пропустить этот трек)',
+      barHateTitle: '🤬 Исключить артиста (Пропускать все треки артиста)',
       barMiniPlayerTitle: '🪟 Мини-плеер (плавающее окно поверх всех окон)',
       barDiscoveryOffTitle: '🔍 Режим поиска ВЫКЛ (Нажмите для ВКЛ: пропуск знакомых треков)',
       barDiscoveryOnTitle: '🔍 Режим поиска ВКЛ (Нажмите для ВЫКЛ: обычное воспроизведение)',
@@ -838,9 +838,9 @@
       mpRepostTitle: 'Репост',
       mpAddPlTitle: 'Добавить в плейлист',
       mpDislikeTitle: 'Больше не воспроизводить этот трек и пропустить',
-      mpHateTitle: 'Заблокировать артиста и пропустить',
-      mpToastDislike: '⏭️ Добавлено в Never Play и пропущено',
-      mpToastHate: '🤬 Артист заблокирован и пропущен',
+      mpHateTitle: 'Исключить артиста и пропустить',
+      mpToastDislike: '⏭️ Добавлено в NoPlay и пропущено',
+      mpToastHate: '🤬 Артист исключен и пропущен',
       mpToastAddedPl: '➕ Добавлено в плейлист',
       mpToastRemovedPl: '➖ Удалено из плейлиста',
       mpToastLiked: '❤️ Трек добавлен в лайки',
@@ -907,12 +907,12 @@
       m_stationNoTrack: '⚠️ Не удалось получить информацию о текущем треке',
       m_stationNoTrackMsg: 'Не удалось получить информацию о треке',
       m_repostHead: '🔁 Репост',
-      m_repostPh: 'Комментарий (необязательно, до {n} симв.)',
+      m_repostPh: 'Комментарий к треку (до {n} симв.)',
       m_send: 'Отправить',
       m_reposting: '🔁 Отправка репоста...',
       m_repostFail: '⚠️ Не удалось сделать репост ({s})',
-      m_repostCapFail: '⚠️ Репост сделан, но не удалось добавить комментарий ({s})',
-      m_repostedCap: '🔁 Сделан репост с комментарием!',
+      m_repostCapFail: '⚠️ Репост сделан, но комментарий не удался ({s})',
+      m_repostedCap: '🔁 Репост и комментарий опубликованы!',
       m_reposted: '🔁 Репост выполнен!',
       m_commErr: '⚠️ Произошла ошибка связи',
       m_tabNoReply: '⚠️ Воспроизводящая вкладка не отвечает',
@@ -935,18 +935,18 @@
       m_untitled: '(Без названия)',
 
       // Lists (R3, R6)
-      m_hateOff: '🤬 Блокировка артиста «{name}» снята',
-      m_hateOnTip: '🤬 Заблокирован (нажмите для разблокировки)',
+      m_hateOff: '🤬 Артист «{name}» удален из списка',
+      m_hateOnTip: '🤬 Исключен (нажмите для отмены)',
       m_laterAdded: '🧐 «{name}» сохранен в «Послушать позже»',
       m_laterRemoved: '🧐 «{name}» удален из «Послушать позже»',
       m_laterLimit: '⚠️ В «Послушать позже» помещается до 500 артистов',
       m_laterFail: '⚠️ Не удалось сохранить в «Послушать позже»',
       m_laterAddTip: '🧐 Послушать позже (сохранить этого артиста)',
       m_laterRemoveTip: '🧐 Сохранено (нажмите для удаления)',
-      m_profileTag: '🤬 Заблокирован в FreshDig',
+      m_profileTag: '🤬 Исключен в FreshDig',
       m_profileUnban: 'Удалить',
       listsTitle: '📚 Списки',
-      tabHated: '🤬 Заблокированные артисты',
+      tabHated: '🤬 Исключенные артисты',
       tabLater: '🧐 Послушать позже',
       listSearch: 'Поиск',
       listMore: 'Показать еще',
@@ -980,7 +980,7 @@
 
       // Multi-playlist
       m_exMultiDone: 'Экспортировано {n} треков в {c} плейлистов, включая «{name}»!',
-      m_imMultiDone: 'Проверено {n} треков из {c} плейлистов Never Play, добавлено {added} новых!',
+      m_imMultiDone: 'Проверено {n} треков из {c} плейлистов NoPlay, добавлено {added} новых!',
 
     }
   };
@@ -1230,7 +1230,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.12)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.13)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1259,8 +1259,8 @@
         }
         return {
             barStationTitle: '📻 この曲のステーションを開始',
-            barDislikeTitle: '⏭️ もう聴かない (Never Play: この曲を今後再生せずスキップ)',
-            barHateTitle: '🤬 この作者を出禁 (この作者の曲すべてを二度と流さずスキップ)',
+            barDislikeTitle: '⏭️ 不再生 (NoPlay: この曲を今後再生せずスキップ)',
+            barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
             barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
             barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
             barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
@@ -1280,10 +1280,10 @@
             mpLikeTitle: 'いいね (Like)',
             mpRepostTitle: 'リポスト (Repost)',
             mpAddPlTitle: 'プレイリストに追加',
-            mpDislikeTitle: 'この曲をもう聴かない (Never Play) & スキップ',
-            mpHateTitle: 'この作者を出禁 & スキップ',
-            mpToastDislike: '⏭️ もう聴かない曲に登録してスキップ',
-            mpToastHate: '🤬 作者を出禁にしてスキップ',
+            mpDislikeTitle: '不再生 (NoPlay) & スキップ',
+            mpHateTitle: '作者除外 & スキップ',
+            mpToastDislike: '⏭️ 不再生に登録してスキップ',
+            mpToastHate: '🤬 作者を除外してスキップ',
             mpToastAddedPl: '➕ プレイリストに追加しました',
             mpToastRemovedPl: '➖ プレイリストから解除しました',
             mpToastLiked: '❤️ いいねしました',
@@ -1298,8 +1298,8 @@
             pickerCancel: 'キャンセル',
             trackCountSuffix: '曲',
             skipToastPrefix: 'スキップ',
-            skipReasonDisliked: 'もう聴かない曲',
-            skipReasonHated: '出禁にした作者',
+            skipReasonDisliked: '不再生の曲',
+            skipReasonHated: '除外した作者',
             skipReasonGenre: '除外したジャンル',
             skipReasonOwn: '自分の曲',
             skipReasonLiked: 'ライク済み',
@@ -3648,7 +3648,8 @@
         return state.currentTrack;
     }
 
-    const NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] Never Play';
+    const NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] NoPlay';
+    const LEGACY_NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] Never Play';
     const LEGACY_DISLIKE_PLAYLIST_PREFIX = '[FreshDig] Disliked Tracks';
 
     function recordStat(type) {
@@ -3669,7 +3670,7 @@
         }
     }
 
-    // Never Play 曲を SoundCloud プレイリストにエクスポート（500曲上限を連番プレイリストで自動突破）
+    // NoPlay 曲を SoundCloud プレイリストにエクスポート（500曲上限を連番プレイリストで自動突破）
     async function exportDislikesToPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_exLogin') };
@@ -3705,9 +3706,12 @@
             for (let idx = 0; idx < chunks.length; idx++) {
                 const chunkTracks = chunks[idx];
                 const plTitle = idx === 0 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
+                const legacyPlTitle = idx === 0 ? LEGACY_NEVER_PLAY_PLAYLIST_PREFIX : (LEGACY_NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
                 const existingPl = state.myPlaylists.find(function (p) {
                     const t = (p.title || '').toLowerCase();
-                    return t === plTitle.toLowerCase() || (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
+                    return t === plTitle.toLowerCase() ||
+                        t === legacyPlTitle.toLowerCase() ||
+                        (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
                 });
 
                 if (existingPl) {
@@ -3740,12 +3744,12 @@
                 message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: trackIds.length })
             };
         } catch (e) {
-            console.error('[SC-FreshStation] Export Never Play error:', e);
+            console.error('[SC-FreshStation] Export NoPlay error:', e);
             return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
 
-    // 全連番プレイリストから Never Play 曲を一括インポート
+    // 全連番プレイリストから NoPlay 曲を一括インポート
     async function importDislikesFromPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_imLogin') };
@@ -3757,10 +3761,10 @@
                 return { success: false, message: tt('m_connectFail') };
             }
 
-            // [FreshDig] Never Play または [FreshDig] Disliked Tracks または dislike を含む全プレイリストを探索
+            // [FreshDig] NoPlay または [FreshDig] Never Play または [FreshDig] Disliked Tracks または dislike を含む全プレイリストを探索
             const matchingPls = state.myPlaylists.filter(function (p) {
                 const t = (p.title || '').toLowerCase();
-                return t.includes('never play') || t.includes('disliked tracks') || t.includes('dislike');
+                return t.includes('noplay') || t.includes('never play') || t.includes('disliked tracks') || t.includes('dislike');
             });
 
             if (matchingPls.length === 0) {
@@ -4739,7 +4743,7 @@
         });
     }
 
-    // リポスト（ワンクリック即時トグル）
+    // リポスト（コメント付きまたは通常リポスト）
     async function repostTrackWithCaption(trackId, caption, toast) {
         toast = toast || showGlobalToast;
         toast(tt('m_reposting'));
@@ -4751,7 +4755,25 @@
             }
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
             state.repostedTrackIds.add(toNumId(trackId));
-            toast(tt('m_reposted'));
+
+            if (caption && caption.trim()) {
+                try {
+                    const cRes = await scApi('tracks/' + trackId + '/comments', {
+                        method: 'POST',
+                        body: { comment: { body: caption.trim().slice(0, REPOST_CAPTION_MAX), timestamp: 0 } }
+                    });
+                    if (cRes.ok) {
+                        toast(tt('m_repostedCap'));
+                    } else {
+                        toast(tt('m_repostCapFail', { s: cRes.status }));
+                    }
+                } catch (cErr) {
+                    console.error('[SC-FreshStation] Repost comment error:', cErr);
+                    toast(tt('m_repostCapFail', { s: 'net' }));
+                }
+            } else {
+                toast(tt('m_reposted'));
+            }
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
@@ -5329,13 +5351,16 @@
 
         doc.getElementById('mp-like')?.addEventListener('click', function () { run('like'); });
 
-        // リポスト：ワンクリック即時トグル（未リポストなら即リポスト、リポスト済みなら解除）
+        // リポスト：未リポストならコメントダイアログを表示してリポスト、リポスト済みなら解除
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
             const d = mpCurrentData();
             if (d.reposted) {
                 run('repost', { unrepost: true });
             } else {
-                run('repost', {});
+                const cap = await showRepostCaptionDialog(doc, d.title || '');
+                if (cap !== null) {
+                    run('repost', { caption: cap });
+                }
             }
         });
 
