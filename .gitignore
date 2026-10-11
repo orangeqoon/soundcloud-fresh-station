@@ -4,4 +4,4 @@ Thumbs.db
 
 *.pem
 *.crx
-
+dist/

@@ -71,10 +71,14 @@ test('artist page path', () => {
   assert.ok(!core.isArtistPagePath('/'));
 });
 
-test('i18n: ja and en have the same keys, and skip reasons exist', () => {
+test('i18n: ja, en, de and ru have the same keys, and skip reasons exist', () => {
   const ja = Object.keys(i18n.translations.ja).sort();
   const en = Object.keys(i18n.translations.en).sort();
+  const de = Object.keys(i18n.translations.de).sort();
+  const ru = Object.keys(i18n.translations.ru).sort();
   assert.deepStrictEqual(ja, en);
+  assert.deepStrictEqual(ja, de);
+  assert.deepStrictEqual(ja, ru);
   for (const k of ['skipReasonDisliked', 'skipReasonHated', 'skipReasonGenre', 'skipReasonOwn', 'skipReasonLiked', 'skipReasonFollowing']) {
     assert.ok(ja.includes(k), k);
   }
@@ -94,16 +98,28 @@ test('i18n: keys used in code exist in the dictionary', () => {
       }
     }
     for (const m of src.matchAll(/getI18nTexts\(\)\.([A-Za-z][A-Za-z0-9]*)/g)) used.add(m[1]);
-    for (const m of src.matchAll(/tt\('([A-Za-z][A-Za-z0-9_]*)'/g)) used.add(m[1]);
+    for (const m of src.matchAll(/ tt\('([A-Za-z][A-Za-z0-9_]*)'/g)) used.add(m[1]);
     for (const k of used) assert.ok(k in dict, f + ' uses missing key: ' + k);
   }
 });
 
-test('i18n: {placeholders} match between ja and en', () => {
+test('i18n: {placeholders} match across all languages (ja, en, de, ru)', () => {
   const ph = (v) => (String(v).match(/\{\w+\}/g) || []).sort().join(',');
   for (const k of Object.keys(i18n.translations.ja)) {
-    assert.strictEqual(ph(i18n.translations.en[k]), ph(i18n.translations.ja[k]), 'placeholders differ: ' + k);
+    const expected = ph(i18n.translations.ja[k]);
+    assert.strictEqual(ph(i18n.translations.en[k]), expected, 'en placeholders differ: ' + k);
+    assert.strictEqual(ph(i18n.translations.de[k]), expected, 'de placeholders differ: ' + k);
+    assert.strictEqual(ph(i18n.translations.ru[k]), expected, 'ru placeholders differ: ' + k);
   }
+});
+
+test('i18n: resolveLanguage resolves ja, en, de, ru properly', () => {
+  assert.strictEqual(i18n.resolveLanguage('ja'), 'ja');
+  assert.strictEqual(i18n.resolveLanguage('en'), 'en');
+  assert.strictEqual(i18n.resolveLanguage('de'), 'de');
+  assert.strictEqual(i18n.resolveLanguage('ru'), 'ru');
+  const autoResolved = i18n.resolveLanguage('auto');
+  assert.ok(['ja', 'en', 'de', 'ru'].includes(autoResolved));
 });
 
 test('rate limiter: min gap and per-minute cap', () => {

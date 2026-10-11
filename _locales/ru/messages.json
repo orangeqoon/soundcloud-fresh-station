@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig для SoundCloud - Поиск новых артистов",
+    "description": "Extension title"
+  },
+  "extensionDesc": {
+    "message": "Ноль знакомых треков! Непрерывный поиск новых артистов: добавление в плейлист в 1 клик, пропуск дизлайков и плавающий мини-плеер.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "Настройки SoundCloud Fresh Station",
+    "description": "Extension action icon tooltip"
+  }
+}

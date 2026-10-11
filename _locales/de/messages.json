@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig für SoundCloud - Neue Künstler entdecken",
+    "description": "Extension title"
+  },
+  "extensionDesc": {
+    "message": "Keine bekannten Titel! Kontinuierlich neue Künstler entdecken mit 1-Klick-Playlist, Dislike-Überspringen und schwebendem Mini-Player.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "SoundCloud Fresh Station Einstellungen",
+    "description": "Extension action icon tooltip"
+  }
+}
