@@ -62,6 +62,17 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btn-copy-log').textContent = t.btnCopyLog;
     document.getElementById('log-hint').textContent = t.logHint;
 
+    const rateTitle = document.getElementById('rate-title');
+    if (rateTitle && t.ratePromptTitle) rateTitle.textContent = t.ratePromptTitle;
+    const rateDesc = document.getElementById('rate-desc');
+    if (rateDesc && t.ratePromptDesc) rateDesc.textContent = t.ratePromptDesc;
+    const btnRateNow = document.getElementById('btn-rate-now');
+    if (btnRateNow && t.btnRateNow) btnRateNow.textContent = t.btnRateNow;
+    const btnRateLater = document.getElementById('btn-rate-later');
+    if (btnRateLater && t.btnRateLater) btnRateLater.textContent = t.btnRateLater;
+    const btnRateDismiss = document.getElementById('btn-rate-dismiss');
+    if (btnRateDismiss && t.btnRateDismiss) btnRateDismiss.textContent = t.btnRateDismiss;
+
     document.getElementById('label-stat-likes').textContent = t.statLikes;
     document.getElementById('label-stat-follows').textContent = t.statFollow;
     document.getElementById('label-stat-dislikes').textContent = t.statDislike;
@@ -569,5 +580,61 @@ document.addEventListener('DOMContentLoaded', async function () {
         volMuteBtn.textContent = data.volume === 0 ? '🔇' : (data.volume < 0.5 ? '🔉' : '🔊');
       }
     }
+
+    // レビュー（レーティング）促進バナーの表示判定
+    checkRatingPrompt(data.stats);
+  }
+
+  // ---- レビュー促進バナー制御 ----
+  async function checkRatingPrompt(stats) {
+    if (!chrome.storage || !chrome.storage.local) return;
+    try {
+      const stored = await chrome.storage.local.get(['hasRated', 'rateDismissed']);
+      if (stored && (stored.hasRated || stored.rateDismissed)) return;
+      const skips = (stats && stats.totalSkips) || 0;
+      const plAdds = (stats && stats.totalPlaylistAdds) || 0;
+      // 判定基準: 累計30曲スキップ達成 または プレイリスト追加5回以上
+      if (skips >= 30 || plAdds >= 5) {
+        const banner = document.getElementById('rate-banner');
+        if (banner) banner.style.display = 'block';
+      }
+    } catch (e) {}
+  }
+
+  const btnRateNow = document.getElementById('btn-rate-now');
+  if (btnRateNow) {
+    btnRateNow.addEventListener('click', function () {
+      const extId = (chrome.runtime && chrome.runtime.id) || '';
+      const url = extId ? ('https://chromewebstore.google.com/detail/' + extId + '/reviews') : 'https://chromewebstore.google.com/';
+      if (chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url: url });
+      } else {
+        window.open(url, '_blank');
+      }
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ hasRated: true });
+      }
+      const banner = document.getElementById('rate-banner');
+      if (banner) banner.style.display = 'none';
+    });
+  }
+
+  const btnRateLater = document.getElementById('btn-rate-later');
+  if (btnRateLater) {
+    btnRateLater.addEventListener('click', function () {
+      const banner = document.getElementById('rate-banner');
+      if (banner) banner.style.display = 'none';
+    });
+  }
+
+  const btnRateDismiss = document.getElementById('btn-rate-dismiss');
+  if (btnRateDismiss) {
+    btnRateDismiss.addEventListener('click', function () {
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ rateDismissed: true });
+      }
+      const banner = document.getElementById('rate-banner');
+      if (banner) banner.style.display = 'none';
+    });
   }
 });

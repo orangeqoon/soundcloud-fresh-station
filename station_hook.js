@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.11)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.12)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -31,8 +31,8 @@
         }
         return {
             barStationTitle: '📻 この曲のステーションを開始',
-            barDislikeTitle: '👎 Dislike (この曲だけ二度と流さない＆スキップ)',
-            barHateTitle: '🚫 Hate (この作者の曲すべてを二度と流さない＆スキップ)',
+            barDislikeTitle: '⏭️ もう聴かない (Never Play: この曲を今後再生せずスキップ)',
+            barHateTitle: '🤬 この作者を出禁 (この作者の曲すべてを二度と流さずスキップ)',
             barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
             barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
             barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
@@ -52,10 +52,10 @@
             mpLikeTitle: 'いいね (Like)',
             mpRepostTitle: 'リポスト (Repost)',
             mpAddPlTitle: 'プレイリストに追加',
-            mpDislikeTitle: 'この曲だけ除外＆スキップ',
-            mpHateTitle: 'この作者の曲全除外＆スキップ',
-            mpToastDislike: '👎 曲を除外してスキップ',
-            mpToastHate: '🚫 作者を除外してスキップ',
+            mpDislikeTitle: 'この曲をもう聴かない (Never Play) & スキップ',
+            mpHateTitle: 'この作者を出禁 & スキップ',
+            mpToastDislike: '⏭️ もう聴かない曲に登録してスキップ',
+            mpToastHate: '🤬 作者を出禁にしてスキップ',
             mpToastAddedPl: '➕ プレイリストに追加しました',
             mpToastRemovedPl: '➖ プレイリストから解除しました',
             mpToastLiked: '❤️ いいねしました',
@@ -70,8 +70,8 @@
             pickerCancel: 'キャンセル',
             trackCountSuffix: '曲',
             skipToastPrefix: 'スキップ',
-            skipReasonDisliked: 'Dislike登録した曲',
-            skipReasonHated: '除外した作者',
+            skipReasonDisliked: 'もう聴かない曲',
+            skipReasonHated: '出禁にした作者',
             skipReasonGenre: '除外したジャンル',
             skipReasonOwn: '自分の曲',
             skipReasonLiked: 'ライク済み',
@@ -712,7 +712,8 @@
                         isReady: state.isUserDataLoaded,
                         loggedIn: !!state.oauthToken,
                         accountName: state.myUsername,
-                        volume: getSoundCloudVolume()
+                        volume: getSoundCloudVolume(),
+                        stats: getStats()
                     });
                 } else {
                     ack({ success: false, message: 'Unknown action: ' + action });
@@ -1482,6 +1483,7 @@
         }
         marginGuard.lastSkipTime = Date.now();
         marginGuard.consecutiveSkips++;
+        recordStat('totalSkips');
         const title = (info && info.title) || '';
         const reasonText = getI18nTexts()[reason] || reason;
         console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
@@ -1775,7 +1777,7 @@
             menuGroup.appendChild(stBtn);
         }
 
-        // 2. Dislikeボタン (アイコン1個: 👎) - この曲だけ除外
+        // 2. Never Playボタン (アイコン1個: ⏭️) - この曲だけ除外
         if (!document.getElementById('sc-fresh-station-dislike-btn')) {
             const btn = document.createElement('button');
             btn.id = 'sc-fresh-station-dislike-btn';
@@ -1783,7 +1785,7 @@
             btn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             btn.title = getI18nTexts().barDislikeTitle;
             btn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; color: #ff5500; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
-            btn.innerHTML = '👎';
+            btn.innerHTML = '⏭️';
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1792,7 +1794,7 @@
             addMain(btn);
         }
 
-        // 3. Hateボタン (アイコン1個: 🚫) - この作者の曲すべてを除外
+        // 3. Block Artist (Hate) ボタン (アイコン1個: 🤬) - この作者の曲すべてを除外
         if (!document.getElementById('sc-fresh-station-hate-btn')) {
             const hateBtn = document.createElement('button');
             hateBtn.id = 'sc-fresh-station-hate-btn';
@@ -1800,7 +1802,7 @@
             hateBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             hateBtn.title = getI18nTexts().barHateTitle;
             hateBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #e53935; color: #e53935; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
-            hateBtn.innerHTML = '🚫';
+            hateBtn.innerHTML = '🤬';
             hateBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1809,14 +1811,14 @@
             menuGroup.appendChild(hateBtn);
         }
 
-        // 3.5 後で聴くボタン (🎧)
+        // 3.5 後で聴くボタン (🧐)
         if (!document.getElementById('sc-fresh-station-later-btn')) {
             const lb = document.createElement('button');
             lb.id = 'sc-fresh-station-later-btn';
             lb.type = 'button';
             lb.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             lb.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #7e57c2; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
-            lb.innerHTML = '🎧';
+            lb.innerHTML = '🧐';
             lb.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -2228,6 +2230,7 @@
                     showGlobalToast(tt('m_plRemoved', { track: track.title, name: res.plTitle }));
                 } else {
                     console.log('[SC-FreshStation] Added track ' + trackId + ' to playlist ' + state.targetPlaylistId);
+                    recordStat('totalPlaylistAdds');
                     showGlobalToast(tt('m_plAdded', { track: track.title, name: res.plTitle }));
                 }
                 return true;
@@ -2417,9 +2420,28 @@
         return state.currentTrack;
     }
 
-    const DISLIKE_PLAYLIST_TITLE = '[FreshDig] Disliked Tracks';
+    const NEVER_PLAY_PLAYLIST_PREFIX = '[FreshDig] Never Play';
+    const LEGACY_DISLIKE_PLAYLIST_PREFIX = '[FreshDig] Disliked Tracks';
 
-    // Dislike 曲を SoundCloud プレイリストにエクスポート
+    function recordStat(type) {
+        try {
+            const key = 'sc_fresh_station_stats_v1';
+            let stats = {};
+            try { stats = JSON.parse(localStorage.getItem(key)) || {}; } catch (e) {}
+            stats[type] = (stats[type] || 0) + 1;
+            localStorage.setItem(key, JSON.stringify(stats));
+        } catch (e) {}
+    }
+
+    function getStats() {
+        try {
+            return JSON.parse(localStorage.getItem('sc_fresh_station_stats_v1')) || { totalSkips: 0, totalPlaylistAdds: 0 };
+        } catch (e) {
+            return { totalSkips: 0, totalPlaylistAdds: 0 };
+        }
+    }
+
+    // Never Play 曲を SoundCloud プレイリストにエクスポート（500曲上限を連番プレイリストで自動突破）
     async function exportDislikesToPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_exLogin') };
@@ -2443,51 +2465,59 @@
             if (!state.myUserId) {
                 return { success: false, message: tt('m_connectFail') };
             }
-            const existingPl = state.myPlaylists.find(function (p) { return (p.title || '').toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase(); });
 
-            if (existingPl) {
-                const plRes = await scApi('playlists/' + existingPl.id);
-                if (!plRes.ok) {
-                    return { success: false, message: tt('m_exPlFail', { s: plRes.status }) };
-                }
-                const plData = await plRes.json();
-                const currentIds = (plData.tracks || []).map(function (t) { return Number(t.id); });
-                const mergedIds = Array.from(new Set(currentIds.concat(trackIds))).slice(0, 500);
+            // 500曲単位にチャンク分割（SoundCloudのプレイリスト上限が500曲）
+            const chunkSize = 500;
+            const chunks = [];
+            for (let i = 0; i < trackIds.length; i += chunkSize) {
+                chunks.push(trackIds.slice(i, i + chunkSize));
+            }
 
-                const putRes = await scApi('playlists/' + existingPl.id, {
-                    method: 'PUT',
-                    body: { playlist: { tracks: mergedIds } }
+            let successCount = 0;
+            for (let idx = 0; idx < chunks.length; idx++) {
+                const chunkTracks = chunks[idx];
+                const plTitle = idx === 0 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
+                const existingPl = state.myPlaylists.find(function (p) {
+                    const t = (p.title || '').toLowerCase();
+                    return t === plTitle.toLowerCase() || (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
                 });
 
-                if (putRes.ok) {
-                    return { success: true, message: tt('m_exUpdated', { name: DISLIKE_PLAYLIST_TITLE, n: mergedIds.length, cap: mergedIds.length >= 500 ? tt('m_exCap') : '' }) };
+                if (existingPl) {
+                    const putRes = await scApi('playlists/' + existingPl.id, {
+                        method: 'PUT',
+                        body: { playlist: { title: plTitle, tracks: chunkTracks } }
+                    });
+                    if (putRes.ok) successCount++;
+                } else {
+                    const postRes = await scApi('playlists', {
+                        method: 'POST',
+                        body: {
+                            playlist: {
+                                title: plTitle,
+                                sharing: 'private',
+                                tracks: chunkTracks
+                            }
+                        }
+                    });
+                    if (postRes.ok) successCount++;
                 }
-                return { success: false, message: tt('m_exUpdateFail', { s: putRes.status }) };
             }
 
-            const postRes = await scApi('playlists', {
-                method: 'POST',
-                body: {
-                    playlist: {
-                        title: DISLIKE_PLAYLIST_TITLE,
-                        sharing: 'private',
-                        tracks: trackIds.slice(0, 500)
-                    }
-                }
-            });
-
-            if (postRes.ok) {
-                await initUserData({ force: true });
-                return { success: true, message: tt('m_exCreated', { name: DISLIKE_PLAYLIST_TITLE, n: Math.min(trackIds.length, 500) }) };
+            await initUserData({ force: true });
+            if (chunks.length === 1) {
+                return { success: true, message: tt('m_exCreated', { name: NEVER_PLAY_PLAYLIST_PREFIX, n: trackIds.length }) };
             }
-            return { success: false, message: tt('m_exCreateFail', { s: postRes.status }) };
+            return {
+                success: true,
+                message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: trackIds.length })
+            };
         } catch (e) {
-            console.error('[SC-FreshStation] Export dislikes error:', e);
+            console.error('[SC-FreshStation] Export Never Play error:', e);
             return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
 
-    // SoundCloud プレイリストから Dislike 曲をインポート
+    // 全連番プレイリストから Never Play 曲を一括インポート
     async function importDislikesFromPlaylist() {
         if (!(await waitForAuthToken(1500))) {
             return { success: false, message: tt('m_imLogin') };
@@ -2498,47 +2528,53 @@
             if (!state.myUserId) {
                 return { success: false, message: tt('m_connectFail') };
             }
-            let targetPl = state.myPlaylists.find(function (p) { return (p.title || '').toLowerCase() === DISLIKE_PLAYLIST_TITLE.toLowerCase(); });
-            if (!targetPl) {
-                targetPl = state.myPlaylists.find(function (p) { return (p.title || '').toLowerCase().includes('dislike'); });
-            }
 
-            if (!targetPl) {
-                return { success: false, message: tt('m_imNotFound', { name: DISLIKE_PLAYLIST_TITLE }) };
-            }
-
-            const res = await scApi('playlists/' + targetPl.id);
-            if (!res.ok) {
-                return { success: false, message: tt('m_imFail', { s: res.status }) };
-            }
-
-            const plData = await res.json();
-            const tracks = plData.tracks || [];
-            if (tracks.length === 0) {
-                return { success: false, message: tt('m_imEmpty', { name: targetPl.title }) };
-            }
-
-            let importedCount = 0;
-            tracks.forEach(function (track) {
-                if (track && track.id) {
-                    const key = String(track.id);
-                    if (!state.dislikedTracks[key]) {
-                        importedCount++;
-                        // 大きいプレイリストでは tracks の後半が ID のみの場合があるので、既存情報は上書きしない
-                        state.dislikedTracks[key] = {
-                            title: track.title || ('Track ' + key),
-                            artist: track.user ? track.user.username : '',
-                            genre: track.genre || '',
-                            date: new Date().toLocaleDateString()
-                        };
-                    }
-                }
+            // [FreshDig] Never Play または [FreshDig] Disliked Tracks または dislike を含む全プレイリストを探索
+            const matchingPls = state.myPlaylists.filter(function (p) {
+                const t = (p.title || '').toLowerCase();
+                return t.includes('never play') || t.includes('disliked tracks') || t.includes('dislike');
             });
 
+            if (matchingPls.length === 0) {
+                return { success: false, message: tt('m_imNotFound', { name: NEVER_PLAY_PLAYLIST_PREFIX }) };
+            }
+
+            let totalTracks = 0;
+            let importedCount = 0;
+
+            for (const pl of matchingPls) {
+                const res = await scApi('playlists/' + pl.id);
+                if (!res.ok) continue;
+                const plData = await res.json();
+                const tracks = plData.tracks || [];
+                totalTracks += tracks.length;
+
+                tracks.forEach(function (track) {
+                    if (track && track.id) {
+                        const key = String(track.id);
+                        if (!state.dislikedTracks[key]) {
+                            importedCount++;
+                            state.dislikedTracks[key] = {
+                                title: track.title || ('Track ' + key),
+                                artist: track.user ? track.user.username : '',
+                                genre: track.genre || '',
+                                date: new Date().toLocaleDateString()
+                            };
+                        }
+                    }
+                });
+            }
+
             saveDislikeData();
-            return { success: true, message: tt('m_imDone', { name: targetPl.title, n: tracks.length, c: importedCount }) };
+            if (matchingPls.length === 1) {
+                return { success: true, message: tt('m_imDone', { name: matchingPls[0].title, n: totalTracks, c: importedCount }) };
+            }
+            return {
+                success: true,
+                message: tt('m_imMultiDone', { c: matchingPls.length, n: totalTracks, added: importedCount })
+            };
         } catch (e) {
-            console.error('[SC-FreshStation] Import dislikes error:', e);
+            console.error('[SC-FreshStation] Import Never Play error:', e);
             return { success: false, message: tt('m_errorOcc', { msg: e.message }) };
         }
     }
@@ -3475,7 +3511,7 @@
         });
     }
 
-    // リポスト → （コメントがあれば）コメント設定。SoundCloud 本体と同じ2段階の API
+    // リポスト（ワンクリック即時トグル）
     async function repostTrackWithCaption(trackId, caption, toast) {
         toast = toast || showGlobalToast;
         toast(tt('m_reposting'));
@@ -3487,20 +3523,7 @@
             }
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
             state.repostedTrackIds.add(toNumId(trackId));
-
-            if (caption) {
-                const capRes = await scApi('me/track_reposts/' + trackId + '/caption', {
-                    method: 'PUT',
-                    body: { caption: caption.slice(0, REPOST_CAPTION_MAX) }
-                });
-                if (!capRes.ok) {
-                    toast(tt('m_repostCapFail', { s: capRes.status }));
-                    return true;
-                }
-                toast(tt('m_repostedCap'));
-            } else {
-                toast(tt('m_reposted'));
-            }
+            toast(tt('m_reposted'));
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
@@ -3992,7 +4015,7 @@
                 </div>
                 <div class="top-actions">
                     <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
-                    <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🚫</button>
+                    <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                 </div>
             </div>
 
@@ -4024,10 +4047,10 @@
             <div class="controls-row">
                 <button id="mp-prev" title="${tx.mpPrevTitle}">⏮</button>
                 <button class="btn-play" id="mp-play" title="${tx.mpPlayTitle}">⏯</button>
-                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
+                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">⏭️</button>
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
-                <button class="btn-later" id="mp-later" title="">🎧</button>
+                <button class="btn-later" id="mp-later" title="">🧐</button>
             </div>
             <div class="toast" id="mp-toast"></div>
         `;
@@ -4078,16 +4101,14 @@
 
         doc.getElementById('mp-like')?.addEventListener('click', function () { run('like'); });
 
-        // リポスト：未リポストならコメント入力欄(このウィンドウ)を出して「送信」でリポスト＋コメント、リポスト済みなら解除
+        // リポスト：ワンクリック即時トグル（未リポストなら即リポスト、リポスト済みなら解除）
         doc.getElementById('mp-repost')?.addEventListener('click', async function () {
             const d = mpCurrentData();
             if (d.reposted) {
                 run('repost', { unrepost: true });
-                return;
+            } else {
+                run('repost', {});
             }
-            const caption = await showRepostCaptionDialog(doc, d.title || '');
-            if (caption === null) return; // キャンセル
-            run('repost', { caption: caption });
         });
 
         doc.getElementById('mp-follow')?.addEventListener('click', function () { run('follow'); });

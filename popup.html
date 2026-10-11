@@ -250,22 +250,89 @@
     .status-bar strong {
       color: #ddd;
     }
+    .rate-banner {
+      background: linear-gradient(135deg, #2b1d0c 0%, #1c1510 100%);
+      border: 1px solid #ff7700;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .rate-banner-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #ffaa00;
+      margin-bottom: 4px;
+    }
+    .rate-banner-desc {
+      font-size: 10px;
+      color: #ccc;
+      line-height: 1.4;
+      margin-bottom: 8px;
+    }
+    .rate-banner-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .btn-rate-primary {
+      flex: 1;
+      background: #ff5500;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-rate-secondary {
+      background: #333;
+      color: #bbb;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .btn-rate-dismiss {
+      background: transparent;
+      color: #777;
+      border: none;
+      padding: 2px 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-rate-dismiss:hover {
+      color: #fff;
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.11</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.12</span>
     </div>
     <div class="header-right">
       <select id="lang-select" class="lang-select" title="Language / 言語">
-        <option value="auto">Auto</option>
-        <option value="ja">日本語</option>
-        <option value="en">English</option>
-        <option value="de">Deutsch</option>
-        <option value="ru">Русский</option>
+        <option value="auto">🌐 Auto</option>
+        <option value="ja">🇯🇵 日本語</option>
+        <option value="en">🇺🇸 English</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="ru">🇷🇺 Русский</option>
       </select>
       <div class="badge" id="conn-badge">SoundCloud未接続</div>
+    </div>
+  </div>
+
+  <!-- レビュー促進バナー（ヘビーユーザーに1回だけ表示） -->
+  <div id="rate-banner" class="rate-banner">
+    <div class="rate-banner-title" id="rate-title">🌟 FreshDig で新しい音楽は見つかりましたか？</div>
+    <div class="rate-banner-desc" id="rate-desc">この拡張機能がSoundCloud利用を促進すると思っていただけたら、Chromeストアで評価やご意見をお聞かせください！新しいアーティストの励みとなる機能を追加していきます。</div>
+    <div class="rate-banner-actions">
+      <button id="btn-rate-now" class="btn-rate-primary" type="button">⭐ レビューを書く</button>
+      <button id="btn-rate-later" class="btn-rate-secondary" type="button">あとで</button>
+      <button id="btn-rate-dismiss" class="btn-rate-dismiss" type="button">✕</button>
     </div>
   </div>
 
@@ -320,10 +387,10 @@
     </select>
   </div>
 
-  <!-- Dislike プレイリスト連携 (エクスポート & インポート) -->
+  <!-- Never Play プレイリスト連携 (エクスポート & インポート) -->
   <div class="card sync-card">
     <div class="card-label" style="color: #ff8a80; font-weight: bold;">
-      <span id="label-dislike-section">🚫 Dislike曲のプレイリスト連携</span>
+      <span id="label-dislike-section">⏭️ もう聴かない (Never Play) プレイリスト連携</span>
     </div>
     <div class="sync-btn-group">
       <button id="btn-export-dislikes" class="sync-btn">📤 SCへ書き出し</button>
@@ -332,20 +399,20 @@
     <div id="dislike-sync-msg" class="sync-msg"></div>
   </div>
 
-  <!-- リスト（除外した作者 / 後で聴く） -->
+  <!-- リスト（出禁の作者 / 後で聴く） -->
   <div class="card" id="lists-card">
     <div style="display:flex; gap:6px; margin-bottom:6px;">
-      <button id="tab-hated" class="list-tab active" type="button">🚫</button>
-      <button id="tab-later" class="list-tab" type="button">🎧</button>
+      <button id="tab-hated" class="list-tab active" type="button">🤬</button>
+      <button id="tab-later" class="list-tab" type="button">🧐</button>
     </div>
     <input id="list-search" type="text" class="list-search" autocomplete="off">
     <div id="list-body" class="list-body"></div>
     <button id="list-more" type="button" class="sync-sub-btn" style="display:none; width:100%; margin-top:4px;"></button>
   </div>
 
-  <!-- 詳細設定（閉じた状態） -->
+  <!-- Dig Config（閉じた状態） -->
   <details class="card" id="advanced-details">
-    <summary id="label-advanced" style="cursor:pointer; font-size:12px; color:#aaa;">⚙ 詳細設定</summary>
+    <summary id="label-advanced" style="cursor:pointer; font-size:12px; color:#aaa;">⚙ Dig Config</summary>
     <div style="margin-top:8px;">
       <button id="btn-copy-log" class="sync-btn" style="width:100%;">📋 診断ログをコピー</button>
       <div id="log-hint" class="sync-msg" style="margin-top:4px;"></div>
@@ -364,7 +431,7 @@
   <div class="status-bar">
     <span><span id="label-stat-likes">除外Likes</span>: <strong id="stat-likes">-</strong></span>
     <span><span id="label-stat-follows">除外Follow</span>: <strong id="stat-followings">-</strong></span>
-    <span><span id="label-stat-dislikes">Dislike</span>: <strong id="stat-dislikes">-</strong></span>
+    <span><span id="label-stat-dislikes">Never Play</span>: <strong id="stat-dislikes">-</strong></span>
   </div>
 
   <script src="i18n.js"></script>
