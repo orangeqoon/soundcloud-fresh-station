@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.13)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.14)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -2467,53 +2467,75 @@
                 return { success: false, message: tt('m_connectFail') };
             }
 
-            // 500曲単位にチャンク分割（SoundCloudのプレイリスト上限が500曲）
+            // すでに SoundCloud にある NoPlay プレイリスト（連番・旧名も）を番号順に集める
+            // 1 番目: "[FreshDig] NoPlay" / "[FreshDig] Never Play" / "[FreshDig] Disliked Tracks"、2 番目以降: 末尾に " 2", " 3" ...
+            const familyRe = /^\[freshdig\] (?:noplay|never play)(?: (\d+))?$/i;
+            const existingByNo = {};
+            state.myPlaylists.forEach(function (p) {
+                const title = String(p.title || '').trim();
+                let no = null;
+                const m = title.match(familyRe);
+                if (m) no = m[1] ? parseInt(m[1], 10) : 1;
+                else if (title.toLowerCase() === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase()) no = 1;
+                if (no && !existingByNo[no]) existingByNo[no] = p;
+            });
+
+            // SoundCloud 側の曲 + 手元の曲を合わせる（別の PC で登録した曲を消さないため）
+            const mergedIds = [];
+            const seen = new Set();
+            const pushId = function (v) {
+                const n = toNumId(v);
+                if (n && !seen.has(n)) { seen.add(n); mergedIds.push(n); }
+            };
+            const existingNos = Object.keys(existingByNo).map(Number).sort(function (a, b) { return a - b; });
+            for (const no of existingNos) {
+                const plRes = await scApi('playlists/' + existingByNo[no].id);
+                if (!plRes.ok) {
+                    // 読めないプレイリストを上書きすると曲が消えるので、ここで止める
+                    return { success: false, message: tt('m_exPlFail', { s: plRes.status }) };
+                }
+                const plData = await plRes.json();
+                (plData.tracks || []).forEach(function (t) { pushId(t && t.id); });
+            }
+            trackIds.forEach(pushId);
+
+            // 500曲単位に分割（SoundCloud のプレイリスト上限が 500 曲）
             const chunkSize = 500;
             const chunks = [];
-            for (let i = 0; i < trackIds.length; i += chunkSize) {
-                chunks.push(trackIds.slice(i, i + chunkSize));
+            for (let i = 0; i < mergedIds.length; i += chunkSize) {
+                chunks.push(mergedIds.slice(i, i + chunkSize));
             }
 
-            let successCount = 0;
+            let failStatus = null;
             for (let idx = 0; idx < chunks.length; idx++) {
-                const chunkTracks = chunks[idx];
-                const plTitle = idx === 0 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
-                const legacyPlTitle = idx === 0 ? LEGACY_NEVER_PLAY_PLAYLIST_PREFIX : (LEGACY_NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
-                const existingPl = state.myPlaylists.find(function (p) {
-                    const t = (p.title || '').toLowerCase();
-                    return t === plTitle.toLowerCase() ||
-                        t === legacyPlTitle.toLowerCase() ||
-                        (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
-                });
-
-                if (existingPl) {
-                    const putRes = await scApi('playlists/' + existingPl.id, {
+                const no = idx + 1;
+                const plTitle = no === 1 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + no);
+                const existingPl = existingByNo[no];
+                const res = existingPl
+                    ? await scApi('playlists/' + existingPl.id, {
                         method: 'PUT',
-                        body: { playlist: { title: plTitle, tracks: chunkTracks } }
-                    });
-                    if (putRes.ok) successCount++;
-                } else {
-                    const postRes = await scApi('playlists', {
+                        body: { playlist: { title: plTitle, tracks: chunks[idx] } }
+                    })
+                    : await scApi('playlists', {
                         method: 'POST',
-                        body: {
-                            playlist: {
-                                title: plTitle,
-                                sharing: 'private',
-                                tracks: chunkTracks
-                            }
-                        }
+                        body: { playlist: { title: plTitle, sharing: 'private', tracks: chunks[idx] } }
                     });
-                    if (postRes.ok) successCount++;
+                if (!res.ok) {
+                    failStatus = res.status;
+                    break;
                 }
             }
 
             await initUserData({ force: true });
+            if (failStatus !== null) {
+                return { success: false, message: tt('m_exUpdateFail', { s: failStatus }) };
+            }
             if (chunks.length === 1) {
-                return { success: true, message: tt('m_exCreated', { name: NEVER_PLAY_PLAYLIST_PREFIX, n: trackIds.length }) };
+                return { success: true, message: tt('m_exCreated', { name: NEVER_PLAY_PLAYLIST_PREFIX, n: mergedIds.length }) };
             }
             return {
                 success: true,
-                message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: trackIds.length })
+                message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: mergedIds.length })
             };
         } catch (e) {
             console.error('[SC-FreshStation] Export NoPlay error:', e);

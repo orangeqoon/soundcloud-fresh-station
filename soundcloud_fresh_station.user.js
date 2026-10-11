@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.13
+// @version      1.9.14
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -46,7 +46,7 @@
       volSliderTitle: '音量調整',
 
       discoveryMode: '🔍 発掘モード',
-      discoveryOnDesc: '知っている曲（Likes・フォロー中・Dislike）を自動スキップ',
+      discoveryOnDesc: '知っている曲（Likes・フォロー中・不再生）を自動スキップ',
       discoveryOffDesc: 'OFF：自動スキップせず SoundCloud 通常再生',
 
       targetPlaylist: '➕ ワンクリック追加先プレイリスト',
@@ -80,7 +80,7 @@
       btnImportDislikes: '📥 SCから読み込み',
       btnImportingDislikes: '⏳ 読み込み中...',
       exportingMsg: 'SoundCloudへプレイリストを作成/更新しています...',
-      importingMsg: 'SoundCloudプレイリストからDislike曲を取得中...',
+      importingMsg: 'SoundCloudプレイリストから不再生の曲を取得中...',
       commErrorMsg: 'SoundCloudとの通信に失敗しました。ページを再読み込みしてください。',
 
       statLikes: '除外Likes',
@@ -154,9 +154,9 @@
       m_error: '❌ エラー: {msg}',
       m_errorOcc: 'エラーが発生しました: {msg}',
       m_exLogin: 'SoundCloudにログインしていないため書き出せません。SoundCloudでログインしてから再試行してください。',
-      m_exNone: 'エクスポートできるDislike曲がありません（曲IDが取得できた曲のみ書き出せます）。',
+      m_exNone: '書き出せる不再生の曲がありません（曲IDが取得できた曲のみ書き出せます）。',
       m_connectFail: 'SoundCloudアカウントに接続できませんでした。ページを再読み込みしてください。',
-      m_exPlFail: 'Dislikeプレイリストの取得に失敗しました (HTTP {s})',
+      m_exPlFail: '不再生プレイリストの取得に失敗しました (HTTP {s})',
       m_exUpdated: 'プレイリスト「{name}」に書き出しました（合計 {n} 曲{cap}）',
       m_exCap: '・上限500曲',
       m_exUpdateFail: 'エクスポート更新に失敗しました (HTTP {s})',
@@ -166,7 +166,7 @@
       m_imNotFound: '「{name}」という名前のプレイリストが見つかりませんでした。先に書き出しを行ってください。',
       m_imFail: 'プレイリスト取得失敗 (HTTP {s})',
       m_imEmpty: 'プレイリスト「{name}」には曲がありませんでした。',
-      m_imDone: 'プレイリスト「{name}」から {n} 曲を確認し、新たに {c} 件をDislikeリストに追加しました！',
+      m_imDone: 'プレイリスト「{name}」から {n} 曲を確認し、新たに {c} 件を不再生に追加しました！',
       m_volRestored: '🔊 音量を復元しました ({n}%)',
       m_muted: '🔇 ミュートしました',
       m_unmute: 'ミュート解除',
@@ -287,7 +287,7 @@
       volSliderTitle: 'Volume Slider',
 
       discoveryMode: '🔍 Discovery Mode',
-      discoveryOnDesc: 'Auto-skips known tracks (Likes, Followed, Dislikes)',
+      discoveryOnDesc: 'Auto-skips known tracks (Likes, Followed, NoPlay)',
       discoveryOffDesc: 'OFF: Normal SoundCloud playback without skipping',
 
       targetPlaylist: '➕ 1-Click Target Playlist',
@@ -321,7 +321,7 @@
       btnImportDislikes: '📥 Import from SC',
       btnImportingDislikes: '⏳ Importing...',
       exportingMsg: 'Creating / updating playlist on SoundCloud...',
-      importingMsg: 'Fetching disliked tracks from SoundCloud playlist...',
+      importingMsg: 'Fetching NoPlay tracks from SoundCloud playlist...',
       commErrorMsg: 'Failed to communicate with SoundCloud. Please reload the page.',
 
       statLikes: 'Skip Likes',
@@ -395,9 +395,9 @@
       m_error: '❌ Error: {msg}',
       m_errorOcc: 'An error occurred: {msg}',
       m_exLogin: 'Not logged in to SoundCloud, so nothing can be exported. Log in and try again.',
-      m_exNone: 'No disliked tracks to export (only tracks with a known ID can be exported).',
+      m_exNone: 'No NoPlay tracks to export (only tracks with a known ID can be exported).',
       m_connectFail: 'Could not connect to the SoundCloud account. Please reload the page.',
-      m_exPlFail: 'Failed to fetch the Dislike playlist (HTTP {s})',
+      m_exPlFail: 'Failed to fetch the NoPlay playlist (HTTP {s})',
       m_exUpdated: 'Exported to playlist "{name}" ({n} tracks in total{cap})',
       m_exCap: ', 500-track limit',
       m_exUpdateFail: 'Failed to update the export (HTTP {s})',
@@ -407,7 +407,7 @@
       m_imNotFound: 'No playlist named "{name}" was found. Export first.',
       m_imFail: 'Failed to fetch the playlist (HTTP {s})',
       m_imEmpty: 'Playlist "{name}" has no tracks.',
-      m_imDone: 'Checked {n} tracks in playlist "{name}" and added {c} new ones to the Dislike list!',
+      m_imDone: 'Checked {n} tracks in playlist "{name}" and added {c} new ones to NoPlay!',
       m_volRestored: '🔊 Volume restored ({n}%)',
       m_muted: '🔇 Muted',
       m_unmute: 'Unmute',
@@ -528,7 +528,7 @@
       volSliderTitle: 'Lautstärkeregler',
 
       discoveryMode: '🔍 Entdeckungsmodus',
-      discoveryOnDesc: 'Überspringt bekannte Titel automatisch (Likes, Gefolgte, Dislikes)',
+      discoveryOnDesc: 'Überspringt bekannte Titel automatisch (Likes, Gefolgte, NoPlay)',
       discoveryOffDesc: 'AUS: Normale SoundCloud-Wiedergabe ohne Überspringen',
 
       targetPlaylist: '➕ 1-Klick-Ziel-Playlist',
@@ -562,7 +562,7 @@
       btnImportDislikes: '📥 Von SC importieren',
       btnImportingDislikes: '⏳ Wird importiert...',
       exportingMsg: 'Playlist auf SoundCloud wird erstellt/aktualisiert...',
-      importingMsg: 'Dislike-Titel werden aus SoundCloud-Playlist geladen...',
+      importingMsg: 'NoPlay-Titel werden aus SoundCloud-Playlist geladen...',
       commErrorMsg: 'Kommunikation mit SoundCloud fehlgeschlagen. Bitte Seite neu laden.',
 
       statLikes: 'Skip Likes',
@@ -636,9 +636,9 @@
       m_error: '❌ Fehler: {msg}',
       m_errorOcc: 'Ein Fehler ist aufgetreten: {msg}',
       m_exLogin: 'Nicht bei SoundCloud angemeldet. Bitte anmelden und erneut versuchen.',
-      m_exNone: 'Keine Dislike-Titel zum Exportieren (Nur Titel mit bekannter ID können exportiert werden).',
+      m_exNone: 'Keine NoPlay-Titel zum Exportieren (Nur Titel mit bekannter ID können exportiert werden).',
       m_connectFail: 'Verbindung zum SoundCloud-Konto fehlgeschlagen. Bitte Seite neu laden.',
-      m_exPlFail: 'Abrufen der Dislike-Playlist fehlgeschlagen (HTTP {s})',
+      m_exPlFail: 'Abrufen der NoPlay-Playlist fehlgeschlagen (HTTP {s})',
       m_exUpdated: 'In Playlist „{name}“ exportiert (insgesamt {n} Titel{cap})',
       m_exCap: ', Limit von 500 Titeln',
       m_exUpdateFail: 'Export-Aktualisierung fehlgeschlagen (HTTP {s})',
@@ -648,7 +648,7 @@
       m_imNotFound: 'Keine Playlist mit dem Namen „{name}“ gefunden. Bitte zuerst exportieren.',
       m_imFail: 'Abrufen der Playlist fehlgeschlagen (HTTP {s})',
       m_imEmpty: 'Playlist „{name}“ enthält keine Titel.',
-      m_imDone: '{n} Titel in Playlist „{name}“ überprüft und {c} neue zur Dislike-Liste hinzugefügt!',
+      m_imDone: '{n} Titel in Playlist „{name}“ überprüft und {c} neue zu NoPlay hinzugefügt!',
       m_volRestored: '🔊 Lautstärke wiederhergestellt ({n}%)',
       m_muted: '🔇 Stummgeschaltet',
       m_unmute: 'Stummschaltung aufheben',
@@ -769,7 +769,7 @@
       volSliderTitle: 'Регулятор громкости',
 
       discoveryMode: '🔍 Режим поиска',
-      discoveryOnDesc: 'Автопропуск знакомых треков (лайки, подписки, дизлайки)',
+      discoveryOnDesc: 'Автопропуск знакомых треков (лайки, подписки, NoPlay)',
       discoveryOffDesc: 'ВЫКЛ: обычное воспроизведение SoundCloud без пропуска',
 
       targetPlaylist: '➕ Плейлист для добавления в 1 клик',
@@ -803,7 +803,7 @@
       btnImportDislikes: '📥 Импорт из SC',
       btnImportingDislikes: '⏳ Импорт...',
       exportingMsg: 'Создание/обновление плейлиста в SoundCloud...',
-      importingMsg: 'Получение дизлайков из плейлиста SoundCloud...',
+      importingMsg: 'Получение треков NoPlay из плейлиста SoundCloud...',
       commErrorMsg: 'Ошибка связи с SoundCloud. Пожалуйста, обновите страницу.',
 
       statLikes: 'Пропуск лайков',
@@ -877,9 +877,9 @@
       m_error: '❌ Ошибка: {msg}',
       m_errorOcc: 'Произошла ошибка: {msg}',
       m_exLogin: 'Вход в SoundCloud не выполнен. Войдите и повторите попытку.',
-      m_exNone: 'Нет треков с дизлайком для экспорта (экспортируются только треки с известным ID).',
+      m_exNone: 'Нет треков NoPlay для экспорта (экспортируются только треки с известным ID).',
       m_connectFail: 'Не удалось подключиться к SoundCloud. Обновите страницу.',
-      m_exPlFail: 'Не удалось получить плейлист дизлайков (HTTP {s})',
+      m_exPlFail: 'Не удалось получить плейлист NoPlay (HTTP {s})',
       m_exUpdated: 'Экспортировано в плейлист «{name}» (всего {n} треков{cap})',
       m_exCap: ', лимит 500 треков',
       m_exUpdateFail: 'Не удалось обновить экспорт (HTTP {s})',
@@ -889,7 +889,7 @@
       m_imNotFound: 'Плейлист с именем «{name}» не найден. Сначала выполните экспорт.',
       m_imFail: 'Не удалось получить плейлист (HTTP {s})',
       m_imEmpty: 'В плейлисте «{name}» нет треков.',
-      m_imDone: 'Проверено {n} треков в плейлисте «{name}», добавлено {c} новых в дизлайки!',
+      m_imDone: 'Проверено {n} треков в плейлисте «{name}», добавлено {c} новых в NoPlay!',
       m_volRestored: '🔊 Громкость восстановлена ({n}%)',
       m_muted: '🔇 Звук выключен',
       m_unmute: 'Включить звук',
@@ -1230,7 +1230,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.13)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.14)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -3695,53 +3695,75 @@
                 return { success: false, message: tt('m_connectFail') };
             }
 
-            // 500曲単位にチャンク分割（SoundCloudのプレイリスト上限が500曲）
+            // すでに SoundCloud にある NoPlay プレイリスト（連番・旧名も）を番号順に集める
+            // 1 番目: "[FreshDig] NoPlay" / "[FreshDig] Never Play" / "[FreshDig] Disliked Tracks"、2 番目以降: 末尾に " 2", " 3" ...
+            const familyRe = /^\[freshdig\] (?:noplay|never play)(?: (\d+))?$/i;
+            const existingByNo = {};
+            state.myPlaylists.forEach(function (p) {
+                const title = String(p.title || '').trim();
+                let no = null;
+                const m = title.match(familyRe);
+                if (m) no = m[1] ? parseInt(m[1], 10) : 1;
+                else if (title.toLowerCase() === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase()) no = 1;
+                if (no && !existingByNo[no]) existingByNo[no] = p;
+            });
+
+            // SoundCloud 側の曲 + 手元の曲を合わせる（別の PC で登録した曲を消さないため）
+            const mergedIds = [];
+            const seen = new Set();
+            const pushId = function (v) {
+                const n = toNumId(v);
+                if (n && !seen.has(n)) { seen.add(n); mergedIds.push(n); }
+            };
+            const existingNos = Object.keys(existingByNo).map(Number).sort(function (a, b) { return a - b; });
+            for (const no of existingNos) {
+                const plRes = await scApi('playlists/' + existingByNo[no].id);
+                if (!plRes.ok) {
+                    // 読めないプレイリストを上書きすると曲が消えるので、ここで止める
+                    return { success: false, message: tt('m_exPlFail', { s: plRes.status }) };
+                }
+                const plData = await plRes.json();
+                (plData.tracks || []).forEach(function (t) { pushId(t && t.id); });
+            }
+            trackIds.forEach(pushId);
+
+            // 500曲単位に分割（SoundCloud のプレイリスト上限が 500 曲）
             const chunkSize = 500;
             const chunks = [];
-            for (let i = 0; i < trackIds.length; i += chunkSize) {
-                chunks.push(trackIds.slice(i, i + chunkSize));
+            for (let i = 0; i < mergedIds.length; i += chunkSize) {
+                chunks.push(mergedIds.slice(i, i + chunkSize));
             }
 
-            let successCount = 0;
+            let failStatus = null;
             for (let idx = 0; idx < chunks.length; idx++) {
-                const chunkTracks = chunks[idx];
-                const plTitle = idx === 0 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
-                const legacyPlTitle = idx === 0 ? LEGACY_NEVER_PLAY_PLAYLIST_PREFIX : (LEGACY_NEVER_PLAY_PLAYLIST_PREFIX + ' ' + (idx + 1));
-                const existingPl = state.myPlaylists.find(function (p) {
-                    const t = (p.title || '').toLowerCase();
-                    return t === plTitle.toLowerCase() ||
-                        t === legacyPlTitle.toLowerCase() ||
-                        (idx === 0 && t === LEGACY_DISLIKE_PLAYLIST_PREFIX.toLowerCase());
-                });
-
-                if (existingPl) {
-                    const putRes = await scApi('playlists/' + existingPl.id, {
+                const no = idx + 1;
+                const plTitle = no === 1 ? NEVER_PLAY_PLAYLIST_PREFIX : (NEVER_PLAY_PLAYLIST_PREFIX + ' ' + no);
+                const existingPl = existingByNo[no];
+                const res = existingPl
+                    ? await scApi('playlists/' + existingPl.id, {
                         method: 'PUT',
-                        body: { playlist: { title: plTitle, tracks: chunkTracks } }
-                    });
-                    if (putRes.ok) successCount++;
-                } else {
-                    const postRes = await scApi('playlists', {
+                        body: { playlist: { title: plTitle, tracks: chunks[idx] } }
+                    })
+                    : await scApi('playlists', {
                         method: 'POST',
-                        body: {
-                            playlist: {
-                                title: plTitle,
-                                sharing: 'private',
-                                tracks: chunkTracks
-                            }
-                        }
+                        body: { playlist: { title: plTitle, sharing: 'private', tracks: chunks[idx] } }
                     });
-                    if (postRes.ok) successCount++;
+                if (!res.ok) {
+                    failStatus = res.status;
+                    break;
                 }
             }
 
             await initUserData({ force: true });
+            if (failStatus !== null) {
+                return { success: false, message: tt('m_exUpdateFail', { s: failStatus }) };
+            }
             if (chunks.length === 1) {
-                return { success: true, message: tt('m_exCreated', { name: NEVER_PLAY_PLAYLIST_PREFIX, n: trackIds.length }) };
+                return { success: true, message: tt('m_exCreated', { name: NEVER_PLAY_PLAYLIST_PREFIX, n: mergedIds.length }) };
             }
             return {
                 success: true,
-                message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: trackIds.length })
+                message: tt('m_exMultiDone', { name: NEVER_PLAY_PLAYLIST_PREFIX, c: chunks.length, n: mergedIds.length })
             };
         } catch (e) {
             console.error('[SC-FreshStation] Export NoPlay error:', e);

@@ -589,8 +589,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   async function checkRatingPrompt(stats) {
     if (!chrome.storage || !chrome.storage.local) return;
     try {
-      const stored = await chrome.storage.local.get(['hasRated', 'rateDismissed']);
+      const stored = await chrome.storage.local.get(['hasRated', 'rateDismissed', 'rateSnoozeUntil']);
       if (stored && (stored.hasRated || stored.rateDismissed)) return;
+      if (stored && stored.rateSnoozeUntil && Date.now() < stored.rateSnoozeUntil) return;
       const skips = (stats && stats.totalSkips) || 0;
       const plAdds = (stats && stats.totalPlaylistAdds) || 0;
       // 判定基準: 累計30曲スキップ達成 または プレイリスト追加5回以上
@@ -604,8 +605,12 @@ document.addEventListener('DOMContentLoaded', async function () {
   const btnRateNow = document.getElementById('btn-rate-now');
   if (btnRateNow) {
     btnRateNow.addEventListener('click', function () {
+      // ストアから入れた拡張の ID はストアの ID と同じ。Edge は Edge アドオンストア、それ以外は Chrome ウェブストアへ
       const extId = (chrome.runtime && chrome.runtime.id) || '';
-      const url = extId ? ('https://chromewebstore.google.com/detail/' + extId + '/reviews') : 'https://chromewebstore.google.com/';
+      const isEdge = navigator.userAgent.indexOf(" Edg/") !== -1;
+      const url = isEdge
+        ? (extId ? ('https://microsoftedge.microsoft.com/addons/detail/' + extId) : 'https://microsoftedge.microsoft.com/addons/')
+        : (extId ? ('https://chromewebstore.google.com/detail/' + extId + '/reviews') : 'https://chromewebstore.google.com/');
       if (chrome.tabs && chrome.tabs.create) {
         chrome.tabs.create({ url: url });
       } else {
@@ -622,6 +627,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   const btnRateLater = document.getElementById('btn-rate-later');
   if (btnRateLater) {
     btnRateLater.addEventListener('click', function () {
+      // 「あとで」は 7 日間出さない（毎回ポップアップを開くたびに出るのを防ぐ）
+      if (chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ rateSnoozeUntil: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      }
       const banner = document.getElementById('rate-banner');
       if (banner) banner.style.display = 'none';
     });
