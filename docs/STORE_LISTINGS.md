@@ -177,3 +177,20 @@ FreshDig превращает радиостанции SoundCloud в идеал�
 5. ドロップダウンから **「ドイツ語 (German)」** を選択し、上記「3. ドイツ語」の各項目を貼り付けます。
 6. 再度 **「言語を追加」** をクリックし、**「ロシア語 (Russian)」** を選択して、上記「4. ロシア語」の各項目を貼り付けます。
 7. 画面右上の **「下書きを保存 (Save draft)」** を押し、**「審査に送信 (Submit for review)」** をクリックして完了です。
+
+---
+
+## 6. 各言語別 ストア画像アセット一覧 (Visual Assets)
+
+各言語ディレクトリ（`dist/{lang}/`）に Chrome Web Store 推奨仕様のスクリーンショットおよびプロモーション タイルが配置されています。
+
+| アセット種別 | サイズ | 用途・掲載箇所 | ファイルパス |
+| :--- | :--- | :--- | :--- |
+| **スクリーンショット 1** | 1280 x 800 | 純粋発掘機能 & 設定 (Pure Discovery) | `dist/{lang}/store_screenshot_1_features.png` |
+| **スクリーンショット 2** | 1280 x 800 | 浮遊ミニプレイヤー (Mini Player PiP) | `dist/{lang}/store_screenshot_2_miniplayer.png` |
+| **小型プロモタイル** | 440 x 280 | ストア検索結果・一覧表示用（必須） | `dist/{lang}/store_promo_small_440x280.png` |
+| **マーキープロモタイル** | 1400 x 560 | ストアトップ・特集掲載用バナー | `dist/{lang}/store_promo_marquee_1400x560.png` |
+
+> ※ `{lang}` には `en` (英語), `de` (ドイツ語), `ru` (ロシア語), `ja` (日本語) が対応しています。
+> ※ 再生成が必要な場合は `python tools/generate_localized_store_assets.py` を実行してください。
+
