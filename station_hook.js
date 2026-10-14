@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.1)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.2)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1250,6 +1250,9 @@
         }
         try {
             updateHateButtons();
+        } catch (e) {}
+        try {
+            syncCurrentTrackInteractionsFromDom();
         } catch (e) {}
         try {
             broadcastNow();
@@ -3508,6 +3511,40 @@
         return !!(id && state.repostedTrackIds && state.repostedTrackIds.has(id));
     }
 
+    // 再生中の曲の DOM ボタン（Repost / Like）の状態を読み取り、ローカル状態＆キャッシュへ自動同期
+    function syncCurrentTrackInteractionsFromDom() {
+        const trackId = state.currentTrack && toNumId(state.currentTrack.id);
+        if (!trackId) return;
+
+        // Repost 状態の同期
+        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+        if (repostBtn) {
+            const isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
+            if (isReposted && (!state.repostedTrackIds || !state.repostedTrackIds.has(trackId))) {
+                if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
+                state.repostedTrackIds.add(trackId);
+                saveCacheData();
+            } else if (!isReposted && state.repostedTrackIds && state.repostedTrackIds.has(trackId)) {
+                state.repostedTrackIds.delete(trackId);
+                saveCacheData();
+            }
+        }
+
+        // Like 状態の同期
+        const likeBtn = document.querySelector('.playbackSoundBadge__like');
+        if (likeBtn) {
+            const isLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
+            if (isLiked && (!state.likedTrackIds || !state.likedTrackIds.has(trackId))) {
+                if (!state.likedTrackIds) state.likedTrackIds = new Set();
+                state.likedTrackIds.add(trackId);
+                saveCacheData();
+            } else if (!isLiked && state.likedTrackIds && state.likedTrackIds.has(trackId)) {
+                state.likedTrackIds.delete(trackId);
+                saveCacheData();
+            }
+        }
+    }
+
     // リポスト済みの曲IDを取得（ミニプレイヤーの表示と「解除」の判定用）
     async function syncRepostedTrackIds() {
         try {
@@ -3530,37 +3567,18 @@
                 return false;
             }
 
-            // SoundCloud 側で実際にリポストが反映されたか検証（直後 & ラグ対策で少し待って再確認）
-            let verified = false;
-            const checkVerified = async function () {
-                try {
-                    const chk = await scApi('me/track_reposts/ids?limit=100');
-                    if (chk && chk.ok) {
-                        const idsData = await chk.json();
-                        const list = Array.isArray(idsData) ? idsData : ((idsData && Array.isArray(idsData.collection)) ? idsData.collection : []);
-                        return list.map(toNumId).includes(numId);
-                    }
-                } catch (e) {}
-                return false;
-            };
-
-            verified = await checkVerified();
-            if (!verified) {
-                // DB 反映のわずかな遅延を考慮して 500ms 後に 1 回だけ再試行
-                await new Promise(function (r) { setTimeout(r, 500); });
-                verified = await checkVerified();
-            }
-
-            if (!verified) {
-                // 確認できなかった場合はキャッシュや状態には追加しない
-                dlog('repost-unverified', { trackId: numId, status: res.status });
-                toast(tt('m_repostUnverified'));
-                return false;
-            }
-
+            // PUT 成功で即時追加・キャッシュ反映（100件リスト取得による偽陰性判定を排除）
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
             state.repostedTrackIds.add(numId);
             saveCacheData();
+
+            // 現在再生中の曲であれば SoundCloud 本体の DOM ボタンも同期
+            const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+            if (repostBtn && state.currentTrack && toNumId(state.currentTrack.id) === numId) {
+                repostBtn.classList.add('sc-button-selected');
+                repostBtn.setAttribute('aria-checked', 'true');
+            }
+
             toast(tt('m_reposted'));
             dlog('repost', { trackId: numId, status: res.status, verified: true });
             return true;
@@ -4322,6 +4340,7 @@
         if (art) art = art.replace(/-t(50|120|200)x(50|120|200)\./, '-t200x200.').replace(/-large\./, '-t200x200.');
 
         const trackId = state.currentTrack && state.currentTrack.id;
+        try { syncCurrentTrackInteractionsFromDom(); } catch (e) {}
         let reposted = isTrackReposted(trackId);
         if (!reposted && repostBtn) reposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
 
@@ -4502,6 +4521,11 @@
                     if (res.ok) {
                         state.repostedTrackIds.delete(trackId);
                         saveCacheData();
+                        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
+                        if (repostBtn && state.currentTrack && toNumId(state.currentTrack.id) === trackId) {
+                            repostBtn.classList.remove('sc-button-selected');
+                            repostBtn.setAttribute('aria-checked', 'false');
+                        }
                         dlog('unrepost', { trackId: trackId, status: res.status });
                         toast(tt('mpToastUnreposted'));
                     } else {
