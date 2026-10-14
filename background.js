@@ -45,8 +45,28 @@
         });
     }
 
-    // 1. タブの更新を検知して自動でトークンを注入
+    function preventDiscard(tabId) {
+        if (!tabId || !chrome.tabs || !chrome.tabs.update) return;
+        try {
+            chrome.tabs.update(tabId, { autoDiscardable: false }, function () {
+                if (chrome.runtime.lastError) { /* ignore tab closure */ }
+            });
+        } catch (e) {}
+    }
+
+    // 起動時に既存の SoundCloud タブのスリープ破棄を防止
+    chrome.tabs.query({ url: '*://*.soundcloud.com/*' }, function (tabs) {
+        if (!tabs) return;
+        tabs.forEach(function (tab) {
+            preventDiscard(tab.id);
+        });
+    });
+
+    // 1. タブの更新を検知して自動でトークンを注入 & スリープ破棄を防止
     chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+        if (tab.url && tab.url.includes('soundcloud.com')) {
+            preventDiscard(tabId);
+        }
         if ((changeInfo.status === 'loading' || changeInfo.status === 'complete') && tab.url && tab.url.includes('soundcloud.com')) {
             getSoundCloudAuthToken(function (token) {
                 if (token) {

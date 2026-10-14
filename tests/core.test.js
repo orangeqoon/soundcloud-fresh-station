@@ -49,6 +49,25 @@ test('undefined / empty ids never match', () => {
   assert.ok(core.isValidDislikeKey(123) && core.isValidDislikeKey('title_abc'));
 });
 
+test('prototype property safety and getSkipReasonDetails', () => {
+  const c = base();
+  // Object.prototype.toString や constructor に引っ張られない
+  assert.strictEqual(core.getSkipReasonKey({ id: 999, title: 'toString', artistName: 'constructor', genre: 'valueOf' }, c), null);
+  assert.strictEqual(core.getSkipReasonDetails({ id: 999, title: 'toString' }, c), null);
+
+  c.dislikedTracks[123] = true;
+  assert.deepStrictEqual(core.getSkipReasonDetails({ id: 123 }, c), { reason: 'skipReasonDisliked', key: '123' });
+
+  c.dislikedArtists['artist_SpecialArtist'] = true;
+  // artistId がある場合、artistName での判定は行われない（同姓同名対策）
+  assert.strictEqual(core.getSkipReasonKey({ id: 100, artistId: 9999, artistName: 'SpecialArtist' }, c), null);
+  // artistId がない場合のみ、artistName での判定が行われる
+  assert.deepStrictEqual(
+    core.getSkipReasonDetails({ id: 100, artistName: 'SpecialArtist' }, c),
+    { reason: 'skipReasonHated', key: 'artist_SpecialArtist' }
+  );
+});
+
 test('fresh filter', () => {
   const f = { followers: { on: true, n: 1000 }, trackCount: { on: true, n: 100 }, playCount: { on: false, n: 5 }, ageDays: { on: true, n: 30 } };
   assert.strictEqual(core.getFreshSkipReasonKey({ followers: 1001 }, f), 'skipReasonManyFollowers');

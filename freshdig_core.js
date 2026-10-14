@@ -20,38 +20,69 @@
     return s !== '' && s !== 'undefined' && s !== 'null' && s !== 'title_' && s !== 'artist_' && s !== '0' && s !== 'NaN';
   }
 
-  // 曲の除外判定。理由は言語に依存しないキーで返す（表示時に i18n で訳す）。
-  // info: { id, artistId, title, artistName, genre }
-  // ctx: { discoveryEnabled, playbackMode, dislikedTracks, dislikedArtists, dislikedGenres,
-  //        myUserId, likedTrackIds(Set), followingUserIds(Set), inLibrary, onArtistPage }
-  function getSkipReasonKey(info, ctx) {
+  function hasOwn(obj, key) {
+    if (!obj || key === undefined || key === null || key === '') return false;
+    return Object.hasOwn ? Object.hasOwn(obj, key) : Object.prototype.hasOwnProperty.call(obj, key);
+  }
+
+  // 曲の除外判定の詳細。当たった理由とキーを返す。
+  function getSkipReasonDetails(info, ctx) {
     if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
     const id = toNumId(info.id);
     const artistId = toNumId(info.artistId);
-    const title = info.title || '';
-    const artist = info.artistName || '';
+    const title = (info.title || '').trim();
+    const artist = (info.artistName || '').trim();
     const genre = (info.genre || '').trim().toLowerCase();
     const dTracks = ctx.dislikedTracks || {};
     const dArtists = ctx.dislikedArtists || {};
     const dGenres = ctx.dislikedGenres || {};
 
-    if ((id && dTracks[id]) ||
-        (title && (dTracks['title_' + encodeURIComponent(title)] || dTracks[title]))) {
-      return 'skipReasonDisliked';
+    // 1. 曲自体の除外判定
+    if (id && hasOwn(dTracks, id)) {
+      return { reason: 'skipReasonDisliked', key: String(id) };
     }
-    if ((artistId && dArtists[artistId]) ||
-        (artist && (dArtists['artist_' + encodeURIComponent(artist)] || dArtists[artist]))) {
-      return 'skipReasonHated';
+    if (title) {
+      const tKey = 'title_' + encodeURIComponent(title);
+      if (hasOwn(dTracks, tKey)) return { reason: 'skipReasonDisliked', key: tKey };
+      if (hasOwn(dTracks, title)) return { reason: 'skipReasonDisliked', key: title };
     }
-    if (genre && dGenres[genre]) return 'skipReasonGenre';
-    if (artistId && ctx.myUserId && artistId === toNumId(ctx.myUserId)) return 'skipReasonOwn';
-    // 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は、ライク済み・フォロー中では止めない
+
+    // 2. 作者の除外判定（IDがある記録・曲ではIDを優先し、同姓同名の別作者への誤爆を防ぐ）
+    if (artistId && hasOwn(dArtists, artistId)) {
+      return { reason: 'skipReasonHated', key: String(artistId) };
+    }
+    if (!artistId && artist) {
+      const aKey = 'artist_' + encodeURIComponent(artist);
+      if (hasOwn(dArtists, aKey)) return { reason: 'skipReasonHated', key: aKey };
+      if (hasOwn(dArtists, artist)) return { reason: 'skipReasonHated', key: artist };
+    }
+
+    // 3. ジャンルの除外判定
+    if (genre && hasOwn(dGenres, genre)) {
+      return { reason: 'skipReasonGenre', key: genre };
+    }
+
+    // 4. 自分の曲
+    if (artistId && ctx.myUserId && artistId === toNumId(ctx.myUserId)) {
+      return { reason: 'skipReasonOwn', key: String(artistId) };
+    }
+
+    // 5. 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は除外しない
     const keepKnown = !!(ctx.inLibrary || ctx.onArtistPage);
-    if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) return 'skipReasonLiked';
-    if (!ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
-      return 'skipReasonFollowing';
+    if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
+      return { reason: 'skipReasonLiked', key: String(id) };
     }
+    if (!ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
+      return { reason: 'skipReasonFollowing', key: String(artistId) };
+    }
+
     return null;
+  }
+
+  // 曲の除外判定。理由は言語に依存しないキーで返す（表示時に i18n で訳す）。
+  function getSkipReasonKey(info, ctx) {
+    const details = getSkipReasonDetails(info, ctx);
+    return details ? details.reason : null;
   }
 
   // フレッシュさ判定（R10）。info.stats = { followers, trackCount, playCount, createdAt(ms) }（分からない項目は無し）
@@ -206,6 +237,7 @@
     toNumId: toNumId,
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,
+    getSkipReasonDetails: getSkipReasonDetails,
     getFreshSkipReasonKey: getFreshSkipReasonKey,
     normalizeFreshFilter: normalizeFreshFilter,
     pruneAuthorStats: pruneAuthorStats,

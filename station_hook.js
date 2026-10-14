@@ -186,6 +186,12 @@
                     cleaned = true;
                 }
             });
+            Object.keys(state.dislikedGenres).forEach(function (k) {
+                if (!k || invalidKeys.includes(k.toLowerCase().trim())) {
+                    delete state.dislikedGenres[k];
+                    cleaned = true;
+                }
+            });
             if (cleaned) {
                 saveDislikeData();
                 console.log('[SC-FreshStation] Cleaned up invalid blacklist keys.');
@@ -1284,7 +1290,7 @@
     // 判定の中身は freshdig_core.js（Node でテスト済み）
     function getSkipReason(info) {
         if (state.robotBlocked) return null;
-        const base = FreshDigCore.getSkipReasonKey(info, {
+        const details = FreshDigCore.getSkipReasonDetails(info, {
             discoveryEnabled: state.discoveryEnabled,
             playbackMode: state.playbackMode,
             dislikedTracks: state.dislikedTracks,
@@ -1296,9 +1302,18 @@
             inLibrary: isExplicitLibraryPage(),
             onArtistPage: isOnLaterArtistPage()
         });
-        if (base) return base;
+        if (details) {
+            if (info && typeof info === 'object') {
+                info._matchedRuleKey = details.key;
+            }
+            return details.reason;
+        }
         if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return null;
-        return getFreshReason(info);
+        const fresh = getFreshReason(info);
+        if (fresh && info && typeof info === 'object') {
+            info._matchedRuleKey = 'fresh';
+        }
+        return fresh;
     }
 
     // ---- R10: フレッシュさで飛ばす（既定 OFF。ほかの規則の後に見る） ----
@@ -1436,10 +1451,24 @@
         if (!qi) return 0;
         const plan = FreshDigCore.planQueueAhead(qi.infos, qi.curPos, getSkipReason, QUEUE_LOOKAHEAD);
         let removed = 0;
-        plan.remove.map(function (pos) { return qi.models[pos]; }).forEach(function (item) {
-            try { pm.removeItem(item); removed++; } catch (e) {}
+        const removedTracks = [];
+        plan.remove.forEach(function (pos) {
+            const item = qi.models[pos];
+            const info = qi.infos[pos];
+            try {
+                pm.removeItem(item);
+                removed++;
+                if (info) {
+                    removedTracks.push({
+                        id: info.id,
+                        title: info.title || '',
+                        artist: info.artistName || '',
+                        ruleKey: info._matchedRuleKey || ''
+                    });
+                }
+            } catch (e) {}
         });
-        if (removed) dlog('queue-prune', { removed: removed, source: source });
+        if (removed) dlog('queue-prune', { removed: removed, source: source, tracks: removedTracks });
         return removed;
     }
 
@@ -1497,7 +1526,15 @@
         const reasonText = getI18nTexts()[reason] || reason;
         console.log('[SC-FreshStation] ⏩ Auto-skip [' + reason + ']: "' + title + '" (' + ((info && info.artistName) || '') + ')');
         showGlobalToast('⏩ ' + tt('skipToastPrefix') + ' (' + reasonText + ')' + (title ? ': ' + title : ''));
-        dlog('auto-skip', { reason: reason, id: info && info.id, n: marginGuard.consecutiveSkips });
+        dlog('auto-skip', {
+            reason: reason,
+            id: info && info.id,
+            title: title,
+            artist: (info && info.artistName) || '',
+            artistId: info && info.artistId,
+            ruleKey: (info && info._matchedRuleKey) || '',
+            n: marginGuard.consecutiveSkips
+        });
 
         const run = function () {
             // 行列の先まで飛ばす曲が続くなら、1 曲ずつ「次へ」せず一気に移る（音の読み込みを減らす）
@@ -3550,21 +3587,39 @@
     // リポスト（コメント付きまたは通常リポスト）
     async function repostTrackWithCaption(trackId, caption, toast) {
         toast = toast || showGlobalToast;
+        const numId = toNumId(trackId);
+        if (!numId) return false;
         toast(tt('m_reposting'));
         try {
-            const res = await scApi('me/track_reposts/' + trackId, { method: 'PUT' });
+            const res = await scApi('me/track_reposts/' + numId, { method: 'PUT' });
             if (!res.ok) {
+                dlog('repost-fail', { trackId: numId, status: res.status });
                 toast(tt('m_repostFail', { s: res.status }));
                 return false;
             }
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
-            state.repostedTrackIds.add(toNumId(trackId));
+            state.repostedTrackIds.add(numId);
+            saveCacheData();
 
-            if (caption && caption.trim()) {
+            let verified = false;
+            try {
+                const chk = await scApi('me/track_reposts/ids?limit=50');
+                if (chk && chk.ok) {
+                    const idsData = await chk.json();
+                    const list = Array.isArray(idsData) ? idsData : ((idsData && Array.isArray(idsData.collection)) ? idsData.collection : []);
+                    if (list.map(toNumId).includes(numId)) {
+                        verified = true;
+                    }
+                }
+            } catch (e) {}
+
+            const hasCaption = !!(caption && caption.trim());
+            if (hasCaption) {
                 try {
-                    const cRes = await scApi('tracks/' + trackId + '/comments', {
-                        method: 'POST',
-                        body: { comment: { body: caption.trim().slice(0, REPOST_CAPTION_MAX), timestamp: 0 } }
+                    const capText = caption.trim().slice(0, REPOST_CAPTION_MAX);
+                    const cRes = await scApi('me/track_reposts/' + numId + '/caption', {
+                        method: 'PUT',
+                        body: { caption: capText }
                     });
                     if (cRes.ok) {
                         toast(tt('m_repostedCap'));
@@ -3572,15 +3627,17 @@
                         toast(tt('m_repostCapFail', { s: cRes.status }));
                     }
                 } catch (cErr) {
-                    console.error('[SC-FreshStation] Repost comment error:', cErr);
+                    console.error('[SC-FreshStation] Repost caption error:', cErr);
                     toast(tt('m_repostCapFail', { s: 'net' }));
                 }
             } else {
                 toast(tt('m_reposted'));
             }
+            dlog('repost', { trackId: numId, status: res.status, verified: verified, caption: hasCaption });
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
+            dlog('repost-fail', { trackId: numId, error: String(err) });
             toast(tt('m_commErr'));
             return false;
         }
@@ -4285,7 +4342,8 @@
         const r = fdRemote.now;
         if (!r) return false;
         if (isLocalPlaying()) return false;
-        return r.d.playing ? (Date.now() - r.at < 5000) : true;
+        // 他タブが再生中なら 5秒、一時停止中等でも最大 30 秒以内の心拍のみ有効とする（眠り・切断対策）
+        return r.d.playing ? (Date.now() - r.at < 5000) : (Date.now() - r.at < 30000);
     }
 
     function mpCurrentData() {
@@ -4393,6 +4451,14 @@
             delete fdRemote.pending[id];
             if (fdRemote.now && fdRemote.now.tabId === r.tabId) fdRemote.now = null;
             mpToast(tt('m_tabNoReply'));
+            // 相手タブが応答しなかったため、自タブでフォールバック実行を試みる
+            const localFn = MP_ACTIONS[name];
+            if (localFn) {
+                try {
+                    const res = localFn(args || {}, mpToast, null);
+                    if (res && typeof res.catch === 'function') res.catch(function () {});
+                } catch (e) {}
+            }
         }, 1500);
     }
 
@@ -4478,12 +4544,16 @@
                     const res = await scApi('me/track_reposts/' + trackId, { method: 'DELETE' });
                     if (res.ok) {
                         state.repostedTrackIds.delete(trackId);
+                        saveCacheData();
+                        dlog('unrepost', { trackId: trackId, status: res.status });
                         toast(tt('mpToastUnreposted'));
                     } else {
+                        dlog('unrepost-fail', { trackId: trackId, status: res.status });
                         toast(tt('m_unrepostFail', { s: res.status }));
                     }
                 } catch (err) {
                     console.error('[SC-FreshStation] Unrepost error:', err);
+                    dlog('unrepost-fail', { trackId: trackId, error: String(err) });
                     toast(tt('m_commErr'));
                 }
             } else {
