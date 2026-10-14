@@ -4983,18 +4983,6 @@
                     flex: 1;
                     min-width: 0;
                 }
-                .top-actions {
-                    display: flex;
-                    gap: 4px;
-                    align-self: flex-start;
-                    flex-shrink: 0;
-                }
-                .top-actions button {
-                    flex: none;
-                    width: 34px;
-                    height: 34px;
-                    font-size: 14px;
-                }
                 .title {
                     font-size: 13px;
                     font-weight: bold;
@@ -5017,15 +5005,26 @@
                     display: flex;
                     align-items: center;
                     gap: 4px;
-                    margin-top: 3px;
+                    margin-top: 4px;
+                }
+                .badge-row button {
+                    height: 22px;
+                    border-radius: 4px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    flex-shrink: 0;
+                    background: #222;
                 }
                 .status-badge {
                     display: inline-block;
                     font-size: 10px;
-                    font-weight: 600;
+                    font-weight: 700;
                     padding: 3px 8px;
-                    border-radius: 12px;
-                    background: rgba(255, 85, 0, 0.15);
+                    border-radius: 10px;
+                    background: #222;
                     border: 1px solid #ff5500;
                     color: #ffaa00;
                     white-space: nowrap;
@@ -5040,12 +5039,12 @@
                 }
                 .status-badge.following-mode {
                     border-color: #29b6f6;
-                    background: rgba(41, 182, 246, 0.15);
+                    background: #222;
                     color: #4fc3f7;
                 }
                 .status-badge.off {
                     border-color: #a259ff;
-                    background: rgba(162, 89, 255, 0.15);
+                    background: #222;
                     color: #d4a5ff;
                 }
                 .status-badge.off:hover {
@@ -5057,44 +5056,62 @@
                     background: #0288d1;
                     color: #fff;
                 }
+                .btn-later {
+                    width: 24px;
+                    padding: 0;
+                    font-size: 11px;
+                    border: 1px solid #7e57c2;
+                    color: #b39ddb;
+                    opacity: 0.85;
+                }
+                .btn-later:hover {
+                    background: #333;
+                    opacity: 1;
+                }
+                .btn-later.saved {
+                    background: #7e57c2;
+                    border-color: #7e57c2;
+                    color: #fff;
+                    opacity: 1;
+                }
                 .btn-follow {
-                    background: #222;
                     border: 1px solid #444;
                     color: #aaa;
                     font-size: 8.5px;
-                    padding: 1px 5px;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 2px;
-                    white-space: nowrap;
-                    flex-shrink: 0;
-                    transition: all 0.15s ease;
+                    padding: 1px 6px;
                 }
                 .btn-follow:hover {
                     background: #333;
                     color: #fff;
                 }
                 .btn-follow.following {
-                    background: rgba(0, 230, 118, 0.15);
-                    border-color: #00e676;
-                    color: #00e676;
+                    background: #00c853;
+                    border-color: #00c853;
+                    color: #fff;
+                }
+                .btn-hate {
+                    width: 24px;
+                    padding: 0;
+                    font-size: 11px;
+                    border: 1px solid #e53935;
+                    color: #ef5350;
+                    opacity: 0.85;
+                }
+                .btn-hate:hover {
+                    background: #333;
+                    opacity: 1;
+                }
+                .btn-hate.hated {
+                    background: #e53935;
+                    border-color: #e53935;
+                    color: #fff;
+                    opacity: 1;
                 }
                 .btn-station {
-                    background: #222;
                     border: 1px solid #ff5500;
                     color: #ff7700;
                     font-size: 8.5px;
-                    padding: 1px 5px;
-                    border-radius: 10px;
-                    cursor: pointer;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 2px;
-                    white-space: nowrap;
-                    flex-shrink: 0;
-                    transition: all 0.15s ease;
+                    padding: 1px 6px;
                 }
                 .btn-station:hover {
                     background: #ff5500;
@@ -5261,27 +5278,37 @@
                 .btn-play {
                     flex: 1.25;
                     background: #ff5500;
+                    border: 1px solid #ff5500;
                     color: #fff;
                     font-size: 15px;
                 }
                 .btn-play:hover {
                     background: #ff7700;
+                    border-color: #ff7700;
+                }
+                .btn-like {
+                    border: 1px solid #444;
+                    color: #bbb;
                 }
                 .btn-like.liked {
-                    color: #ff3344;
-                    background: rgba(255, 51, 68, 0.2);
-                    border: 1px solid #ff3344;
+                    color: #fff;
+                    background: #ff3344;
+                    border-color: #ff3344;
+                }
+                .btn-repost {
+                    border: 1px solid #444;
+                    color: #bbb;
                 }
                 .btn-repost.reposted {
-                    color: #00e676;
-                    background: rgba(0, 230, 118, 0.2);
-                    border: 1px solid #00e676;
+                    color: #fff;
+                    background: #00c853;
+                    border-color: #00c853;
                 }
                 .btn-pl {
                     border: 1px solid #ff5500;
                     color: #ff5500;
-                    background: rgba(255,85,0,0.1);
                     font-weight: bold;
+                    font-size: 14px;
                 }
                 .btn-pl:hover {
                     background: #ff5500;
@@ -5297,24 +5324,12 @@
                     border-color: #e53935;
                 }
                 .btn-dislike {
-                    border: 1px solid #ff5500;
+                    border: 1px solid #444;
+                    color: #bbb;
+                }
+                .btn-dislike:hover {
+                    border-color: #ff5500;
                     color: #ff5500;
-                }
-                .btn-hate {
-                    border: 1px solid #e53935;
-                    color: #e53935;
-                }
-                .btn-hate.hated {
-                    background: #e53935;
-                    color: #fff;
-                }
-                .btn-later {
-                    border: 1px solid #7e57c2;
-                    color: #b39ddb;
-                }
-                .btn-later.saved {
-                    background: #7e57c2;
-                    color: #fff;
                 }
                 .toast {
                     position: fixed;
@@ -5347,13 +5362,11 @@
                     <div class="artist" id="mp-artist">SoundCloud</div>
                     <div class="badge-row">
                         <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
+                        <button class="btn-later" id="mp-later" title="">🧐</button>
                         <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">${tx.mpFollowBtn}</button>
+                        <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
                     </div>
-                </div>
-                <div class="top-actions">
-                    <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
-                    <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                 </div>
             </div>
 
@@ -5388,7 +5401,7 @@
                 <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">⏭️</button>
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
-                <button class="btn-later" id="mp-later" title="">🧐</button>
+                <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
             </div>
             <div class="toast" id="mp-toast"></div>
             <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
@@ -5792,7 +5805,16 @@
             mpArt.dataset.art = d.art;
             mpArt.style.backgroundImage = 'url("' + d.art + '")';
         }
-        if (mpPlay) mpPlay.textContent = d.playing ? '⏸' : '▶';
+        if (mpPlay) {
+            mpPlay.textContent = d.playing ? '⏸' : '▶';
+            mpPlay.classList.toggle('playing', !!d.playing);
+        }
+
+        const mpAddPl = doc.getElementById('mp-add-pl');
+        if (mpAddPl && d.inPl !== undefined && mpAddPl.textContent !== '⏳') {
+            mpAddPl.classList.toggle('in-pl', !!d.inPl);
+            mpAddPl.textContent = d.inPl ? '✔' : '➕';
+        }
 
         // Like 状態
         if (mpLike && d.hasLikeBtn !== false) {
