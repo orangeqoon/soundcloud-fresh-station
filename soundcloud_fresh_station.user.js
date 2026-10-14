@@ -5166,46 +5166,55 @@
                     color: #fff;
                 }
                 .btn-later {
-                    border: 1px solid #7e57c2;
-                    color: #b39ddb;
+                    border: 1px solid #444;
+                    color: #888;
                     font-size: 17px;
+                    opacity: 0.75;
                 }
                 .btn-later:hover {
                     background: #333;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-later.saved {
-                    background: #7e57c2;
-                    border-color: #7e57c2;
+                    background: #ff5500;
+                    border-color: #ff5500;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-follow {
-                    border: 1px solid #7e57c2;
-                    color: #b39ddb;
+                    border: 1px solid #444;
+                    color: #888;
                     font-size: 17px;
+                    opacity: 0.75;
                 }
                 .btn-follow:hover {
                     background: #333;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-follow.following {
-                    background: #00c853;
-                    border-color: #00c853;
+                    background: #ff5500;
+                    border-color: #ff5500;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-hate {
-                    border: 1px solid #e53935;
-                    color: #ef5350;
+                    border: 1px solid #444;
+                    color: #888;
                     font-size: 17px;
+                    opacity: 0.75;
                 }
                 .btn-hate:hover {
                     background: #333;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-hate.hated {
-                    background: #e53935;
-                    border-color: #e53935;
+                    background: #ff5500;
+                    border-color: #ff5500;
                     color: #fff;
+                    opacity: 1;
                 }
 
                 /* シークバーエリア */
@@ -5342,9 +5351,9 @@
                     padding-top: 2px;
                 }
                 button {
-                    border: 1px solid #3a3a3a;
+                    border: 1px solid #444;
                     background: #222;
-                    color: #ddd;
+                    color: #888;
                     font-size: 19px;
                     line-height: 1;
                     border-radius: 5px;
@@ -5358,10 +5367,12 @@
                     padding: 0;
                     min-width: 0;
                     overflow: hidden;
+                    opacity: 0.85;
                 }
                 button:hover {
                     background: #333;
                     color: #fff;
+                    opacity: 1;
                     transform: translateY(-1px);
                 }
                 button:active {
@@ -5370,8 +5381,8 @@
                 .btn-play {
                     flex: 1.25;
                     background: #222;
-                    border: 1px solid #ff5500;
-                    color: #ff5500;
+                    border: 1px solid #444;
+                    color: #888;
                     font-size: 21px;
                 }
                 .btn-play:hover {
@@ -5383,6 +5394,7 @@
                     background: #ff5500;
                     border-color: #ff5500;
                     color: #fff;
+                    opacity: 1;
                 }
                 .btn-play.playing:hover {
                     background: #ff7700;
@@ -5391,27 +5403,29 @@
                 }
                 .btn-like {
                     border: 1px solid #444;
-                    color: #bbb;
+                    color: #888;
                     font-size: 19px;
                 }
                 .btn-like.liked {
                     color: #fff;
-                    background: #00c853;
-                    border-color: #00c853;
+                    background: #ff5500;
+                    border-color: #ff5500;
+                    opacity: 1;
                 }
                 .btn-repost {
                     border: 1px solid #444;
-                    color: #bbb;
+                    color: #888;
                     font-size: 19px;
                 }
                 .btn-repost.reposted {
                     color: #fff;
-                    background: #00c853;
-                    border-color: #00c853;
+                    background: #ff5500;
+                    border-color: #ff5500;
+                    opacity: 1;
                 }
                 .btn-pl {
-                    border: 1px solid #7e57c2;
-                    color: #b39ddb;
+                    border: 1px solid #444;
+                    color: #888;
                     font-weight: bold;
                     font-size: 21px;
                 }
@@ -5420,17 +5434,18 @@
                     color: #fff;
                 }
                 .btn-pl.in-pl {
-                    border-color: #00c853;
+                    border-color: #ff5500;
                     color: #fff;
-                    background: #00c853;
+                    background: #ff5500;
+                    opacity: 1;
                 }
                 .btn-pl.in-pl:hover {
-                    background: #e53935;
-                    border-color: #e53935;
+                    background: #ff7700;
+                    border-color: #ff7700;
                 }
                 .btn-dislike {
                     border: 1px solid #444;
-                    color: #bbb;
+                    color: #888;
                     font-size: 18px;
                 }
                 .btn-dislike:hover {
