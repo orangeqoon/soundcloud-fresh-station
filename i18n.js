@@ -200,7 +200,8 @@
       m_followFail: '⚠️ フォロー通信失敗 ({s})',
       m_notPlaying: '未再生',
       m_repostedTip: 'リポスト済み（クリックで解除）',
-      m_repostTip: 'リポスト（コメントを付けられます）',
+      m_repostTip: 'リポスト',
+      m_repostUnverified: '⚠️ SoundCloud でリポストを確認できませんでした',
       m_followingLbl: '👤✓ フォロー中',
       m_untitled: '(無題)',
 
@@ -444,7 +445,8 @@
       m_followFail: '⚠️ Follow failed ({s})',
       m_notPlaying: 'Not playing',
       m_repostedTip: 'Reposted (click to remove)',
-      m_repostTip: 'Repost (you can add a comment)',
+      m_repostTip: 'Repost',
+      m_repostUnverified: '⚠️ Could not verify repost on SoundCloud',
       m_followingLbl: '👤✓ Following',
       m_untitled: '(untitled)',
 
@@ -688,7 +690,8 @@
       m_followFail: '⚠️ Folgen fehlgeschlagen ({s})',
       m_notPlaying: 'Keine Wiedergabe',
       m_repostedTip: 'Repostet (Klicken zum Entfernen)',
-      m_repostTip: 'Repost (Kommentar möglich)',
+      m_repostTip: 'Repost',
+      m_repostUnverified: '⚠️ Repost konnte auf SoundCloud nicht bestätigt werden',
       m_followingLbl: '👤✓ Gefolgt',
       m_untitled: '(Ohne Titel)',
 
@@ -932,7 +935,8 @@
       m_followFail: '⚠️ Ошибка при подписке ({s})',
       m_notPlaying: 'Не воспроизводится',
       m_repostedTip: 'Сделан репост (нажмите для отмены)',
-      m_repostTip: 'Сделать репост (можно добавить комментарий)',
+      m_repostTip: 'Сделать репост',
+      m_repostUnverified: '⚠️ Не удалось подтвердить репост в SoundCloud',
       m_followingLbl: '👤✓ Вы подписаны',
       m_untitled: '(Без названия)',
 

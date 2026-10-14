@@ -64,7 +64,7 @@
 
     // 1. タブの更新を検知して自動でトークンを注入 & スリープ破棄を防止
     chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-        if (tab.url && tab.url.includes('soundcloud.com')) {
+        if (changeInfo.status === 'loading' && tab.url && tab.url.includes('soundcloud.com')) {
             preventDiscard(tabId);
         }
         if ((changeInfo.status === 'loading' || changeInfo.status === 'complete') && tab.url && tab.url.includes('soundcloud.com')) {

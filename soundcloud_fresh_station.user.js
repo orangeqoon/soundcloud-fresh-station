@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.1.0
+// @version      2.1.1
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -210,7 +210,8 @@
       m_followFail: '⚠️ フォロー通信失敗 ({s})',
       m_notPlaying: '未再生',
       m_repostedTip: 'リポスト済み（クリックで解除）',
-      m_repostTip: 'リポスト（コメントを付けられます）',
+      m_repostTip: 'リポスト',
+      m_repostUnverified: '⚠️ SoundCloud でリポストを確認できませんでした',
       m_followingLbl: '👤✓ フォロー中',
       m_untitled: '(無題)',
 
@@ -454,7 +455,8 @@
       m_followFail: '⚠️ Follow failed ({s})',
       m_notPlaying: 'Not playing',
       m_repostedTip: 'Reposted (click to remove)',
-      m_repostTip: 'Repost (you can add a comment)',
+      m_repostTip: 'Repost',
+      m_repostUnverified: '⚠️ Could not verify repost on SoundCloud',
       m_followingLbl: '👤✓ Following',
       m_untitled: '(untitled)',
 
@@ -698,7 +700,8 @@
       m_followFail: '⚠️ Folgen fehlgeschlagen ({s})',
       m_notPlaying: 'Keine Wiedergabe',
       m_repostedTip: 'Repostet (Klicken zum Entfernen)',
-      m_repostTip: 'Repost (Kommentar möglich)',
+      m_repostTip: 'Repost',
+      m_repostUnverified: '⚠️ Repost konnte auf SoundCloud nicht bestätigt werden',
       m_followingLbl: '👤✓ Gefolgt',
       m_untitled: '(Ohne Titel)',
 
@@ -942,7 +945,8 @@
       m_followFail: '⚠️ Ошибка при подписке ({s})',
       m_notPlaying: 'Не воспроизводится',
       m_repostedTip: 'Сделан репост (нажмите для отмены)',
-      m_repostTip: 'Сделать репост (можно добавить комментарий)',
+      m_repostTip: 'Сделать репост',
+      m_repostUnverified: '⚠️ Не удалось подтвердить репост в SoundCloud',
       m_followingLbl: '👤✓ Вы подписаны',
       m_untitled: '(Без названия)',
 
@@ -1068,18 +1072,32 @@
     }
     if (title) {
       const tKey = 'title_' + encodeURIComponent(title);
-      if (hasOwn(dTracks, tKey)) return { reason: 'skipReasonDisliked', key: tKey };
-      if (hasOwn(dTracks, title)) return { reason: 'skipReasonDisliked', key: title };
+      const hitKey = hasOwn(dTracks, tKey) ? tKey : (hasOwn(dTracks, title) ? title : null);
+      if (hitKey) {
+        const rec = dTracks[hitKey];
+        const recId = toNumId(rec && typeof rec === 'object' ? (rec.trackId || rec.id) : null);
+        // 記録側にIDがない（古い記録など）場合、またはIDが一致する場合のみ除外
+        if (!recId || !id || recId === id) {
+          return { reason: 'skipReasonDisliked', key: hitKey };
+        }
+      }
     }
 
-    // 2. 作者の除外判定（IDがある記録・曲ではIDを優先し、同姓同名の別作者への誤爆を防ぐ）
+    // 2. 作者の除外判定
     if (artistId && hasOwn(dArtists, artistId)) {
       return { reason: 'skipReasonHated', key: String(artistId) };
     }
-    if (!artistId && artist) {
+    if (artist) {
       const aKey = 'artist_' + encodeURIComponent(artist);
-      if (hasOwn(dArtists, aKey)) return { reason: 'skipReasonHated', key: aKey };
-      if (hasOwn(dArtists, artist)) return { reason: 'skipReasonHated', key: artist };
+      const hitKey = hasOwn(dArtists, aKey) ? aKey : (hasOwn(dArtists, artist) ? artist : null);
+      if (hitKey) {
+        const rec = dArtists[hitKey];
+        const recId = toNumId(rec && typeof rec === 'object' ? (rec.artistId || rec.id) : null);
+        // 記録側にIDがない（古い記録など）場合、またはIDが一致する場合のみ除外（IDが異なれば同姓同名の別人として除外しない）
+        if (!recId || !artistId || recId === artistId) {
+          return { reason: 'skipReasonHated', key: hitKey };
+        }
+      }
     }
 
     // 3. ジャンルの除外判定
@@ -1274,7 +1292,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.0)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.1)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -3940,6 +3958,7 @@
         const trackKey = (t && t.id) ? t.id : ('title_' + encodeURIComponent(title));
 
         state.dislikedTracks[trackKey] = {
+            trackId: t && t.id ? toNumId(t.id) : null,
             title: title,
             artist: artist,
             genre: (t && t.genre) ? t.genre : '',
@@ -3991,6 +4010,7 @@
         const artistKey = (t && t.artistId) ? t.artistId : ('artist_' + encodeURIComponent(artist));
 
         state.dislikedArtists[artistKey] = {
+            artistId: t && t.artistId ? toNumId(t.artistId) : null,
             name: artist,
             permalink: getArtistPermalink(t),
             date: new Date().toLocaleDateString(),
@@ -4770,10 +4790,9 @@
     }
 
     // =========================================================================
-    // 🔁 リポスト（コメント付き）
     // =========================================================================
-    const REPOST_CAPTION_MAX = 140; // SoundCloud 本体のリポストコメント上限
-
+    // 🔁 リポスト
+    // =========================================================================
     function isTrackReposted(trackId) {
         const id = toNumId(trackId);
         return !!(id && state.repostedTrackIds && state.repostedTrackIds.has(id));
@@ -4787,77 +4806,8 @@
         } catch (e) {}
     }
 
-    // コメント入力パネル。送信で文字列（空文字＝コメントなし）、キャンセルで null を返す
-    function showRepostCaptionDialog(doc, trackTitle) {
-        doc = doc || document;
-        return new Promise(function (resolve) {
-            const old = doc.getElementById('sc-fresh-station-repost-dialog');
-            if (old) old.remove();
-
-            const overlay = doc.createElement('div');
-            overlay.id = 'sc-fresh-station-repost-dialog';
-            overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;';
-
-            const panel = doc.createElement('div');
-            panel.style.cssText = 'background:#1a1a1a;color:#eee;border:1px solid #ff5500;border-radius:8px;width:min(320px,94vw);padding:8px 10px;box-sizing:border-box;box-shadow:0 8px 30px rgba(0,0,0,0.6);';
-
-            const head = doc.createElement('div');
-            head.textContent = tt('m_repostHead') + (trackTitle ? ': ' + trackTitle : '');
-            head.style.cssText = 'font-size:12px;font-weight:bold;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
-            panel.appendChild(head);
-
-            const ta = doc.createElement('textarea');
-            ta.maxLength = REPOST_CAPTION_MAX;
-            ta.rows = 3;
-            ta.placeholder = tt('m_repostPh', { n: REPOST_CAPTION_MAX });
-            ta.style.cssText = 'width:100%;box-sizing:border-box;resize:none;background:#111;color:#eee;border:1px solid #444;border-radius:4px;padding:5px;font-size:12px;font-family:inherit;user-select:text;';
-            panel.appendChild(ta);
-
-            const row = doc.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-top:6px;';
-            const counter = doc.createElement('span');
-            counter.style.cssText = 'flex:1;font-size:10px;color:#888;';
-            const updateCounter = function () { counter.textContent = ta.value.length + ' / ' + REPOST_CAPTION_MAX; };
-            updateCounter();
-            ta.addEventListener('input', updateCounter);
-
-            const mkBtn = function (label, primary) {
-                const b = doc.createElement('button');
-                b.type = 'button';
-                b.textContent = label;
-                b.style.cssText = 'flex:none;height:26px;padding:0 10px;border-radius:4px;cursor:pointer;font-size:12px;border:1px solid ' + (primary ? '#ff5500' : '#444') + ';background:' + (primary ? '#ff5500' : '#2a2a2a') + ';color:' + (primary ? '#fff' : '#bbb') + ';';
-                return b;
-            };
-            const cancelBtn = mkBtn(tt('pickerCancel'), false);
-            const sendBtn = mkBtn(tt('m_send'), true);
-            row.appendChild(counter);
-            row.appendChild(cancelBtn);
-            row.appendChild(sendBtn);
-            panel.appendChild(row);
-
-            const done = function (value) {
-                doc.removeEventListener('keydown', onKey, true);
-                overlay.remove();
-                resolve(value);
-            };
-            const onKey = function (e) {
-                if (e.key === 'Escape') { e.preventDefault(); done(null); }
-                // Ctrl+Enter / ⌘+Enter で送信（Enter だけだと改行）
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done(ta.value.trim()); }
-            };
-            cancelBtn.addEventListener('click', function () { done(null); });
-            sendBtn.addEventListener('click', function () { done(ta.value.trim()); });
-            overlay.addEventListener('click', function (e) { if (e.target === overlay) done(null); });
-            doc.addEventListener('keydown', onKey, true);
-
-            overlay.appendChild(panel);
-            (doc.body || doc.documentElement).appendChild(overlay);
-            setTimeout(function () { try { ta.focus(); } catch (e) {} }, 0);
-        });
-    }
-
-    // リポスト（コメント付きまたは通常リポスト）
-    async function repostTrackWithCaption(trackId, caption, toast) {
+    // 通常リポスト実行と検証
+    async function repostTrack(trackId, toast) {
         toast = toast || showGlobalToast;
         const numId = toNumId(trackId);
         if (!numId) return false;
@@ -4869,43 +4819,40 @@
                 toast(tt('m_repostFail', { s: res.status }));
                 return false;
             }
+
+            // SoundCloud 側で実際にリポストが反映されたか検証（直後 & ラグ対策で少し待って再確認）
+            let verified = false;
+            const checkVerified = async function () {
+                try {
+                    const chk = await scApi('me/track_reposts/ids?limit=100');
+                    if (chk && chk.ok) {
+                        const idsData = await chk.json();
+                        const list = Array.isArray(idsData) ? idsData : ((idsData && Array.isArray(idsData.collection)) ? idsData.collection : []);
+                        return list.map(toNumId).includes(numId);
+                    }
+                } catch (e) {}
+                return false;
+            };
+
+            verified = await checkVerified();
+            if (!verified) {
+                // DB 反映のわずかな遅延を考慮して 500ms 後に 1 回だけ再試行
+                await new Promise(function (r) { setTimeout(r, 500); });
+                verified = await checkVerified();
+            }
+
+            if (!verified) {
+                // 確認できなかった場合はキャッシュや状態には追加しない
+                dlog('repost-unverified', { trackId: numId, status: res.status });
+                toast(tt('m_repostUnverified'));
+                return false;
+            }
+
             if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
             state.repostedTrackIds.add(numId);
             saveCacheData();
-
-            let verified = false;
-            try {
-                const chk = await scApi('me/track_reposts/ids?limit=50');
-                if (chk && chk.ok) {
-                    const idsData = await chk.json();
-                    const list = Array.isArray(idsData) ? idsData : ((idsData && Array.isArray(idsData.collection)) ? idsData.collection : []);
-                    if (list.map(toNumId).includes(numId)) {
-                        verified = true;
-                    }
-                }
-            } catch (e) {}
-
-            const hasCaption = !!(caption && caption.trim());
-            if (hasCaption) {
-                try {
-                    const capText = caption.trim().slice(0, REPOST_CAPTION_MAX);
-                    const cRes = await scApi('me/track_reposts/' + numId + '/caption', {
-                        method: 'PUT',
-                        body: { caption: capText }
-                    });
-                    if (cRes.ok) {
-                        toast(tt('m_repostedCap'));
-                    } else {
-                        toast(tt('m_repostCapFail', { s: cRes.status }));
-                    }
-                } catch (cErr) {
-                    console.error('[SC-FreshStation] Repost caption error:', cErr);
-                    toast(tt('m_repostCapFail', { s: 'net' }));
-                }
-            } else {
-                toast(tt('m_reposted'));
-            }
-            dlog('repost', { trackId: numId, status: res.status, verified: verified, caption: hasCaption });
+            toast(tt('m_reposted'));
+            dlog('repost', { trackId: numId, status: res.status, verified: true });
             return true;
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
@@ -5576,17 +5523,10 @@
 
         doc.getElementById('mp-like')?.addEventListener('click', function () { run('like'); });
 
-        // リポスト：未リポストならコメントダイアログを表示してリポスト、リポスト済みなら解除
-        doc.getElementById('mp-repost')?.addEventListener('click', async function () {
+        // リポスト：未リポストなら通常リポスト、リポスト済みなら解除
+        doc.getElementById('mp-repost')?.addEventListener('click', function () {
             const d = mpCurrentData();
-            if (d.reposted) {
-                run('repost', { unrepost: true });
-            } else {
-                const cap = await showRepostCaptionDialog(doc, d.title || '');
-                if (cap !== null) {
-                    run('repost', { caption: cap });
-                }
-            }
+            run('repost', { unrepost: !!d.reposted });
         });
 
         doc.getElementById('mp-follow')?.addEventListener('click', function () { run('follow'); });
@@ -5755,13 +5695,16 @@
             delete fdRemote.pending[id];
             if (fdRemote.now && fdRemote.now.tabId === r.tabId) fdRemote.now = null;
             mpToast(tt('m_tabNoReply'));
-            // 相手タブが応答しなかったため、自タブでフォールバック実行を試みる
-            const localFn = MP_ACTIONS[name];
-            if (localFn) {
-                try {
-                    const res = localFn(args || {}, mpToast, null);
-                    if (res && typeof res.catch === 'function') res.catch(function () {});
-                } catch (e) {}
+            // 相手タブが応答しなかった場合、再生/一時停止('play')のみ自タブでフォールバック可能
+            // （他の操作は曲や作者が別物の可能性があるため自タブ実行しない）
+            if (name === 'play') {
+                const localFn = MP_ACTIONS.play;
+                if (localFn) {
+                    try {
+                        const res = localFn(args || {}, mpToast, null);
+                        if (res && typeof res.catch === 'function') res.catch(function () {});
+                    } catch (e) {}
+                }
             }
         }, 1500);
     }
@@ -5861,7 +5804,7 @@
                     toast(tt('m_commErr'));
                 }
             } else {
-                await repostTrackWithCaption(trackId, typeof a.caption === 'string' ? a.caption : '', toast);
+                await repostTrack(trackId, toast);
             }
             syncMiniPlayerUI();
         },

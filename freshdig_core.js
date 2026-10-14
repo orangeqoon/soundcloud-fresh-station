@@ -43,18 +43,32 @@
     }
     if (title) {
       const tKey = 'title_' + encodeURIComponent(title);
-      if (hasOwn(dTracks, tKey)) return { reason: 'skipReasonDisliked', key: tKey };
-      if (hasOwn(dTracks, title)) return { reason: 'skipReasonDisliked', key: title };
+      const hitKey = hasOwn(dTracks, tKey) ? tKey : (hasOwn(dTracks, title) ? title : null);
+      if (hitKey) {
+        const rec = dTracks[hitKey];
+        const recId = toNumId(rec && typeof rec === 'object' ? (rec.trackId || rec.id) : null);
+        // 記録側にIDがない（古い記録など）場合、またはIDが一致する場合のみ除外
+        if (!recId || !id || recId === id) {
+          return { reason: 'skipReasonDisliked', key: hitKey };
+        }
+      }
     }
 
-    // 2. 作者の除外判定（IDがある記録・曲ではIDを優先し、同姓同名の別作者への誤爆を防ぐ）
+    // 2. 作者の除外判定
     if (artistId && hasOwn(dArtists, artistId)) {
       return { reason: 'skipReasonHated', key: String(artistId) };
     }
-    if (!artistId && artist) {
+    if (artist) {
       const aKey = 'artist_' + encodeURIComponent(artist);
-      if (hasOwn(dArtists, aKey)) return { reason: 'skipReasonHated', key: aKey };
-      if (hasOwn(dArtists, artist)) return { reason: 'skipReasonHated', key: artist };
+      const hitKey = hasOwn(dArtists, aKey) ? aKey : (hasOwn(dArtists, artist) ? artist : null);
+      if (hitKey) {
+        const rec = dArtists[hitKey];
+        const recId = toNumId(rec && typeof rec === 'object' ? (rec.artistId || rec.id) : null);
+        // 記録側にIDがない（古い記録など）場合、またはIDが一致する場合のみ除外（IDが異なれば同姓同名の別人として除外しない）
+        if (!recId || !artistId || recId === artistId) {
+          return { reason: 'skipReasonHated', key: hitKey };
+        }
+      }
     }
 
     // 3. ジャンルの除外判定

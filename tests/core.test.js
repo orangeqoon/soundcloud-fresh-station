@@ -58,13 +58,28 @@ test('prototype property safety and getSkipReasonDetails', () => {
   c.dislikedTracks[123] = true;
   assert.deepStrictEqual(core.getSkipReasonDetails({ id: 123 }, c), { reason: 'skipReasonDisliked', key: '123' });
 
-  c.dislikedArtists['artist_SpecialArtist'] = true;
-  // artistId がある場合、artistName での判定は行われない（同姓同名対策）
-  assert.strictEqual(core.getSkipReasonKey({ id: 100, artistId: 9999, artistName: 'SpecialArtist' }, c), null);
-  // artistId がない場合のみ、artistName での判定が行われる
+  // 1. 古い記録（IDなし）: 曲に artistId があっても名前一致で除外される
+  c.dislikedArtists['artist_LegacyArtist'] = true;
   assert.deepStrictEqual(
-    core.getSkipReasonDetails({ id: 100, artistName: 'SpecialArtist' }, c),
+    core.getSkipReasonDetails({ id: 100, artistId: 8888, artistName: 'LegacyArtist' }, c),
+    { reason: 'skipReasonHated', key: 'artist_LegacyArtist' }
+  );
+
+  // 2. 新しい記録（artistId あり）: 記録側の ID と曲の artistId が違う場合は除外されない（同姓同名対策）
+  c.dislikedArtists['artist_SpecialArtist'] = { artistId: 9999, name: 'SpecialArtist' };
+  assert.strictEqual(core.getSkipReasonKey({ id: 101, artistId: 7777, artistName: 'SpecialArtist' }, c), null);
+  // 記録側の ID と一致すれば除外される
+  assert.deepStrictEqual(
+    core.getSkipReasonDetails({ id: 102, artistId: 9999, artistName: 'SpecialArtist' }, c),
     { reason: 'skipReasonHated', key: 'artist_SpecialArtist' }
+  );
+
+  // 3. 曲名（title_...）: ID違いの同名曲除外防止
+  c.dislikedTracks['title_' + encodeURIComponent('Intro')] = { trackId: 50, title: 'Intro' };
+  assert.strictEqual(core.getSkipReasonKey({ id: 51, title: 'Intro' }, c), null);
+  assert.deepStrictEqual(
+    core.getSkipReasonDetails({ id: 50, title: 'Intro' }, c),
+    { reason: 'skipReasonDisliked', key: 'title_' + encodeURIComponent('Intro') }
   );
 });
 
