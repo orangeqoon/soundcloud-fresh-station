@@ -5396,8 +5396,8 @@
                 }
                 .btn-like.liked {
                     color: #fff;
-                    background: #ff3344;
-                    border-color: #ff3344;
+                    background: #00c853;
+                    border-color: #00c853;
                 }
                 .btn-repost {
                     border: 1px solid #444;
@@ -5937,7 +5937,7 @@
 
         // Like 状態
         if (mpLike && d.hasLikeBtn !== false) {
-            mpLike.textContent = d.liked ? '❤️' : '🤍';
+            mpLike.textContent = '🤍';
             mpLike.classList.toggle('liked', !!d.liked);
         }
 
