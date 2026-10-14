@@ -5097,8 +5097,10 @@
                     margin-top: 4px;
                 }
                 .badge-row button {
-                    height: 22px;
-                    border-radius: 4px;
+                    height: 24px;
+                    width: 24px;
+                    min-width: 24px;
+                    border-radius: 5px;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -5106,13 +5108,20 @@
                     transition: all 0.15s ease;
                     flex-shrink: 0;
                     background: #222;
+                    padding: 0;
+                    font-size: 17px;
+                    line-height: 1;
+                    overflow: hidden;
                 }
                 .status-badge {
-                    display: inline-block;
-                    font-size: 10px;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 11px;
                     font-weight: 700;
-                    padding: 3px 8px;
-                    border-radius: 10px;
+                    height: 24px;
+                    padding: 0 8px;
+                    border-radius: 6px;
                     background: #222;
                     border: 1px solid #ff5500;
                     color: #ffaa00;
@@ -5120,6 +5129,8 @@
                     flex-shrink: 0;
                     cursor: pointer;
                     transition: all 0.15s ease;
+                    line-height: 1;
+                    box-sizing: border-box;
                 }
                 .status-badge:hover {
                     background: #ff5500;
@@ -5145,29 +5156,33 @@
                     background: #0288d1;
                     color: #fff;
                 }
+                .btn-station {
+                    border: 1px solid #ff5500;
+                    color: #ff7700;
+                    font-size: 17px;
+                }
+                .btn-station:hover {
+                    background: #ff5500;
+                    color: #fff;
+                }
                 .btn-later {
-                    width: 24px;
-                    padding: 0;
-                    font-size: 11px;
                     border: 1px solid #7e57c2;
                     color: #b39ddb;
-                    opacity: 0.85;
+                    font-size: 17px;
                 }
                 .btn-later:hover {
                     background: #333;
-                    opacity: 1;
+                    color: #fff;
                 }
                 .btn-later.saved {
                     background: #7e57c2;
                     border-color: #7e57c2;
                     color: #fff;
-                    opacity: 1;
                 }
                 .btn-follow {
-                    border: 1px solid #444;
-                    color: #aaa;
-                    font-size: 8.5px;
-                    padding: 1px 6px;
+                    border: 1px solid #7e57c2;
+                    color: #b39ddb;
+                    font-size: 17px;
                 }
                 .btn-follow:hover {
                     background: #333;
@@ -5179,31 +5194,17 @@
                     color: #fff;
                 }
                 .btn-hate {
-                    width: 24px;
-                    padding: 0;
-                    font-size: 11px;
                     border: 1px solid #e53935;
                     color: #ef5350;
-                    opacity: 0.85;
+                    font-size: 17px;
                 }
                 .btn-hate:hover {
                     background: #333;
-                    opacity: 1;
+                    color: #fff;
                 }
                 .btn-hate.hated {
                     background: #e53935;
                     border-color: #e53935;
-                    color: #fff;
-                    opacity: 1;
-                }
-                .btn-station {
-                    border: 1px solid #ff5500;
-                    color: #ff7700;
-                    font-size: 8.5px;
-                    padding: 1px 6px;
-                }
-                .btn-station:hover {
-                    background: #ff5500;
                     color: #fff;
                 }
 
@@ -5341,10 +5342,11 @@
                     padding-top: 2px;
                 }
                 button {
-                    border: none;
+                    border: 1px solid #3a3a3a;
                     background: #222;
                     color: #ddd;
-                    font-size: 12px;
+                    font-size: 19px;
+                    line-height: 1;
                     border-radius: 5px;
                     cursor: pointer;
                     display: inline-flex;
@@ -5355,6 +5357,7 @@
                     height: 30px;
                     padding: 0;
                     min-width: 0;
+                    overflow: hidden;
                 }
                 button:hover {
                     background: #333;
@@ -5366,18 +5369,30 @@
                 }
                 .btn-play {
                     flex: 1.25;
-                    background: #ff5500;
+                    background: #222;
                     border: 1px solid #ff5500;
-                    color: #fff;
-                    font-size: 15px;
+                    color: #ff5500;
+                    font-size: 21px;
                 }
                 .btn-play:hover {
+                    background: #333;
+                    border-color: #ff7700;
+                    color: #ff7700;
+                }
+                .btn-play.playing {
+                    background: #ff5500;
+                    border-color: #ff5500;
+                    color: #fff;
+                }
+                .btn-play.playing:hover {
                     background: #ff7700;
                     border-color: #ff7700;
+                    color: #fff;
                 }
                 .btn-like {
                     border: 1px solid #444;
                     color: #bbb;
+                    font-size: 19px;
                 }
                 .btn-like.liked {
                     color: #fff;
@@ -5387,6 +5402,7 @@
                 .btn-repost {
                     border: 1px solid #444;
                     color: #bbb;
+                    font-size: 19px;
                 }
                 .btn-repost.reposted {
                     color: #fff;
@@ -5394,13 +5410,13 @@
                     border-color: #00c853;
                 }
                 .btn-pl {
-                    border: 1px solid #ff5500;
-                    color: #ff5500;
+                    border: 1px solid #7e57c2;
+                    color: #b39ddb;
                     font-weight: bold;
-                    font-size: 14px;
+                    font-size: 21px;
                 }
                 .btn-pl:hover {
-                    background: #ff5500;
+                    background: #333;
                     color: #fff;
                 }
                 .btn-pl.in-pl {
@@ -5415,6 +5431,7 @@
                 .btn-dislike {
                     border: 1px solid #444;
                     color: #bbb;
+                    font-size: 18px;
                 }
                 .btn-dislike:hover {
                     border-color: #ff5500;
@@ -5451,10 +5468,10 @@
                     <div class="artist" id="mp-artist">SoundCloud</div>
                     <div class="badge-row">
                         <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
+                        <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">📻</button>
                         <button class="btn-later" id="mp-later" title="">🧐</button>
-                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">${tx.mpFollowBtn}</button>
+                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">👤</button>
                         <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
-                        <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">${tx.mpStationBtn}</button>
                     </div>
                 </div>
             </div>
@@ -5932,8 +5949,9 @@
 
         // Follow 状態
         if (mpFollow && d.following !== null && d.following !== undefined) {
-            mpFollow.textContent = d.following ? tt('m_followingLbl') : tt('mpFollowBtn');
+            mpFollow.textContent = '👤';
             mpFollow.classList.toggle('following', !!d.following);
+            mpFollow.title = d.following ? tt('m_followingLbl') : tt('mpFollowBtnTitle');
         }
 
         const mpHate = doc.getElementById('mp-hate');
