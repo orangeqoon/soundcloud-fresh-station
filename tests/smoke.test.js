@@ -55,4 +55,16 @@ test('station_hook.js loads without throwing and answers GET_DIAG_LOG', async ()
   assert.ok(reply, 'no reply for GET_DIAG_LOG: ' + JSON.stringify(posted).slice(0, 500));
   assert.strictEqual(reply.result.success, true);
   assert.match(reply.result.text, /FreshDig diag log/);
+  assert.ok(Array.isArray(reply.result.entries), 'entries should be an array');
+  assert.ok(reply.result.stats && typeof reply.result.stats.totalNoPlays === 'number', 'stats.totalNoPlays should exist');
+});
+
+test('icons/flags contains all required SVG files for F1', () => {
+  const flags = ['auto.svg', 'jp.svg', 'us.svg', 'de.svg', 'ru.svg'];
+  for (const f of flags) {
+    const p = path.join(__dirname, '..', 'icons', 'flags', f);
+    assert.ok(fs.existsSync(p), 'missing flag svg: ' + f);
+    const content = fs.readFileSync(p, 'utf8');
+    assert.ok(content.includes('<svg'), f + ' is not valid SVG');
+  }
 });

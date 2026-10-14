@@ -12,11 +12,23 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
   t = FreshDigI18n.getTexts(currentLang);
 
-  const langSelect = document.getElementById('lang-select');
-  if (langSelect) {
-    langSelect.value = currentLang;
-    langSelect.addEventListener('change', function () {
-      currentLang = langSelect.value;
+  function setActiveFlag(lang) {
+    const flagBtns = document.querySelectorAll('#lang-flags .lang-flag-btn');
+    flagBtns.forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+    });
+  }
+
+  const langFlags = document.getElementById('lang-flags');
+  if (langFlags) {
+    setActiveFlag(currentLang);
+    langFlags.addEventListener('click', function (e) {
+      const btn = e.target.closest('.lang-flag-btn');
+      if (!btn) return;
+      const selectedLang = btn.getAttribute('data-lang');
+      if (!selectedLang || selectedLang === currentLang) return;
+      currentLang = selectedLang;
+      setActiveFlag(currentLang);
       t = FreshDigI18n.getTexts(currentLang);
       if (chrome.storage && chrome.storage.local) {
         chrome.storage.local.set({ preferredLanguage: currentLang });
@@ -59,8 +71,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('btn-import-dislikes').textContent = t.btnImportDislikes;
 
     document.getElementById('label-advanced').textContent = t.advancedSettings;
-    document.getElementById('btn-copy-log').textContent = t.btnCopyLog;
-    document.getElementById('log-hint').textContent = t.logHint;
+    const btnReport = document.getElementById('btn-download-report');
+    if (btnReport) btnReport.textContent = t.btnDownloadReport;
+    const btnCopyLog = document.getElementById('btn-copy-log');
+    if (btnCopyLog) btnCopyLog.textContent = t.btnCopyLog;
 
     const rateTitle = document.getElementById('rate-title');
     if (rateTitle && t.ratePromptTitle) rateTitle.textContent = t.ratePromptTitle;
@@ -309,21 +323,54 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
 
-  // 診断ログのコピー
-  const copyLogBtn = document.getElementById('btn-copy-log');
-  if (copyLogBtn) {
-    copyLogBtn.addEventListener('click', function () {
-      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DIAG_LOG' }, async function (response) {
-        const hint = document.getElementById('log-hint');
-        if (chrome.runtime.lastError || !response || !response.text) {
-          hint.textContent = t.logCopyFailed;
+  // 診断レポート保存 (JSON)
+  const downloadReportBtn = document.getElementById('btn-download-report');
+  if (downloadReportBtn) {
+    downloadReportBtn.addEventListener('click', function () {
+      const hint = document.getElementById('log-hint');
+      if (!tab || !tab.id) {
+        if (hint) hint.textContent = t.reportFailed;
+        return;
+      }
+      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'GET_DIAG_LOG' }, function (response) {
+        if (chrome.runtime.lastError || !response || !response.success) {
+          if (hint) hint.textContent = t.reportFailed;
           return;
         }
         try {
-          await navigator.clipboard.writeText(response.text);
-          hint.textContent = t.logCopied;
+          const manifest = (chrome.runtime && chrome.runtime.getManifest) ? chrome.runtime.getManifest() : { version: '2.1.0' };
+          const report = {
+            schema: 1,
+            version: manifest.version || '2.1.0',
+            createdAt: new Date().toISOString(),
+            browser: navigator.userAgent,
+            page: tab.url || '',
+            settings: {
+              preferredLanguage: currentLang,
+              freshFilter: (cachedData && cachedData.freshFilter) || {},
+              autoMiniPlayer: (cachedData && cachedData.autoMiniPlayer) || false,
+              playbackMode: (cachedData && cachedData.playbackMode) || 'DISCOVERY',
+              discoveryEnabled: (cachedData && cachedData.discoveryEnabled) !== false
+            },
+            stats: response.stats || {},
+            entries: response.entries || []
+          };
+          const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          const now = new Date();
+          const pad = function (n) { return String(n).padStart(2, '0'); };
+          const ts = '' + now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + '-' +
+                     pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+          a.download = 'freshdig-report-' + ts + '.json';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          if (hint) hint.textContent = t.reportSaved;
         } catch (e) {
-          hint.textContent = t.logCopyFailed;
+          if (hint) hint.textContent = t.reportFailed;
         }
       });
     });
@@ -589,13 +636,25 @@ document.addEventListener('DOMContentLoaded', async function () {
   async function checkRatingPrompt(stats) {
     if (!chrome.storage || !chrome.storage.local) return;
     try {
-      const stored = await chrome.storage.local.get(['hasRated', 'rateDismissed', 'rateSnoozeUntil']);
-      if (stored && (stored.hasRated || stored.rateDismissed)) return;
-      if (stored && stored.rateSnoozeUntil && Date.now() < stored.rateSnoozeUntil) return;
+      const stored = await chrome.storage.local.get(['hasRated', 'rateDismissed', 'rateSnoozeUntil', 'rate100Shown']);
+      if (stored && stored.hasRated) return; // hasRated なら出さない
       const skips = (stats && stats.totalSkips) || 0;
       const plAdds = (stats && stats.totalPlaylistAdds) || 0;
-      // 判定基準: 累計30曲スキップ達成 または プレイリスト追加5回以上
-      if (skips >= 30 || plAdds >= 5) {
+      const noPlays = (stats && stats.totalNoPlays) || 0;
+
+      let shouldShow = false;
+      // 100曲NoPlay達成時: rateDismissed・スヌーズ中でも1回だけ出す（rate100Shownで記録）
+      if (noPlays >= 100 && (!stored || !stored.rate100Shown)) {
+        shouldShow = true;
+        chrome.storage.local.set({ rate100Shown: true });
+      } else if (!stored || (!stored.rateDismissed && (!stored.rateSnoozeUntil || Date.now() >= stored.rateSnoozeUntil))) {
+        // 通常の判定基準: 累計30曲スキップ達成 または プレイリスト追加5回以上
+        if (skips >= 30 || plAdds >= 5) {
+          shouldShow = true;
+        }
+      }
+
+      if (shouldShow) {
         const banner = document.getElementById('rate-banner');
         if (banner) banner.style.display = 'block';
       }

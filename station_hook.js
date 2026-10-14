@@ -2,7 +2,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.15)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -399,6 +399,15 @@
         }).join('\n');
     }
 
+    function getDiagLogEntries() {
+        flushDiagLog();
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(DIAG_LOG_KEY) || '[]'); } catch (e) {}
+        return list.map(function (x) {
+            return { t: x.t, tab: x.tab, type: x.type, detail: x.d === undefined ? '' : x.d };
+        });
+    }
+
     // 同じ soundcloud.com の全タブへの連絡（拡張の裏側を通さない）。自分が送ったものは受け取らない
     const fdBus = (function () {
         const handlers = {};
@@ -688,7 +697,7 @@
                     toggleSoundCloudMute();
                     ack({ success: true, volume: getSoundCloudVolume() });
                 } else if (action === 'GET_DIAG_LOG') {
-                    ack({ success: true, text: getDiagLogText() });
+                    ack({ success: true, text: getDiagLogText(), entries: getDiagLogEntries(), stats: getStats() });
                 } else if (action === 'GET_DATA') {
                     loadCachedData();
                     extractAuthTokenFromCookie();
@@ -2436,9 +2445,9 @@
 
     function getStats() {
         try {
-            return JSON.parse(localStorage.getItem('sc_fresh_station_stats_v1')) || { totalSkips: 0, totalPlaylistAdds: 0 };
+            return JSON.parse(localStorage.getItem('sc_fresh_station_stats_v1')) || { totalSkips: 0, totalPlaylistAdds: 0, totalNoPlays: 0 };
         } catch (e) {
-            return { totalSkips: 0, totalPlaylistAdds: 0 };
+            return { totalSkips: 0, totalPlaylistAdds: 0, totalNoPlays: 0 };
         }
     }
 
@@ -2629,6 +2638,7 @@
         };
 
         saveDislikeData();
+        recordStat('totalNoPlays');
         console.log('[SC-FreshStation] 👎 1-Click Dislike! Track only: "' + title + '" (' + artist + '). Skipping immediately...');
 
         const skipBtn = document.querySelector('.playControls__next');
@@ -3771,9 +3781,10 @@
                 }
                 .status-badge {
                     display: inline-block;
-                    font-size: 8.5px;
-                    padding: 2px 6px;
-                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 600;
+                    padding: 3px 8px;
+                    border-radius: 12px;
                     background: rgba(255, 85, 0, 0.15);
                     border: 1px solid #ff5500;
                     color: #ffaa00;
@@ -3785,7 +3796,7 @@
                 .status-badge:hover {
                     background: #ff5500;
                     color: #fff;
-                    transform: scale(1.05);
+                    transform: scale(1.04);
                 }
                 .status-badge.following-mode {
                     border-color: #29b6f6;
@@ -3793,13 +3804,13 @@
                     color: #4fc3f7;
                 }
                 .status-badge.off {
-                    border-color: #555;
-                    background: #222;
-                    color: #888;
+                    border-color: #a259ff;
+                    background: rgba(162, 89, 255, 0.15);
+                    color: #d4a5ff;
                 }
                 .status-badge.off:hover {
-                    background: #ff5500;
-                    border-color: #ff5500;
+                    background: #a259ff;
+                    border-color: #a259ff;
                     color: #fff;
                 }
                 .status-badge.following-mode:hover {

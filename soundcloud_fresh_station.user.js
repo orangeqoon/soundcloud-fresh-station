@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      1.9.15
+// @version      2.1.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -70,6 +70,9 @@
       robotShort: 'ロボット確認中',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 診断ログをコピー',
+      btnDownloadReport: '📥 診断レポート保存 (JSON)',
+      reportSaved: '✅ レポートを保存しました',
+      reportFailed: '⚠️ レポート保存に失敗しました',
       logCopied: 'コピーしました。止まった時の状況と一緒に貼ってください',
       logCopyFailed: 'コピーできませんでした',
       logHint: '音が止まった直後に押して、貼り付けてください',
@@ -174,8 +177,8 @@
       m_discOff: '⏸ 発掘モード OFF（SoundCloud 通常再生）',
       m_toDiscovery: '🔍 発掘モード（未知のアーティスト）に切替',
       m_toFollowing: '👥 フォロー新曲モード（新曲のみ）に切替',
-      m_stOff: '⏸ 発掘 OFF',
-      m_stOn: '🔍 発掘 ON',
+      m_stOff: '⏸ Dig OFF',
+      m_stOn: '🔍 Dig ON',
       m_stFollow: '👥 フォロー新曲',
       m_stationStarted: '📻 ステーションを開始しました！',
       m_stationStartedMsg: 'ステーションを開始しました',
@@ -311,6 +314,9 @@
       robotShort: 'Robot check',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Copy diagnostic log',
+      btnDownloadReport: '📥 Save Diagnostic Report (JSON)',
+      reportSaved: '✅ Report saved',
+      reportFailed: '⚠️ Failed to save report',
       logCopied: 'Copied. Paste it together with what happened.',
       logCopyFailed: 'Could not copy',
       logHint: 'Press right after the sound stops, then paste it',
@@ -415,8 +421,8 @@
       m_discOff: '⏸ Discovery Mode OFF (normal SoundCloud playback)',
       m_toDiscovery: '🔍 Switched to Discovery Mode (unknown artists)',
       m_toFollowing: '👥 Switched to Following Only Mode (new tracks only)',
-      m_stOff: '⏸ Discovery OFF',
-      m_stOn: '🔍 Discovery ON',
+      m_stOff: '⏸ Dig OFF',
+      m_stOn: '🔍 Dig ON',
       m_stFollow: '👥 Following only',
       m_stationStarted: '📻 Station started!',
       m_stationStartedMsg: 'Station started',
@@ -552,6 +558,9 @@
       robotShort: 'Bot-Prüfung',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Diagnoseprotokoll kopieren',
+      btnDownloadReport: '📥 Diagnosebericht speichern (JSON)',
+      reportSaved: '✅ Bericht gespeichert',
+      reportFailed: '⚠️ Bericht konnte nicht gespeichert werden',
       logCopied: 'Kopiert. Bitte zusammen mit dem Fehlerbericht einfügen.',
       logCopyFailed: 'Kopieren fehlgeschlagen',
       logHint: 'Direkt nach dem Musikstopp drücken und einfügen',
@@ -656,8 +665,8 @@
       m_discOff: '⏸ Entdeckungsmodus AUS (normale SoundCloud-Wiedergabe)',
       m_toDiscovery: '🔍 Zum Entdeckungsmodus gewechselt (unbekannte Künstler)',
       m_toFollowing: '👥 Zum Nur-Gefolgte-Modus gewechselt (nur neue Titel)',
-      m_stOff: '⏸ Entdeckung AUS',
-      m_stOn: '🔍 Entdeckung AN',
+      m_stOff: '⏸ Dig AUS',
+      m_stOn: '🔍 Dig AN',
       m_stFollow: '👥 Nur Gefolgte',
       m_stationStarted: '📻 Station gestartet!',
       m_stationStartedMsg: 'Station gestartet',
@@ -793,6 +802,9 @@
       robotShort: 'Проверка на робота',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Скопировать лог диагностики',
+      btnDownloadReport: '📥 Сохранить отчет о диагностике (JSON)',
+      reportSaved: '✅ Отчет сохранен',
+      reportFailed: '⚠️ Не удалось сохранить отчет',
       logCopied: 'Скопировано. Вставьте вместе с описанием проблемы.',
       logCopyFailed: 'Не удалось скопировать',
       logHint: 'Нажмите сразу после остановки звука и вставьте',
@@ -897,8 +909,8 @@
       m_discOff: '⏸ Режим поиска ВЫКЛ (обычное воспроизведение SoundCloud)',
       m_toDiscovery: '🔍 Переключено в режим поиска (неизвестные артисты)',
       m_toFollowing: '👥 Переключено в режим отслеживаемых (только новые треки)',
-      m_stOff: '⏸ Поиск ВЫКЛ',
-      m_stOn: '🔍 Поиск ВКЛ',
+      m_stOff: '⏸ Dig ВЫКЛ',
+      m_stOn: '🔍 Dig ВКЛ',
       m_stFollow: '👥 Только подписки',
       m_stationStarted: '📻 Станция запущена!',
       m_stationStartedMsg: 'Станция запущена',
@@ -1230,7 +1242,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v1.9.15)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.0)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1627,6 +1639,15 @@
         }).join('\n');
     }
 
+    function getDiagLogEntries() {
+        flushDiagLog();
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(DIAG_LOG_KEY) || '[]'); } catch (e) {}
+        return list.map(function (x) {
+            return { t: x.t, tab: x.tab, type: x.type, detail: x.d === undefined ? '' : x.d };
+        });
+    }
+
     // 同じ soundcloud.com の全タブへの連絡（拡張の裏側を通さない）。自分が送ったものは受け取らない
     const fdBus = (function () {
         const handlers = {};
@@ -1916,7 +1937,7 @@
                     toggleSoundCloudMute();
                     ack({ success: true, volume: getSoundCloudVolume() });
                 } else if (action === 'GET_DIAG_LOG') {
-                    ack({ success: true, text: getDiagLogText() });
+                    ack({ success: true, text: getDiagLogText(), entries: getDiagLogEntries(), stats: getStats() });
                 } else if (action === 'GET_DATA') {
                     loadCachedData();
                     extractAuthTokenFromCookie();
@@ -3664,9 +3685,9 @@
 
     function getStats() {
         try {
-            return JSON.parse(localStorage.getItem('sc_fresh_station_stats_v1')) || { totalSkips: 0, totalPlaylistAdds: 0 };
+            return JSON.parse(localStorage.getItem('sc_fresh_station_stats_v1')) || { totalSkips: 0, totalPlaylistAdds: 0, totalNoPlays: 0 };
         } catch (e) {
-            return { totalSkips: 0, totalPlaylistAdds: 0 };
+            return { totalSkips: 0, totalPlaylistAdds: 0, totalNoPlays: 0 };
         }
     }
 
@@ -3857,6 +3878,7 @@
         };
 
         saveDislikeData();
+        recordStat('totalNoPlays');
         console.log('[SC-FreshStation] 👎 1-Click Dislike! Track only: "' + title + '" (' + artist + '). Skipping immediately...');
 
         const skipBtn = document.querySelector('.playControls__next');
@@ -4999,9 +5021,10 @@
                 }
                 .status-badge {
                     display: inline-block;
-                    font-size: 8.5px;
-                    padding: 2px 6px;
-                    border-radius: 10px;
+                    font-size: 10px;
+                    font-weight: 600;
+                    padding: 3px 8px;
+                    border-radius: 12px;
                     background: rgba(255, 85, 0, 0.15);
                     border: 1px solid #ff5500;
                     color: #ffaa00;
@@ -5013,7 +5036,7 @@
                 .status-badge:hover {
                     background: #ff5500;
                     color: #fff;
-                    transform: scale(1.05);
+                    transform: scale(1.04);
                 }
                 .status-badge.following-mode {
                     border-color: #29b6f6;
@@ -5021,13 +5044,13 @@
                     color: #4fc3f7;
                 }
                 .status-badge.off {
-                    border-color: #555;
-                    background: #222;
-                    color: #888;
+                    border-color: #a259ff;
+                    background: rgba(162, 89, 255, 0.15);
+                    color: #d4a5ff;
                 }
                 .status-badge.off:hover {
-                    background: #ff5500;
-                    border-color: #ff5500;
+                    background: #a259ff;
+                    border-color: #a259ff;
                     color: #fff;
                 }
                 .status-badge.following-mode:hover {

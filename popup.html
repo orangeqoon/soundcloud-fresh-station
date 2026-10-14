@@ -38,15 +38,38 @@
       flex: 1 1 100%;
       min-width: 0;
     }
-    .lang-select {
-      background: #242424;
-      color: #bbb;
-      border: 1px solid #444;
+    .lang-flags {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    .lang-flag-btn {
+      background: #1e1e1e;
+      border: 1px solid #333;
       border-radius: 4px;
-      font-size: 10px;
-      padding: 2px 4px;
+      padding: 2px 3px;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
       outline: none;
+    }
+    .lang-flag-btn:hover {
+      border-color: #ff5500;
+      background: #2a2a2a;
+    }
+    .lang-flag-btn.active {
+      border-color: #ff5500;
+      background: rgba(255, 85, 0, 0.2);
+      box-shadow: 0 0 4px rgba(255, 85, 0, 0.4);
+    }
+    .lang-flag-btn img {
+      width: 16px;
+      height: 11px;
+      display: block;
+      object-fit: cover;
+      border-radius: 1px;
     }
     .badge {
       font-size: 10px;
@@ -311,16 +334,26 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v1.9.15</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.1.0</span>
     </div>
     <div class="header-right">
-      <select id="lang-select" class="lang-select" title="Language / 言語">
-        <option value="auto">🌐</option>
-        <option value="ja">🇯🇵</option>
-        <option value="en">🇺🇸</option>
-        <option value="de">🇩🇪</option>
-        <option value="ru">🇷🇺</option>
-      </select>
+      <div class="lang-flags" id="lang-flags" title="Language / 言語">
+        <button type="button" class="lang-flag-btn" data-lang="auto" title="Auto (OS)">
+          <img src="icons/flags/auto.svg" alt="Auto">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="ja" title="日本語">
+          <img src="icons/flags/jp.svg" alt="JA">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="en" title="English">
+          <img src="icons/flags/us.svg" alt="EN">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="de" title="Deutsch">
+          <img src="icons/flags/de.svg" alt="DE">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="ru" title="Русский">
+          <img src="icons/flags/ru.svg" alt="RU">
+        </button>
+      </div>
       <div class="badge" id="conn-badge">SoundCloud未接続</div>
     </div>
   </div>
@@ -414,9 +447,7 @@
   <details class="card" id="advanced-details">
     <summary id="label-advanced" style="cursor:pointer; font-size:12px; color:#aaa;">⚙ Dig Config</summary>
     <div style="margin-top:8px;">
-      <button id="btn-copy-log" class="sync-btn" style="width:100%;">📋 診断ログをコピー</button>
-      <div id="log-hint" class="sync-msg" style="margin-top:4px;"></div>
-      <div id="fresh-box" style="margin-top:10px; padding-top:8px; border-top:1px solid #333;">
+      <div id="fresh-box">
         <div id="fresh-title" style="font-size:12px; color:#ddd; margin-bottom:4px;"></div>
         <label class="fresh-row"><input type="checkbox" id="fresh-followers-on"><span id="fresh-followers-pre"></span><input type="number" min="0" id="fresh-followers-n" class="fresh-n"><span id="fresh-followers-post"></span></label>
         <label class="fresh-row"><input type="checkbox" id="fresh-tracks-on"><span id="fresh-tracks-pre"></span><input type="number" min="0" id="fresh-tracks-n" class="fresh-n"><span id="fresh-tracks-post"></span></label>
@@ -432,6 +463,12 @@
     <span><span id="label-stat-likes">除外Likes</span>: <strong id="stat-likes">-</strong></span>
     <span><span id="label-stat-follows">除外Follow</span>: <strong id="stat-followings">-</strong></span>
     <span><span id="label-stat-dislikes">不再生</span>: <strong id="stat-dislikes">-</strong></span>
+  </div>
+
+  <!-- 診断レポート保存（ポップアップ最下部） -->
+  <div style="margin-top:8px;">
+    <button id="btn-download-report" class="sync-btn" style="width:100%; font-size:11px;">📥 診断レポート保存 (JSON)</button>
+    <div id="log-hint" class="sync-msg" style="margin-top:4px;"></div>
   </div>
 
   <script src="i18n.js"></script>
