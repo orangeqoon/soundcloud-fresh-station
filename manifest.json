@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "2.1.2",
+  "version": "2.2.4",
   "default_locale": "en",
   "description": "__MSG_extensionDesc__",
   "permissions": [
@@ -42,7 +42,7 @@
     },
     {
       "matches": ["https://soundcloud.com/*"],
-      "js": ["content_bridge.js"],
+      "js": ["i18n.js", "content_bridge.js", "onboarding.js"],
       "run_at": "document_idle"
     }
   ]

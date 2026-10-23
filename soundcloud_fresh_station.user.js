@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.1.2
+// @version      2.2.4
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -34,20 +34,27 @@
       loadingSC: 'SoundCloud読込中...',
 
       // Buttons & Controls
-      btnMiniPlayer: '🪟 ミニプレイヤー',
-      btnStation: '📻 ステーション開始',
-      btnStationTitle: '現在再生中の曲のステーションを開始',
-      autoMpLabel: '別のタブを開いたらミニプレイヤーを自動表示',
-      autoMpTitle: '音楽の再生中に別のタブへ切り替えると、ミニプレイヤーが自動で表示されます（Edge / Chrome の自動ピクチャー イン ピクチャー機能）',
-      autoMpNotSupported: 'このブラウザはミニプレイヤーの自動表示に対応していません',
+      btnMiniPlayer: '📻 ミニプレイヤー',
+      btnStation: '📡 ステーション開始',
+      btnStationTitle: '現在の曲からステーションを開始',
+      autoMpLabel: '別のタブを開いたらブラウザの許可範囲でミニプレイヤーを自動表示',
+      autoMpTitle: 'タブ切替時に自動でミニプレイヤーを表示（ブラウザ許可）',
+      autoMpNotSupported: 'このブラウザでは自動PiPを利用できません（保存した設定は保持されます）',
+      autoMpPermissionNote: 'ブラウザの許可と音が聞こえる再生が必要です。タブ切替時の動作はブラウザが決めます。',
+      autoMpStatusRegistered: '準備完了',
+      autoMpStatusUnsupported: '非対応（設定は保存済み）',
+      autoMpStatusUnknown: '確認中',
+      autoMpLastError: '自動PiPをブラウザに登録できませんでした',
 
       volControl: '🔊 音量コントロール',
       volMute: 'ミュート切替',
-      volSliderTitle: '音量調整',
+      volSliderTitle: '音量',
 
-      discoveryMode: '🔍 発掘モード',
-      discoveryOnDesc: '知っている曲（Likes・フォロー中・不再生）を自動スキップ',
-      discoveryOffDesc: 'OFF：自動スキップせず SoundCloud 通常再生',
+      discoveryMode: '⛏️ 発掘モード',
+      discoveryOnDesc: '不再生・Like済み・フォロー中の作者の曲を自動スキップ',
+      discoveryOffDesc: 'OFF：通常再生',
+      discoveryStatusOn: 'ON',
+      discoveryStatusOff: 'OFF',
 
       targetPlaylist: '➕ ワンクリック追加先プレイリスト',
       btnSync: '🔄 同期',
@@ -93,32 +100,34 @@
       langLabel: '🌐 言語',
 
       // In-page Player Bar
-      barStationTitle: '📻 この曲のステーションを開始',
-      barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
-      barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
-      barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
-      barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
-      barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
-      barFollowingModeTitle: '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)',
+      barStationTitle: '📡 この曲からステーションを開始',
+      barDislikeTitle: '⏭️ この曲を不再生に登録して次へ',
+      barHateTitle: '🤬 作者を除外してスキップ',
+      barMiniPlayerTitle: '📻 ミニプレイヤーを開く',
+      barDiscoveryOffTitle: '⛏️ 発掘モードをONにする',
+      barDiscoveryOnTitle: '⛏️ 発掘モードをOFFにする',
+      barFollowingModeTitle: '👥 フォロー中の新曲（クリックで発掘モード）',
 
       // Mini Player
       mpTitle: 'FreshDig - アーティスト発掘ミニプレイヤー',
-      mpPromptOpen: '🪟 ここをクリックしてミニプレイヤーを開く',
+      mpPromptOpen: '📻 ここをクリックしてミニプレイヤーを開く',
       mpLoadingTrack: '曲を読み込み中...',
       mpStatusWaiting: '再生待機中',
       mpStatusDigging: '発掘中',
       mpFollowBtn: '👤 フォロー',
-      mpFollowBtnTitle: 'アーティストをフォロー',
-      mpStationBtn: '📻 ステーション',
-      mpStationBtnTitle: 'この曲のステーションを開始',
+      mpFollowBtnTitle: '作者をフォロー',
+      mpStationBtn: '📡 ステーション',
+      mpStationBtnTitle: 'この曲からステーションを開始',
+      mpLaterListLabel: '🧐 後で聴くリスト',
+      mpDigListening: '⏸ 作者を試聴中',
       mpPrevTitle: '前の曲',
       mpPlayTitle: '再生 / 一時停止',
       mpNextTitle: '次の曲',
       mpLikeTitle: 'いいね (Like)',
       mpRepostTitle: 'リポスト (Repost)',
       mpAddPlTitle: 'プレイリストに追加',
-      mpDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
-      mpHateTitle: '作者除外 & スキップ',
+      mpDislikeTitle: '⏭️ この曲を不再生に登録して次へ',
+      mpHateTitle: '🤬 作者を除外してスキップ',
       mpToastDislike: '⏭️ 不再生に登録してスキップ',
       mpToastHate: '🤬 作者を除外してスキップ',
       mpToastAddedPl: '➕ プレイリストに追加しました',
@@ -129,8 +138,8 @@
       mpToastUnreposted: '↩️ リポストを解除しました',
       mpToastFollowed: '👤 フォローしました',
       mpToastUnfollowed: '👤 フォローを解除しました',
-      mpStatusToggleOff: 'クリックで発掘モードを OFF（SoundCloud 通常再生）',
-      mpStatusToggleOn: 'クリックで発掘モードを ON（知っている曲を自動スキップ）',
+      mpStatusToggleOff: '発掘モードをOFFにする',
+      mpStatusToggleOn: '発掘モードをONにする',
 
       // Messages (toasts, tooltips, results)
       m_streakStop: '⚠️ 知っている曲が続いたため、この曲はそのまま再生します',
@@ -173,17 +182,17 @@
       m_volRestored: '🔊 音量を復元しました ({n}%)',
       m_muted: '🔇 ミュートしました',
       m_unmute: 'ミュート解除',
-      m_discOn: '🔍 発掘モード ON（知っている曲を自動スキップ）',
+      m_discOn: '⛏️ 発掘モード ON（知っている曲を自動スキップ）',
       m_discOff: '⏸ 発掘モード OFF（SoundCloud 通常再生）',
-      m_toDiscovery: '🔍 発掘モード（未知のアーティスト）に切替',
+      m_toDiscovery: '⛏️ 発掘モード（未知のアーティスト）に切替',
       m_toFollowing: '👥 フォロー新曲モード（新曲のみ）に切替',
       m_stOff: '⏸ Dig OFF',
-      m_stOn: '🔍 Dig ON',
+      m_stOn: '⛏️ Dig ON',
       m_stFollow: '👥 フォロー新曲',
-      m_stationStarted: '📻 ステーションを開始しました！',
+      m_stationStarted: '📡 ステーションを開始しました！',
       m_stationStartedMsg: 'ステーションを開始しました',
-      m_stationLoading: '📻 ステーションを読込中...',
-      m_stationPlaying: '📻 ステーションを再生開始しました！',
+      m_stationLoading: '📡 ステーションを読込中...',
+      m_stationPlaying: '📡 ステーションを再生開始しました！',
       m_stationNoTrack: '⚠️ 現在再生中の曲情報を取得できませんでした',
       m_stationNoTrackMsg: '曲情報を取得できませんでした',
       m_repostHead: '🔁 リポスト',
@@ -196,6 +205,8 @@
       m_reposted: '🔁 リポストしました！',
       m_commErr: '⚠️ 通信エラーが発生しました',
       m_tabNoReply: '⚠️ 音を出しているタブが応答しません',
+      m_actionPending: '操作を受け付けました。まだ処理中の可能性があります。ページで結果を確認してください',
+      m_volumeUnavailable: '音量操作を確認できません。SoundCloud本体の音量で操作してください',
       m_noLikeBtn: '⚠️ Likeボタンが見つかりません',
       m_trackLoading: '⚠️ トラック情報を取得中...',
       m_loginPlease: '⚠️ SoundCloudにログインしてください',
@@ -228,7 +239,8 @@
       m_profileUnban: '解除',
       listsTitle: '📚 リスト',
       tabHated: '🤬 作者除外',
-      tabLater: '🧐 後で聴く',
+      tabLater: '🧐 後で聴くリスト',
+      tabNoPlay: '⏭️ 不再生リスト',
       listSearch: '検索',
       listMore: 'もっと見る',
       listUnban: '解除 ✕',
@@ -259,6 +271,25 @@
       btnRateLater: 'あとで',
       btnRateDismiss: '閉じる',
 
+      // First-use guide
+      onboardingDialogLabel: 'FreshDig の使い方ガイド',
+      onboardingTitle: 'FreshDig の使い方',
+      onboardingStep1Title: 'ミニプレイヤーを開く',
+      onboardingStep1Body: 'FreshDigの一押し機能です。拡張機能アイコン、またはSoundCloudの📻から開けます。',
+      onboardingStep2Title: 'Dig ONモード',
+      onboardingStep2Body: 'ONにすると、不再生にした曲・Like済みの曲・フォロー中の作者の曲を飛ばします。',
+      onboardingStep3Title: '🧐 後で聴くリスト',
+      onboardingStep3Body: '下段の🧐で作者を保存。拡張機能アイコンから一覧を開き、作者を選ぶとトラックページへ移動できます。',
+      onboardingOpenLauncher: '📻 ページのランチャーを開く',
+      onboardingLauncherHint: 'ページのプレイヤー操作欄にある 📻 をクリックしてください。',
+      onboardingNext: '次へ',
+      onboardingBack: '戻る',
+      onboardingDone: '使い始める',
+      onboardingSkip: 'ガイドをスキップ',
+      onboardingClose: '閉じる',
+      onboardingProgress: '{n} / 3',
+      onboardingGuideButton: '使い方を見る',
+
       // Multi-playlist
       m_exMultiDone: '連番プレイリスト「{name}」を含む {c} 件のプレイリストに合計 {n} 曲を書き出しました！',
       m_imMultiDone: '{c} 個の不再生プレイリストから合計 {n} 曲を確認し、新たに {added} 件を追加しました！',
@@ -279,20 +310,27 @@
       loadingSC: 'Loading SoundCloud...',
 
       // Buttons & Controls
-      btnMiniPlayer: '🪟 Mini Player',
-      btnStation: '📻 Start Station',
-      btnStationTitle: 'Start station from currently playing track',
-      autoMpLabel: 'Auto show Mini Player when switching tabs',
-      autoMpTitle: 'Automatically opens Mini Player when you switch to another tab while music is playing (Document PiP)',
-      autoMpNotSupported: 'This browser does not support automatic picture-in-picture',
+      btnMiniPlayer: '📻 Mini Player',
+      btnStation: '📡 Start Station',
+      btnStationTitle: 'Start station from current track',
+      autoMpLabel: 'Auto-open Mini Player when switching tabs (browser controlled)',
+      autoMpTitle: 'Auto-open Mini Player on tab switch (browser permission)',
+      autoMpNotSupported: 'Automatic PiP is not supported here (your saved setting is kept)',
+      autoMpPermissionNote: 'Requires browser permission and audible playback. The browser decides what happens on a tab switch.',
+      autoMpStatusRegistered: 'Ready',
+      autoMpStatusUnsupported: 'Unsupported (setting kept)',
+      autoMpStatusUnknown: 'Checking',
+      autoMpLastError: 'The browser could not register automatic PiP',
 
       volControl: '🔊 Volume Control',
       volMute: 'Toggle Mute',
-      volSliderTitle: 'Volume Slider',
+      volSliderTitle: 'Volume',
 
-      discoveryMode: '🔍 Discovery Mode',
-      discoveryOnDesc: 'Auto-skips known tracks (Likes, Followed, NoPlay)',
-      discoveryOffDesc: 'OFF: Normal SoundCloud playback without skipping',
+      discoveryMode: '⛏️ Discovery Mode',
+      discoveryOnDesc: 'Auto-skip NoPlay, liked, and followed-artist tracks',
+      discoveryOffDesc: 'OFF: Normal playback',
+      discoveryStatusOn: 'ON',
+      discoveryStatusOff: 'OFF',
 
       targetPlaylist: '➕ 1-Click Target Playlist',
       btnSync: '🔄 Sync',
@@ -338,32 +376,34 @@
       langLabel: '🌐 Language',
 
       // In-page Player Bar
-      barStationTitle: '📻 Start station from this track',
-      barDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
-      barHateTitle: '🤬 Exclude Artist (Skip all tracks by this artist)',
-      barMiniPlayerTitle: '🪟 Mini Player (Floating always-on-top window)',
-      barDiscoveryOffTitle: '🔍 Discovery Mode OFF (Click to turn ON: skip known tracks)',
-      barDiscoveryOnTitle: '🔍 Discovery Mode ON (Click to turn OFF: standard playback)',
-      barFollowingModeTitle: '👥 Following Only Mode (Click to switch to Discovery Mode)',
+      barStationTitle: '📡 Start station from this track',
+      barDislikeTitle: '⏭️ Add this track to NoPlay and skip',
+      barHateTitle: '🤬 Exclude artist & skip',
+      barMiniPlayerTitle: '📻 Open Mini Player',
+      barDiscoveryOffTitle: '⛏️ Turn Discovery ON',
+      barDiscoveryOnTitle: '⛏️ Turn Discovery OFF',
+      barFollowingModeTitle: '👥 Following only (click for Discovery)',
 
       // Mini Player
       mpTitle: 'FreshDig - Discovery Mini Player',
-      mpPromptOpen: '🪟 Click here to open Mini Player',
+      mpPromptOpen: '📻 Click here to open Mini Player',
       mpLoadingTrack: 'Loading track...',
       mpStatusWaiting: 'Standby',
       mpStatusDigging: 'Digging',
       mpFollowBtn: '👤 Follow',
       mpFollowBtnTitle: 'Follow artist',
-      mpStationBtn: '📻 Station',
+      mpStationBtn: '📡 Station',
       mpStationBtnTitle: 'Start station from this track',
+      mpLaterListLabel: '🧐 Listen later list',
+      mpDigListening: '⏸ Listening to artist',
       mpPrevTitle: 'Previous track',
       mpPlayTitle: 'Play / Pause',
       mpNextTitle: 'Next track',
       mpLikeTitle: 'Like',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Add to playlist',
-      mpDislikeTitle: '⏭️ NoPlay: never play this track again and skip now (not a dislike, just heard enough)',
-      mpHateTitle: 'Exclude artist & skip',
+      mpDislikeTitle: '⏭️ Add this track to NoPlay and skip',
+      mpHateTitle: '🤬 Exclude artist & skip',
       mpToastDislike: '⏭️ Added to NoPlay & skipped',
       mpToastHate: '🤬 Excluded artist & skipped',
       mpToastAddedPl: '➕ Added to playlist',
@@ -374,8 +414,8 @@
       mpToastUnreposted: '↩️ Un-reposted track',
       mpToastFollowed: '👤 Followed artist',
       mpToastUnfollowed: '👤 Unfollowed artist',
-      mpStatusToggleOff: 'Click to turn Discovery OFF (Standard playback)',
-      mpStatusToggleOn: 'Click to turn Discovery ON (Skip known tracks)',
+      mpStatusToggleOff: 'Turn Discovery OFF',
+      mpStatusToggleOn: 'Turn Discovery ON',
 
       // Messages (toasts, tooltips, results)
       m_streakStop: '⚠️ Many known tracks in a row - playing this one as is',
@@ -418,17 +458,17 @@
       m_volRestored: '🔊 Volume restored ({n}%)',
       m_muted: '🔇 Muted',
       m_unmute: 'Unmute',
-      m_discOn: '🔍 Discovery Mode ON (known tracks are skipped)',
+      m_discOn: '⛏️ Discovery Mode ON (known tracks are skipped)',
       m_discOff: '⏸ Discovery Mode OFF (normal SoundCloud playback)',
-      m_toDiscovery: '🔍 Switched to Discovery Mode (unknown artists)',
+      m_toDiscovery: '⛏️ Switched to Discovery Mode (unknown artists)',
       m_toFollowing: '👥 Switched to Following Only Mode (new tracks only)',
       m_stOff: '⏸ Dig OFF',
-      m_stOn: '🔍 Dig ON',
+      m_stOn: '⛏️ Dig ON',
       m_stFollow: '👥 Following only',
-      m_stationStarted: '📻 Station started!',
+      m_stationStarted: '📡 Station started!',
       m_stationStartedMsg: 'Station started',
-      m_stationLoading: '📻 Loading station...',
-      m_stationPlaying: '📻 Station is now playing!',
+      m_stationLoading: '📡 Loading station...',
+      m_stationPlaying: '📡 Station is now playing!',
       m_stationNoTrack: '⚠️ Could not get the current track info',
       m_stationNoTrackMsg: 'Could not get the track info',
       m_repostHead: '🔁 Repost',
@@ -441,6 +481,8 @@
       m_reposted: '🔁 Reposted!',
       m_commErr: '⚠️ A communication error occurred',
       m_tabNoReply: '⚠️ The tab that is playing does not respond',
+      m_actionPending: 'The action was received and may still be processing. Check its result on SoundCloud.',
+      m_volumeUnavailable: 'Volume change could not be confirmed. Use the SoundCloud volume control.',
       m_noLikeBtn: '⚠️ Like button not found',
       m_trackLoading: '⚠️ Getting the track info...',
       m_loginPlease: '⚠️ Please log in to SoundCloud',
@@ -473,7 +515,8 @@
       m_profileUnban: 'Remove',
       listsTitle: '📚 Lists',
       tabHated: '🤬 Excluded artists',
-      tabLater: '🧐 Listen later',
+      tabLater: '🧐 Listen Later List',
+      tabNoPlay: '⏭️ NoPlay List',
       listSearch: 'Search',
       listMore: 'Show more',
       listUnban: 'Remove ✕',
@@ -504,6 +547,25 @@
       btnRateLater: 'Later',
       btnRateDismiss: 'Dismiss',
 
+      // First-use guide
+      onboardingDialogLabel: 'FreshDig guide',
+      onboardingTitle: 'How FreshDig works',
+      onboardingStep1Title: 'Open the Mini Player',
+      onboardingStep1Body: 'FreshDig’s standout feature. Open it from the extension icon or the 📻 on SoundCloud.',
+      onboardingStep2Title: 'Dig ON mode',
+      onboardingStep2Body: 'When ON, Dig skips NoPlay tracks, liked tracks, and tracks by artists you follow.',
+      onboardingStep3Title: '🧐 Listen Later List',
+      onboardingStep3Body: 'Save an artist with 🧐 in the bottom row. Open the list from the extension icon, then select an artist to open their tracks page.',
+      onboardingOpenLauncher: '📻 Open the page launcher',
+      onboardingLauncherHint: 'Click the 📻 in the player controls on the SoundCloud page.',
+      onboardingNext: 'Next',
+      onboardingBack: 'Back',
+      onboardingDone: 'Start using FreshDig',
+      onboardingSkip: 'Skip guide',
+      onboardingClose: 'Close',
+      onboardingProgress: '{n} / 3',
+      onboardingGuideButton: 'View guide',
+
       // Multi-playlist
       m_exMultiDone: 'Exported {n} tracks across {c} playlists including "{name}"!',
       m_imMultiDone: 'Checked {n} tracks across {c} NoPlay playlists and added {added} new ones!',
@@ -524,20 +586,27 @@
       loadingSC: 'SoundCloud wird geladen...',
 
       // Buttons & Controls
-      btnMiniPlayer: '🪟 Mini-Player',
-      btnStation: '📻 Station starten',
-      btnStationTitle: 'Station vom aktuell abgespielten Titel starten',
-      autoMpLabel: 'Mini-Player automatisch beim Tab-Wechsel anzeigen',
-      autoMpTitle: 'Öffnet automatisch den Mini-Player, wenn du bei laufender Musik zu einem anderen Tab wechselst (Dokument-PiP)',
-      autoMpNotSupported: 'Dieser Browser unterstützt kein automatisches Bild-im-Bild',
+      btnMiniPlayer: '📻 Mini-Player',
+      btnStation: '📡 Station starten',
+      btnStationTitle: 'Station für aktuellen Titel starten',
+      autoMpLabel: 'Mini-Player beim Tab-Wechsel automatisch anzeigen (browsergesteuert)',
+      autoMpTitle: 'Mini-Player bei Tab-Wechsel öffnen (Browserfreigabe)',
+      autoMpNotSupported: 'Automatisches PiP wird hier nicht unterstützt (gespeicherte Einstellung bleibt erhalten)',
+      autoMpPermissionNote: 'Browserberechtigung und hörbare Wiedergabe erforderlich. Der Browser entscheidet über das Verhalten beim Tab-Wechsel.',
+      autoMpStatusRegistered: 'Bereit',
+      autoMpStatusUnsupported: 'Nicht unterstützt (Einstellung bleibt)',
+      autoMpStatusUnknown: 'Wird geprüft',
+      autoMpLastError: 'Der Browser konnte automatisches PiP nicht registrieren',
 
       volControl: '🔊 Lautstärkeregelung',
       volMute: 'Stummschaltung umschalten',
-      volSliderTitle: 'Lautstärkeregler',
+      volSliderTitle: 'Lautstärke',
 
-      discoveryMode: '🔍 Entdeckungsmodus',
-      discoveryOnDesc: 'Überspringt bekannte Titel automatisch (Likes, Gefolgte, NoPlay)',
-      discoveryOffDesc: 'AUS: Normale SoundCloud-Wiedergabe ohne Überspringen',
+      discoveryMode: '⛏️ Entdeckungsmodus',
+      discoveryOnDesc: 'NoPlay-, gelikte und Titel gefolgter Künstler automatisch überspringen',
+      discoveryOffDesc: 'AUS: Normale Wiedergabe',
+      discoveryStatusOn: 'AN',
+      discoveryStatusOff: 'AUS',
 
       targetPlaylist: '➕ 1-Klick-Ziel-Playlist',
       btnSync: '🔄 Synchronisieren',
@@ -583,32 +652,34 @@
       langLabel: '🌐 Sprache',
 
       // In-page Player Bar
-      barStationTitle: '📻 Station für diesen Titel starten',
-      barDislikeTitle: '⏭️ NoPlay (Diesen Titel überspringen)',
-      barHateTitle: '🤬 Künstler ausschließen (Alle Titel überspringen)',
-      barMiniPlayerTitle: '🪟 Mini-Player (Immer im Vordergrund schwebendes Fenster)',
-      barDiscoveryOffTitle: '🔍 Entdeckungsmodus AUS (Klicken zum Einschalten: bekannte Titel überspringen)',
-      barDiscoveryOnTitle: '🔍 Entdeckungsmodus AN (Klicken zum Ausschalten: normale Wiedergabe)',
-      barFollowingModeTitle: '👥 Nur-Gefolgte-Modus (Klicken zum Wechseln in den Entdeckungsmodus)',
+      barStationTitle: '📡 Station für diesen Titel starten',
+      barDislikeTitle: '⏭️ Titel als NoPlay speichern und überspringen',
+      barHateTitle: '🤬 Künstler ausschließen & überspringen',
+      barMiniPlayerTitle: '📻 Mini-Player öffnen',
+      barDiscoveryOffTitle: '⛏️ Entdeckungsmodus einschalten',
+      barDiscoveryOnTitle: '⛏️ Entdeckungsmodus ausschalten',
+      barFollowingModeTitle: '👥 Nur gefolgte Künstler (klicken für Entdeckungsmodus)',
 
       // Mini Player
       mpTitle: 'FreshDig - Entdeckungs-Mini-Player',
-      mpPromptOpen: '🪟 Hier klicken, um den Mini-Player zu öffnen',
+      mpPromptOpen: '📻 Hier klicken, um den Mini-Player zu öffnen',
       mpLoadingTrack: 'Titel wird geladen...',
       mpStatusWaiting: 'Bereit',
       mpStatusDigging: 'Am Entdecken',
       mpFollowBtn: '👤 Folgen',
       mpFollowBtnTitle: 'Künstler folgen',
-      mpStationBtn: '📻 Station',
+      mpStationBtn: '📡 Station',
       mpStationBtnTitle: 'Station für diesen Titel starten',
+      mpLaterListLabel: '🧐 Später-Liste',
+      mpDigListening: '⏸ Künstler anhören',
       mpPrevTitle: 'Vorheriger Titel',
       mpPlayTitle: 'Wiedergabe / Pause',
       mpNextTitle: 'Nächster Titel',
       mpLikeTitle: 'Gefällt mir (Like)',
       mpRepostTitle: 'Repost',
       mpAddPlTitle: 'Zu Playlist hinzufügen',
-      mpDislikeTitle: 'NoPlay & überspringen',
-      mpHateTitle: 'Künstler ausschließen & überspringen',
+      mpDislikeTitle: '⏭️ Titel als NoPlay speichern und überspringen',
+      mpHateTitle: '🤬 Künstler ausschließen & überspringen',
       mpToastDislike: '⏭️ Zu NoPlay hinzugefügt & übersprungen',
       mpToastHate: '🤬 Künstler ausgeschlossen & übersprungen',
       mpToastAddedPl: '➕ Zu Playlist hinzugefügt',
@@ -619,8 +690,8 @@
       mpToastUnreposted: '↩️ Repost entfernt',
       mpToastFollowed: '👤 Künstler gefolgt',
       mpToastUnfollowed: '👤 Entfolgt',
-      mpStatusToggleOff: 'Klicken, um Entdeckungsmodus auszuschalten (Normale Wiedergabe)',
-      mpStatusToggleOn: 'Klicken, um Entdeckungsmodus einzuschalten (Bekannte Titel überspringen)',
+      mpStatusToggleOff: 'Entdeckungsmodus ausschalten',
+      mpStatusToggleOn: 'Entdeckungsmodus einschalten',
 
       // Messages (toasts, tooltips, results)
       m_streakStop: '⚠️ Mehrere bekannte Titel in Folge – dieser Titel wird abgespielt',
@@ -663,17 +734,17 @@
       m_volRestored: '🔊 Lautstärke wiederhergestellt ({n}%)',
       m_muted: '🔇 Stummgeschaltet',
       m_unmute: 'Stummschaltung aufheben',
-      m_discOn: '🔍 Entdeckungsmodus AN (bekannte Titel werden übersprungen)',
+      m_discOn: '⛏️ Entdeckungsmodus AN (bekannte Titel werden übersprungen)',
       m_discOff: '⏸ Entdeckungsmodus AUS (normale SoundCloud-Wiedergabe)',
-      m_toDiscovery: '🔍 Zum Entdeckungsmodus gewechselt (unbekannte Künstler)',
+      m_toDiscovery: '⛏️ Zum Entdeckungsmodus gewechselt (unbekannte Künstler)',
       m_toFollowing: '👥 Zum Nur-Gefolgte-Modus gewechselt (nur neue Titel)',
       m_stOff: '⏸ Dig AUS',
-      m_stOn: '🔍 Dig AN',
+      m_stOn: '⛏️ Dig AN',
       m_stFollow: '👥 Nur Gefolgte',
-      m_stationStarted: '📻 Station gestartet!',
+      m_stationStarted: '📡 Station gestartet!',
       m_stationStartedMsg: 'Station gestartet',
-      m_stationLoading: '📻 Station wird geladen...',
-      m_stationPlaying: '📻 Station wird abgespielt!',
+      m_stationLoading: '📡 Station wird geladen...',
+      m_stationPlaying: '📡 Station wird abgespielt!',
       m_stationNoTrack: '⚠️ Titelinformationen konnten nicht abgerufen werden',
       m_stationNoTrackMsg: 'Titelinformationen konnten nicht abgerufen werden',
       m_repostHead: '🔁 Repost',
@@ -686,6 +757,8 @@
       m_reposted: '🔁 Repostet!',
       m_commErr: '⚠️ Ein Kommunikationsfehler ist aufgetreten',
       m_tabNoReply: '⚠️ Der abspielende Tab antwortet nicht',
+      m_actionPending: 'Die Aktion wurde empfangen und wird möglicherweise noch verarbeitet. Prüfe das Ergebnis auf SoundCloud.',
+      m_volumeUnavailable: 'Die Lautstärkeänderung konnte nicht bestätigt werden. Nutze den SoundCloud-Lautstärkeregler.',
       m_noLikeBtn: '⚠️ Like-Button nicht gefunden',
       m_trackLoading: '⚠️ Titelinformationen werden geladen...',
       m_loginPlease: '⚠️ Bitte bei SoundCloud anmelden',
@@ -718,7 +791,8 @@
       m_profileUnban: 'Entfernen',
       listsTitle: '📚 Listen',
       tabHated: '🤬 Ausgeschlossene Künstler',
-      tabLater: '🧐 Später anhören',
+      tabLater: '🧐 Später-Liste',
+      tabNoPlay: '⏭️ NoPlay-Liste',
       listSearch: 'Suchen',
       listMore: 'Mehr anzeigen',
       listUnban: 'Entfernen ✕',
@@ -749,6 +823,25 @@
       btnRateLater: 'Später',
       btnRateDismiss: 'Schließen',
 
+      // First-use guide
+      onboardingDialogLabel: 'FreshDig-Anleitung',
+      onboardingTitle: 'So funktioniert FreshDig',
+      onboardingStep1Title: 'Mini-Player öffnen',
+      onboardingStep1Body: 'FreshDig-Highlight: Über das Erweiterungssymbol oder 📻 auf SoundCloud öffnen.',
+      onboardingStep2Title: 'Dig-ON-Modus',
+      onboardingStep2Body: 'Bei ON überspringt Dig NoPlay-Titel, gelikte Titel und Titel von Künstlern, denen du folgst.',
+      onboardingStep3Title: '🧐 Später-Liste',
+      onboardingStep3Body: 'Speichere Künstler unten mit 🧐. Öffne die Liste über das Erweiterungssymbol und wähle einen Künstler, um seine Track-Seite zu öffnen.',
+      onboardingOpenLauncher: '📻 Seiten-Launcher öffnen',
+      onboardingLauncherHint: 'Klicke auf der SoundCloud-Seite in den Player-Steuerelementen auf 📻.',
+      onboardingNext: 'Weiter',
+      onboardingBack: 'Zurück',
+      onboardingDone: 'FreshDig starten',
+      onboardingSkip: 'Anleitung überspringen',
+      onboardingClose: 'Schließen',
+      onboardingProgress: '{n} / 3',
+      onboardingGuideButton: 'Anleitung ansehen',
+
       // Multi-playlist
       m_exMultiDone: '{n} Titel in {c} Playlists einschließlich „{name}“ exportiert!',
       m_imMultiDone: '{n} Titel aus {c} NoPlay-Playlists überprüft und {added} neue hinzugefügt!',
@@ -769,20 +862,27 @@
       loadingSC: 'Загрузка SoundCloud...',
 
       // Buttons & Controls
-      btnMiniPlayer: '🪟 Мини-плеер',
-      btnStation: '📻 Запустить станцию',
-      btnStationTitle: 'Запустить станцию на основе текущего трека',
-      autoMpLabel: 'Автоматически открывать мини-плеер при переключении вкладок',
-      autoMpTitle: 'Автоматически открывает мини-плеер при переключении на другую вкладку во время воспроизведения музыки (Document PiP)',
-      autoMpNotSupported: 'Этот браузер не поддерживает автоматический режим "Картинка в картинке"',
+      btnMiniPlayer: '📻 Мини-плеер',
+      btnStation: '📡 Запустить станцию',
+      btnStationTitle: 'Запустить станцию текущего трека',
+      autoMpLabel: 'Автоматически открывать мини-плеер при смене вкладки (управляет браузер)',
+      autoMpTitle: 'Открывать мини-плеер при смене вкладки (нужно разрешение)',
+      autoMpNotSupported: 'Автоматический PiP здесь не поддерживается (сохраненная настройка остается)',
+      autoMpPermissionNote: 'Нужны разрешение браузера и слышимое воспроизведение. Поведение при смене вкладки определяет браузер.',
+      autoMpStatusRegistered: 'Готово',
+      autoMpStatusUnsupported: 'Не поддерживается (настройка сохранена)',
+      autoMpStatusUnknown: 'Проверка',
+      autoMpLastError: 'Браузер не смог зарегистрировать автоматический PiP',
 
       volControl: '🔊 Громкость',
       volMute: 'Вкл/выкл звук',
-      volSliderTitle: 'Регулятор громкости',
+      volSliderTitle: 'Громкость',
 
-      discoveryMode: '🔍 Режим поиска',
-      discoveryOnDesc: 'Автопропуск знакомых треков (лайки, подписки, NoPlay)',
-      discoveryOffDesc: 'ВЫКЛ: обычное воспроизведение SoundCloud без пропуска',
+      discoveryMode: '⛏️ Режим поиска',
+      discoveryOnDesc: 'Пропускать треки NoPlay, лайкнутые треки и треки артистов, на которых вы подписаны',
+      discoveryOffDesc: 'ВЫКЛ: обычное воспроизведение',
+      discoveryStatusOn: 'ВКЛ',
+      discoveryStatusOff: 'ВЫКЛ',
 
       targetPlaylist: '➕ Плейлист для добавления в 1 клик',
       btnSync: '🔄 Синхронизация',
@@ -828,32 +928,34 @@
       langLabel: '🌐 Язык',
 
       // In-page Player Bar
-      barStationTitle: '📻 Запустить станцию этого трека',
-      barDislikeTitle: '⏭️ NoPlay (Пропустить этот трек)',
-      barHateTitle: '🤬 Исключить артиста (Пропускать все треки артиста)',
-      barMiniPlayerTitle: '🪟 Мини-плеер (плавающее окно поверх всех окон)',
-      barDiscoveryOffTitle: '🔍 Режим поиска ВЫКЛ (Нажмите для ВКЛ: пропуск знакомых треков)',
-      barDiscoveryOnTitle: '🔍 Режим поиска ВКЛ (Нажмите для ВЫКЛ: обычное воспроизведение)',
-      barFollowingModeTitle: '👥 Только подписки (Нажмите для переключения в режим поиска)',
+      barStationTitle: '📡 Запустить станцию этого трека',
+      barDislikeTitle: '⏭️ Добавить трек в NoPlay и пропустить',
+      barHateTitle: '🤬 Исключить артиста и пропустить',
+      barMiniPlayerTitle: '📻 Открыть мини-плеер',
+      barDiscoveryOffTitle: '⛏️ Включить режим поиска',
+      barDiscoveryOnTitle: '⛏️ Выключить режим поиска',
+      barFollowingModeTitle: '👥 Только подписки (нажмите для режима поиска)',
 
       // Mini Player
       mpTitle: 'FreshDig - Мини-плеер поиска',
-      mpPromptOpen: '🪟 Нажмите здесь, чтобы открыть мини-плеер',
+      mpPromptOpen: '📻 Нажмите здесь, чтобы открыть мини-плеер',
       mpLoadingTrack: 'Загрузка трека...',
       mpStatusWaiting: 'Ожидание',
       mpStatusDigging: 'Поиск',
       mpFollowBtn: '👤 Подписаться',
       mpFollowBtnTitle: 'Подписаться на артиста',
-      mpStationBtn: '📻 Станция',
+      mpStationBtn: '📡 Станция',
       mpStationBtnTitle: 'Запустить станцию этого трека',
+      mpLaterListLabel: '🧐 Список на потом',
+      mpDigListening: '⏸ Слушаем артиста',
       mpPrevTitle: 'Предыдущий трек',
       mpPlayTitle: 'Воспроизведение / Пауза',
       mpNextTitle: 'Следующий трек',
       mpLikeTitle: 'Лайк',
       mpRepostTitle: 'Репост',
       mpAddPlTitle: 'Добавить в плейлист',
-      mpDislikeTitle: 'Больше не воспроизводить этот трек и пропустить',
-      mpHateTitle: 'Исключить артиста и пропустить',
+      mpDislikeTitle: '⏭️ Добавить трек в NoPlay и пропустить',
+      mpHateTitle: '🤬 Исключить артиста и пропустить',
       mpToastDislike: '⏭️ Добавлено в NoPlay и пропущено',
       mpToastHate: '🤬 Артист исключен и пропущен',
       mpToastAddedPl: '➕ Добавлено в плейлист',
@@ -864,8 +966,8 @@
       mpToastUnreposted: '↩️ Репост отменен',
       mpToastFollowed: '👤 Вы подписались на артиста',
       mpToastUnfollowed: '👤 Подписка отменена',
-      mpStatusToggleOff: 'Нажмите, чтобы выключить поиск (обычное воспроизведение)',
-      mpStatusToggleOn: 'Нажмите, чтобы включить поиск (пропуск знакомых треков)',
+      mpStatusToggleOff: 'Выключить режим поиска',
+      mpStatusToggleOn: 'Включить режим поиска',
 
       // Messages (toasts, tooltips, results)
       m_streakStop: '⚠️ Несколько знакомых треков подряд — воспроизводим этот как есть',
@@ -908,17 +1010,17 @@
       m_volRestored: '🔊 Громкость восстановлена ({n}%)',
       m_muted: '🔇 Звук выключен',
       m_unmute: 'Включить звук',
-      m_discOn: '🔍 Режим поиска ВКЛ (знакомые треки пропускаются)',
+      m_discOn: '⛏️ Режим поиска ВКЛ (знакомые треки пропускаются)',
       m_discOff: '⏸ Режим поиска ВЫКЛ (обычное воспроизведение SoundCloud)',
-      m_toDiscovery: '🔍 Переключено в режим поиска (неизвестные артисты)',
+      m_toDiscovery: '⛏️ Переключено в режим поиска (неизвестные артисты)',
       m_toFollowing: '👥 Переключено в режим отслеживаемых (только новые треки)',
       m_stOff: '⏸ Dig ВЫКЛ',
-      m_stOn: '🔍 Dig ВКЛ',
+      m_stOn: '⛏️ Dig ВКЛ',
       m_stFollow: '👥 Только подписки',
-      m_stationStarted: '📻 Станция запущена!',
+      m_stationStarted: '📡 Станция запущена!',
       m_stationStartedMsg: 'Станция запущена',
-      m_stationLoading: '📻 Загрузка станции...',
-      m_stationPlaying: '📻 Станция играет!',
+      m_stationLoading: '📡 Загрузка станции...',
+      m_stationPlaying: '📡 Станция играет!',
       m_stationNoTrack: '⚠️ Не удалось получить информацию о текущем треке',
       m_stationNoTrackMsg: 'Не удалось получить информацию о треке',
       m_repostHead: '🔁 Репост',
@@ -931,6 +1033,8 @@
       m_reposted: '🔁 Репост выполнен!',
       m_commErr: '⚠️ Произошла ошибка связи',
       m_tabNoReply: '⚠️ Воспроизводящая вкладка не отвечает',
+      m_actionPending: 'Действие получено и может ещё выполняться. Проверьте результат на SoundCloud.',
+      m_volumeUnavailable: 'Не удалось подтвердить изменение громкости. Используйте регулятор SoundCloud.',
       m_noLikeBtn: '⚠️ Кнопка «Лайк» не найдена',
       m_trackLoading: '⚠️ Получение информации о треке...',
       m_loginPlease: '⚠️ Пожалуйста, войдите в SoundCloud',
@@ -963,7 +1067,8 @@
       m_profileUnban: 'Удалить',
       listsTitle: '📚 Списки',
       tabHated: '🤬 Исключенные артисты',
-      tabLater: '🧐 Послушать позже',
+      tabLater: '🧐 Список «Послушать позже»',
+      tabNoPlay: '⏭️ Список NoPlay',
       listSearch: 'Поиск',
       listMore: 'Показать еще',
       listUnban: 'Удалить ✕',
@@ -993,6 +1098,25 @@
       btnRateNow: '⭐ Написать отзыв',
       btnRateLater: 'Позже',
       btnRateDismiss: 'Закрыть',
+
+      // First-use guide
+      onboardingDialogLabel: 'Руководство FreshDig',
+      onboardingTitle: 'Как работает FreshDig',
+      onboardingStep1Title: 'Откройте мини-плеер',
+      onboardingStep1Body: 'Главная функция FreshDig. Откройте его через значок расширения или 📻 на SoundCloud.',
+      onboardingStep2Title: 'Режим Dig ВКЛ',
+      onboardingStep2Body: 'В режиме ВКЛ пропускаются треки NoPlay, лайкнутые треки и треки артистов, на которых вы подписаны.',
+      onboardingStep3Title: '🧐 Список «Послушать позже»',
+      onboardingStep3Body: 'Сохраните артиста кнопкой 🧐 внизу. Откройте список через значок расширения и выберите артиста, чтобы открыть страницу его треков.',
+      onboardingOpenLauncher: '📻 Открыть кнопку на странице',
+      onboardingLauncherHint: 'Нажмите 📻 в элементах управления плеером на странице SoundCloud.',
+      onboardingNext: 'Далее',
+      onboardingBack: 'Назад',
+      onboardingDone: 'Начать работу с FreshDig',
+      onboardingSkip: 'Пропустить руководство',
+      onboardingClose: 'Закрыть',
+      onboardingProgress: '{n} / 3',
+      onboardingGuideButton: 'Посмотреть руководство',
 
       // Multi-playlist
       m_exMultiDone: 'Экспортировано {n} треков в {c} плейлистов, включая «{name}»!',
@@ -1059,6 +1183,9 @@
     if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
     const id = toNumId(info.id);
     const artistId = toNumId(info.artistId);
+    // 後で聴く作者のページでは、その作者を意図的に聴いているので Dig の除外を解除する
+    if (ctx.onArtistPage && artistId && hasOwn(ctx.laterArtists, artistId)) return null;
+
     const title = (info.title || '').trim();
     const artist = (info.artistName || '').trim();
     const genre = (info.genre || '').trim().toLowerCase();
@@ -1108,6 +1235,11 @@
     // 4. 自分の曲
     if (artistId && ctx.myUserId && artistId === toNumId(ctx.myUserId)) {
       return { reason: 'skipReasonOwn', key: String(artistId) };
+    }
+
+    // 後で聴く作者は Dig 中には流さない。実際に聴くときは Dig を OFF にする。
+    if (artistId && hasOwn(ctx.laterArtists, artistId)) {
+      return { reason: 'skipReasonLater', key: String(artistId) };
     }
 
     // 5. 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は除外しない
@@ -1292,7 +1424,7 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.1.2)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.2.4)');
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1320,21 +1452,21 @@
             return FreshDigI18n.getTexts(state.preferredLanguage);
         }
         return {
-            barStationTitle: '📻 この曲のステーションを開始',
+            barStationTitle: '📡 この曲のステーションを開始',
             barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
             barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
-            barMiniPlayerTitle: '🪟 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
-            barDiscoveryOffTitle: '🔍 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
-            barDiscoveryOnTitle: '🔍 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
+            barMiniPlayerTitle: '📻 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
+            barDiscoveryOffTitle: '⛏️ 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
+            barDiscoveryOnTitle: '⛏️ 発掘モード ON（クリックで OFF：SoundCloud 通常再生）',
             barFollowingModeTitle: '👥 フォロー新曲モード (クリックで「発掘モード」へ切替)',
             mpTitle: 'FreshDig - アーティスト発掘ミニプレイヤー',
-            mpPromptOpen: '🪟 ここをクリックしてミニプレイヤーを開く',
+            mpPromptOpen: '📻 ここをクリックしてミニプレイヤーを開く',
             mpLoadingTrack: '曲を読み込み中...',
             mpStatusWaiting: '再生待機中',
             mpStatusDigging: '発掘中',
             mpFollowBtn: '👤 フォロー',
             mpFollowBtnTitle: 'アーティストをフォロー',
-            mpStationBtn: '📻 ステーション',
+            mpStationBtn: '📡 ステーション',
             mpStationBtnTitle: 'この曲のステーションを開始',
             mpPrevTitle: '前の曲',
             mpPlayTitle: '再生 / 一時停止',
@@ -1729,14 +1861,26 @@
     const apiLimiter = FreshDigCore.createRateLimiter({ minGapMs: 250, perMinute: 45 });
     const apiBackoff = FreshDigCore.createBackoff([60000, 120000, 300000]);
     const robotState = { iframe: false, api: false };
+    let apiRequestTail = Promise.resolve();
+    const robotRecovery = { inFlight: false, lastProbeAt: 0, minIntervalMs: 30000, armed: false };
 
     function sleepMs(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+    // SoundCloud can have several FreshDig requests waiting on the limiter at once.
+    // Serializing the gate means a challenge discovered while one request is waiting
+    // is observed before the next request is sent.
+    function enqueueApiRequest(task) {
+        const run = apiRequestTail.then(task, task);
+        apiRequestTail = run.catch(function () {});
+        return run;
+    }
 
     function isRobotBlocked() { return robotState.iframe || robotState.api; }
 
     function refreshRobotState(source) {
         const was = !!state.robotBlocked;
         const now = isRobotBlocked();
+        if (source === 'api-ok' || source === 'sc-fetch-ok' || source === 'sc-xhr-ok') robotRecovery.armed = false;
         state.robotBlocked = now;
         if (was === now) return;
         dlog(now ? 'robot-check-detected' : 'robot-check-cleared', source);
@@ -1768,26 +1912,36 @@
 
     // 自分の API 呼び出し（scApi・ステーション補充・/resolve）はすべてここを通す
     async function apiFetch(url, init) {
-        if (robotState.iframe || apiBackoff.isBlocked(Date.now())) return blockedApiResponse();
-        const wait = apiLimiter.reserve(Date.now());
-        if (wait > 0) await sleepMs(wait);
-        const res = await originalFetch(url, init);
-        try {
-            if (res.status === 403 || res.status === 429) {
-                let body = '';
-                if (res.status === 403) { try { body = await res.clone().text(); } catch (e) {} }
-                const isRobot = FreshDigCore.isRobotCheckResponse(res.status, function (n) { return res.headers.get(n); }, body);
-                const waitMs = apiBackoff.fail(Date.now());
-                dlog('api-blocked', { status: res.status, robot: isRobot, path: apiPathForLog(url), waitMs: waitMs });
-                if (isRobot) { robotState.api = true; refreshRobotState('api'); }
-            } else if (res.ok) {
-                apiBackoff.ok();
-                if (robotState.api) { robotState.api = false; refreshRobotState('api-ok'); }
-            } else if (res.status !== 401) {
-                dlog('api-error', { status: res.status, path: apiPathForLog(url) });
-            }
-        } catch (e) {}
-        return res;
+        init = init || {};
+        const recoveryProbe = !!init.__freshDigRecoveryProbe;
+        if (robotState.iframe || apiBackoff.isBlocked(Date.now()) || (robotState.api && !recoveryProbe)) return blockedApiResponse();
+        return enqueueApiRequest(async function () {
+            // The limiter wait is part of the guarded section. A challenge may have
+            // appeared while this request was queued, so check again before sending.
+            if (robotState.iframe || apiBackoff.isBlocked(Date.now()) || (robotState.api && !recoveryProbe)) return blockedApiResponse();
+            const wait = apiLimiter.reserve(Date.now());
+            if (wait > 0) await sleepMs(wait);
+            if (robotState.iframe || apiBackoff.isBlocked(Date.now()) || (robotState.api && !recoveryProbe)) return blockedApiResponse();
+            const requestInit = recoveryProbe ? Object.assign({}, init) : init;
+            if (recoveryProbe) delete requestInit.__freshDigRecoveryProbe;
+            const res = await originalFetch(url, requestInit);
+            try {
+                if (res.status === 403 || res.status === 429) {
+                    let body = '';
+                    if (res.status === 403) { try { body = await res.clone().text(); } catch (e) {} }
+                    const isRobot = FreshDigCore.isRobotCheckResponse(res.status, function (n) { return res.headers.get(n); }, body);
+                    const waitMs = apiBackoff.fail(Date.now());
+                    dlog('api-blocked', { status: res.status, robot: isRobot, path: apiPathForLog(url), waitMs: waitMs });
+                    if (isRobot) { robotState.api = true; refreshRobotState('api'); }
+                } else if (res.ok) {
+                    apiBackoff.ok();
+                    if (robotState.api) { robotState.api = false; refreshRobotState('api-ok'); }
+                } else if (res.status !== 401) {
+                    dlog('api-error', { status: res.status, path: apiPathForLog(url) });
+                }
+            } catch (e) {}
+            return res;
+        });
     }
 
     // SoundCloud 本体の通信（XHR）が 403 + DataDome の時も気づく
@@ -1802,7 +1956,7 @@
                     apiBackoff.fail(Date.now());
                     refreshRobotState('sc-xhr');
                 }
-            } else if (xhr.status >= 200 && xhr.status < 300 && robotState.api && !apiBackoff.isBlocked(Date.now())) {
+            } else if (xhr.status >= 200 && xhr.status < 300 && robotState.api) {
                 robotState.api = false;
                 apiBackoff.ok();
                 refreshRobotState('sc-xhr-ok');
@@ -1810,19 +1964,91 @@
         } catch (e) {}
     }
 
-    // 3 秒ごとに、ロボット確認の画面（iframe）があるか見る。API 側で止まっている時は待ちが終わったら 1 回だけ試す
+    // Inspect page fetch responses through a clone so SoundCloud keeps the original
+    // response body. Only the specific DataDome/robot markers are considered.
+    function observeScFetchResponse(url, response) {
+        if (!response || String(url || '').indexOf('api-v2.soundcloud.com') === -1) return;
+        if (response.status >= 200 && response.status < 300 && robotState.api) {
+            robotState.api = false;
+            apiBackoff.ok();
+            refreshRobotState('sc-fetch-ok');
+            return;
+        }
+        if (response.status !== 403) return;
+        let headerHit = false;
+        try {
+            headerHit = FreshDigCore.isRobotCheckResponse(403, function (n) { return response.headers && response.headers.get ? response.headers.get(n) : ''; }, '');
+        } catch (e) {}
+        const mark = function (body) {
+            let isRobot = headerHit;
+            if (!isRobot) {
+                try {
+                    isRobot = FreshDigCore.isRobotCheckResponse(403, function (n) { return response.headers && response.headers.get ? response.headers.get(n) : ''; }, body);
+                } catch (e) {}
+            }
+            if (!isRobot || robotState.api) return;
+            dlog('sc-fetch-robot-check', { path: apiPathForLog(url) });
+            robotState.api = true;
+            apiBackoff.fail(Date.now());
+            refreshRobotState('sc-fetch');
+        };
+        if (headerHit) {
+            mark('');
+            return;
+        }
+        try {
+            const clone = response.clone();
+            if (clone && typeof clone.text === 'function') {
+                clone.text().then(function (body) { mark(String(body || '').slice(0, 200000)); }).catch(function () {});
+            }
+        } catch (e) {}
+    }
+
+    function probeRobotRecovery() {
+        const now = Date.now();
+        if (!robotState.api || !robotRecovery.armed || robotState.iframe || apiBackoff.isBlocked(now) || document.hidden) return;
+        if (robotRecovery.inFlight || now - robotRecovery.lastProbeAt < robotRecovery.minIntervalMs) return;
+        robotRecovery.inFlight = true;
+        robotRecovery.lastProbeAt = now;
+        robotRecovery.armed = false;
+        scApi('me', { __freshDigRecoveryProbe: true }).catch(function () {}).then(function () {
+            robotRecovery.inFlight = false;
+        }, function () {
+            robotRecovery.inFlight = false;
+        });
+    }
+
+    // 3 秒ごとに、ロボット確認の画面（iframe）があるか見る。手動で確認画面が
+    // 消えた後だけ、backoff が終わった可視タブから最大でも 1 回 / 30 秒だけ確認する。
     setInterval(function () {
         try {
             const found = !!document.querySelector('iframe[src*="captcha-delivery.com"]');
             if (found !== robotState.iframe) {
+                const hadIframe = robotState.iframe;
                 robotState.iframe = found;
+                if (hadIframe && !found) robotRecovery.armed = true;
                 refreshRobotState('iframe');
             }
-            if (robotState.api && !robotState.iframe && !apiBackoff.isBlocked(Date.now()) && !document.hidden) {
-                scApi('me').catch(function () {});
-            }
+            probeRobotRecovery();
         } catch (e) {}
     }, 3000);
+
+    const playbackIntent = {
+        wanted: false,
+        trackKey: '',
+        recoveries: 0,
+        lastRecoveryAt: 0,
+        recoveryInFlight: false,
+        suppressPauseUntil: 0
+    };
+
+    function notePausedMedia(media) {
+        if (media.ended) return;
+        const pending = skipPacing.pendingPause;
+        if (pending && pending.expectedPause && pending.media === media) pending.expectedPause = false;
+        else playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
+        playbackIntent.wanted = false;
+    }
 
     // 音声要素の出来事（音が止まる不具合の調査用）。イベントは親へ伝わらないので capture で受ける
     ['pause', 'waiting', 'stalled', 'error', 'ended', 'volumechange'].forEach(function (evName) {
@@ -1834,9 +2060,33 @@
                     vol: Math.round((m.volume || 0) * 100) / 100, muted: !!m.muted, ready: m.readyState, net: m.networkState };
                 if (m.error) d.err = m.error.code;
                 dlog('audio-' + evName, d);
+                if (evName === 'play') {
+                    playbackIntent.wanted = true;
+                } else if (evName === 'pause') {
+                    // A natural end may leave the media element paused and ended before
+                    // the ended event reaches us. Keep the intent in that case so the
+                    // bounded next-track recovery can run; a ready non-ended pause is
+                    // the explicit user pause signal.
+                    if (!m.ended) {
+                        notePausedMedia(m);
+                    }
+                } else if (evName === 'stalled' || evName === 'waiting' || evName === 'error' || evName === 'ended') {
+                    schedulePlaybackRecovery(m, evName);
+                }
             } catch (e) {}
         }, true);
     });
+    document.addEventListener('play', function (ev) {
+        const m = ev.target;
+        if (!m || (m.tagName !== 'AUDIO' && m.tagName !== 'VIDEO')) return;
+        playbackIntent.wanted = true;
+        const key = playbackTrackKey();
+        if (key && key !== playbackIntent.trackKey) {
+            playbackIntent.trackKey = key;
+            playbackIntent.recoveries = 0;
+            playbackIntent.lastRecoveryAt = 0;
+        }
+    }, true);
     document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
 
     // SoundCloud API v2 呼び出しの共通処理：client_id と最新トークンを付与し、401 なら最新トークンで1回だけ再試行
@@ -1853,6 +2103,7 @@
             const headers = Object.assign({ 'Accept': 'application/json' }, options.headers || {});
             if (state.oauthToken) headers['Authorization'] = state.oauthToken;
             const init = { method: options.method || 'GET', headers: headers, credentials: 'include' };
+            if (options.__freshDigRecoveryProbe) init.__freshDigRecoveryProbe = true;
             if (options.body !== undefined) {
                 init.body = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
                 headers['Content-Type'] = 'application/json';
@@ -1985,13 +2236,10 @@
                     toggleMiniPlayer();
                     ack();
                 } else if (action === 'SET_VOLUME') {
-                    if (typeof event.data.volume === 'number') {
-                        setSoundCloudVolume(event.data.volume);
-                    }
-                    ack({ success: true, volume: getSoundCloudVolume() });
+                    const applied = typeof event.data.volume === 'number' ? setSoundCloudVolume(event.data.volume) : null;
+                    ack({ success: applied !== null, volume: getSoundCloudVolume() });
                 } else if (action === 'TOGGLE_MUTE') {
-                    toggleSoundCloudMute();
-                    ack({ success: true, volume: getSoundCloudVolume() });
+                    ack(Object.assign({}, toggleSoundCloudMute(), { volume: getSoundCloudVolume() }));
                 } else if (action === 'GET_DIAG_LOG') {
                     ack({ success: true, text: getDiagLogText(), entries: getDiagLogEntries(), stats: getStats() });
                 } else if (action === 'GET_DATA') {
@@ -2009,7 +2257,9 @@
                         playbackMode: state.playbackMode,
                         discoveryEnabled: state.discoveryEnabled,
                         autoMiniPlayer: state.autoMiniPlayer,
-                        autoPipSupported: 'documentPictureInPicture' in window,
+                        autoPipSupported: getAutoPipDiagnostics().autoPipSupported,
+                        autoPipStatus: getAutoPipDiagnostics().autoPipStatus,
+                        autoPipLastError: getAutoPipDiagnostics().autoPipLastError,
                         preferredLanguage: state.preferredLanguage,
                         freshFilter: state.freshFilter,
                         likedCount: state.likedTrackIds.size,
@@ -2153,6 +2403,7 @@
         // B. Track current playing track info
         if (url.indexOf('api-v2.soundcloud.com/tracks/') !== -1) {
             const response = await originalFetch.apply(this, args);
+            observeScFetchResponse(url, response);
             try {
                 const clone = response.clone();
                 const trackData = await clone.json();
@@ -2167,6 +2418,7 @@
         // C. Intercept Stream (タイムライン / Stream: フォロー中の新曲)
         if (url.indexOf('api-v2.soundcloud.com/stream') !== -1) {
             const response = await originalFetch.apply(this, args);
+            observeScFetchResponse(url, response);
             if (FOLLOWING_NEW_MODE_ENABLED && state.discoveryEnabled && state.playbackMode === 'FOLLOWING_NEW') {
                 try {
                     const clone = response.clone();
@@ -2215,8 +2467,10 @@
         if (url.indexOf('/stations/') !== -1 && url.indexOf('/tracks') !== -1) {
             console.log('[SC-FreshStation] Intercepted Station tracks request:', url);
             const response = await originalFetch.apply(this, args);
+            observeScFetchResponse(url, response);
 
-            if (!state.isUserDataLoaded || !state.discoveryEnabled) {
+            const hasLaterArtists = Object.keys(laterState.map).length > 0;
+            if ((!state.isUserDataLoaded && !hasLaterArtists) || !state.discoveryEnabled) {
                 return response;
             }
 
@@ -2233,7 +2487,7 @@
                     let extraPages = 0;
                     extractAuthTokenFromCookie();
                     // 全曲除外されても無限にページを辿らないよう上限を設ける
-                    while (data.collection.length < 10 && nextHref && extraPages < MAX_STATION_EXTRA_PAGES) {
+                    while (state.isUserDataLoaded && data.collection.length < 10 && nextHref && extraPages < MAX_STATION_EXTRA_PAGES) {
                         extraPages++;
                         const nextUrl = nextHref.indexOf('client_id=') !== -1 ? nextHref : (nextHref + '&client_id=' + state.clientId);
                         const nextRes = await apiFetch(nextUrl, {
@@ -2263,7 +2517,9 @@
             }
         }
 
-        return originalFetch.apply(this, args);
+        const response = await originalFetch.apply(this, args);
+        observeScFetchResponse(url, response);
+        return response;
     };
 
     function filterStationTracks(tracks) {
@@ -2274,22 +2530,29 @@
             const artistId = track.user ? track.user.id : track.user_id;
             const genre = (track.genre || '').trim().toLowerCase();
 
-            // 共通除外: Dislike
-            if (state.dislikedTracks[trackId]) return false;
-            if (artistId && state.dislikedArtists[artistId]) return false;
-            if (genre && state.dislikedGenres[genre]) return false;
-            if (state.myUserId && artistId === state.myUserId) return false;
-
             // モードによる分岐
             if (state.playbackMode === 'FOLLOWING_NEW') {
+                // Shared core rules intentionally apply Later only in DISCOVERY.
+                if (state.dislikedTracks[trackId]) return false;
+                if (artistId && state.dislikedArtists[artistId]) return false;
+                if (genre && state.dislikedGenres[genre]) return false;
+                if (state.myUserId && artistId === state.myUserId) return false;
                 // フォロー中アーティストのみ通過
                 if (!artistId || !state.followingUserIds.has(artistId)) {
                     return false;
                 }
             } else {
-                // 未知の曲発掘モード (DISCOVERY): 既知・フォローを除外
-                if (state.likedTrackIds.has(trackId)) return false;
-                if (artistId && state.followingUserIds.has(artistId)) return false;
+                // Keep station filtering aligned with the immediate skip decision,
+                // including Later artists and the intentional artist-page behavior.
+                const info = {
+                    id: trackId,
+                    artistId: artistId,
+                    title: track.title || '',
+                    artistName: track.user ? (track.user.username || '') : '',
+                    artistPermalink: track.user ? (track.user.permalink || '') : '',
+                    genre: genre
+                };
+                if (getCoreSkipReason(info)) return false;
             }
 
             return true;
@@ -2579,10 +2842,7 @@
         return FreshDigCore.toNumId(v);
     }
 
-    // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由のキー（skipReason...）、しないなら null
-    // 判定の中身は freshdig_core.js（Node でテスト済み）
-    function getSkipReason(info) {
-        if (state.robotBlocked) return null;
+    function getCoreSkipReason(info) {
         const details = FreshDigCore.getSkipReasonDetails(info, {
             discoveryEnabled: state.discoveryEnabled,
             playbackMode: state.playbackMode,
@@ -2590,16 +2850,38 @@
             dislikedArtists: state.dislikedArtists,
             dislikedGenres: state.dislikedGenres,
             myUserId: state.myUserId,
+            laterArtists: laterState.map,
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
             inLibrary: isExplicitLibraryPage(),
-            onArtistPage: isOnLaterArtistPage()
+            onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
         });
-        if (details) {
+        return details ? details.reason : null;
+    }
+
+    // info: { id, artistId, title, artistName, genre }。スキップすべきなら理由のキー（skipReason...）、しないなら null
+    // 判定の中身は freshdig_core.js（Node でテスト済み）
+    function getSkipReason(info) {
+        if (state.robotBlocked) return null;
+        const coreReason = getCoreSkipReason(info);
+        if (coreReason) {
             if (info && typeof info === 'object') {
-                info._matchedRuleKey = details.key;
+                const details = FreshDigCore.getSkipReasonDetails(info, {
+                    discoveryEnabled: state.discoveryEnabled,
+                    playbackMode: state.playbackMode,
+                    dislikedTracks: state.dislikedTracks,
+                    dislikedArtists: state.dislikedArtists,
+                    dislikedGenres: state.dislikedGenres,
+                    myUserId: state.myUserId,
+                    laterArtists: laterState.map,
+                    likedTrackIds: state.likedTrackIds,
+                    followingUserIds: state.followingUserIds,
+                    inLibrary: isExplicitLibraryPage(),
+                    onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
+                });
+                info._matchedRuleKey = details && details.key;
             }
-            return details.reason;
+            return coreReason;
         }
         if (!state.discoveryEnabled || state.playbackMode !== 'DISCOVERY') return null;
         const fresh = getFreshReason(info);
@@ -2670,7 +2952,7 @@
         const ff = state.freshFilter;
         if (!ff || !info) return null;
         if (!(ff.followers.on || ff.trackCount.on || ff.playCount.on || ff.ageDays.on)) return null;
-        if (isOnLaterArtistPage()) return null; // 「後で聴く作者」のページから聴いているときは効かせない
+        if (isOnLaterArtistPage(info)) return null; // 保存した作者のページで、その作者を聴くときは発掘条件を一時停止
         const stats = Object.assign({}, info.stats || {});
         const cached = cachedAuthorStats(info.artistId);
         if (cached) {
@@ -2803,8 +3085,12 @@
     // 5 曲を超えて連続したら 1 回ごとに 1.5 秒空ける（短時間の大量リクエストを避ける）
     const SKIP_SLOWDOWN_AFTER = 5;
     const SKIP_SLOWDOWN_MS = 1500;
+    const SKIP_MIN_GAP_MS = 750;
+    const skipPacing = { nextAt: 0, pendingPause: null };
     function doAutoSkip(reason, info) {
-        if (state.robotBlocked) return false;
+        if (state.robotBlocked || shouldKeepTrackOnArtistPage(reason, info)) return false;
+        const skipKey = String((info && info.id) || (info && info.href) || (info && info.title) || 'unknown');
+        if (state.lastSkippedTrackKey === skipKey && Date.now() - marginGuard.lastSkipTime < 10000) return false;
         if (marginGuard.consecutiveSkips >= MAX_CONSECUTIVE_AUTO_SKIPS) {
             console.warn('[SC-FreshStation] ⚠️ 連続スキップが' + MAX_CONSECUTIVE_AUTO_SKIPS + '曲に達したため、この曲はそのまま再生します。');
             showGlobalToast(tt('m_streakStop'));
@@ -2812,6 +3098,7 @@
             marginGuard.consecutiveSkips = 0;
             return false;
         }
+        state.lastSkippedTrackKey = skipKey;
         marginGuard.lastSkipTime = Date.now();
         marginGuard.consecutiveSkips++;
         recordStat('totalSkips');
@@ -2830,6 +3117,7 @@
         });
 
         const run = function () {
+            if (!state.discoveryEnabled || shouldKeepTrackOnArtistPage(reason, info)) return false;
             // 行列の先まで飛ばす曲が続くなら、1 曲ずつ「次へ」せず一気に移る（音の読み込みを減らす）
             if (jumpToNextAllowedInQueue()) return true;
             const skipBtn = document.querySelector('.playControls__next');
@@ -2844,16 +3132,37 @@
             return false;
         };
 
-        if (marginGuard.consecutiveSkips > SKIP_SLOWDOWN_AFTER) {
+        const pacingDelay = Math.max(0, skipPacing.nextAt - Date.now());
+        const slowdownDelay = marginGuard.consecutiveSkips > SKIP_SLOWDOWN_AFTER ? SKIP_SLOWDOWN_MS : 0;
+        const delay = Math.max(pacingDelay, slowdownDelay);
+        skipPacing.nextAt = Date.now() + delay + SKIP_MIN_GAP_MS;
+        if (delay > 0) {
             const expectId = info && toNumId(info.id);
+            const pause = { media: getActiveMedia(true), expectedPause: true, wanted: playbackIntent.wanted || isLocalPlaying(), revision: playbackIntent.pauseRevision || 0 };
+            skipPacing.pendingPause = pause;
+            playbackIntent.wanted = false;
+            playbackIntent.suppressPauseUntil = Date.now() + 600;
             try { const pm0 = getScPlaybackManager(); if (pm0 && pm0.pauseCurrent) pm0.pauseCurrent(); } catch (e) {}
             setTimeout(function () {
+                if (skipPacing.pendingPause !== pause) return;
+                skipPacing.pendingPause = null;
                 if (state.robotBlocked) return;
                 // 待っている間にユーザーが別の曲へ動かしていたら何もしない
                 const cur = getScCurrentSound();
                 if (expectId && cur && toNumId(cur.id) !== expectId) return;
+                if (!state.discoveryEnabled || shouldKeepTrackOnArtistPage(reason, info)) {
+                    const sameTrack = expectId && state.currentTrack && toNumId(state.currentTrack.id) === expectId;
+                    const unchangedIntent = pause.revision === (playbackIntent.pauseRevision || 0);
+                    if (sameTrack && unchangedIntent && pause.wanted && pause.media && getActiveMedia(true) === pause.media) {
+                        playbackIntent.wanted = true;
+                        invokeMediaPlay(pause.media, 700).then(function (result) {
+                            if (!result.success && pause.revision === (playbackIntent.pauseRevision || 0) && state.currentTrack && toNumId(state.currentTrack.id) === expectId) playbackIntent.wanted = false;
+                        });
+                    }
+                    return;
+                }
                 run();
-            }, SKIP_SLOWDOWN_MS);
+            }, delay);
             return true;
         }
         return run();
@@ -3017,6 +3326,7 @@
         const info = {
             id: state.currentTrack && state.currentTrack.id,
             artistId: state.currentTrack && state.currentTrack.artistId,
+            artistPermalink: state.currentTrack && state.currentTrack.artistPermalink,
             title: title,
             artistName: artist,
             genre: (state.currentTrack && state.currentTrack.genre) || ''
@@ -3024,7 +3334,7 @@
 
         // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
         let reason = alreadyDecided ? null : getSkipReason(info);
-        if (!reason && !isExplicitLibraryPage() && !isOnLaterArtistPage() && likeBtn) {
+        if (!reason && !isExplicitLibraryPage() && !isOnLaterArtistPage() && !isOnFollowedArtistPage() && likeBtn) {
             const isSelected = likeBtn.classList.contains('sc-button-selected');
             const ariaChecked = likeBtn.getAttribute('aria-checked') === 'true';
             const titleAttr = (likeBtn.getAttribute('title') || '').toLowerCase();
@@ -3041,7 +3351,7 @@
     }
 
     // R9: FreshDig のボタンは SoundCloud の曲名欄(.playbackSoundBadge__actions)に入れず、プレイヤー部分の専用の枠に置く。
-    // 常に出すのは 👎 🚫 ➕ と「⋯」。残り(🔍 📻 🪟)は「⋯」のメニューに入れる
+    // 常に出すのは ⛏️ ⏭️ 📻 と「⋯」。追加先プレイリストなどは「⋯」へ。
     function ensureFreshBar() {
         const host = document.querySelector('.playControls__elements');
         if (!host) return null;
@@ -3076,14 +3386,49 @@
         return bar;
     }
 
+    // SoundCloud may mount the playback controls only after the first track is
+    // opened. Keep the onboarding target available during that gap, then move
+    // the same button into the real bar once it exists (one ID, one listener).
+    function ensureMiniPlayerLauncherFallback() {
+        if (!document.body || document.getElementById('sc-fresh-station-miniplayer-btn')) return;
+        const fallback = document.createElement('div');
+        fallback.id = 'sc-fresh-station-miniplayer-fallback';
+        fallback.style.cssText = 'position:fixed;right:14px;bottom:64px;z-index:2147483645;display:flex;align-items:center;';
+        const mpBtn = document.createElement('button');
+        mpBtn.id = 'sc-fresh-station-miniplayer-btn';
+        mpBtn.type = 'button';
+        mpBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
+        mpBtn.title = getI18nTexts().barMiniPlayerTitle;
+        mpBtn.style.cssText = 'width:32px;height:32px;min-width:32px;padding:0;display:inline-flex;justify-content:center;align-items:center;border-radius:5px;border:1px solid #ff5500;background:#ff5500;color:#fff;font-size:15px;cursor:pointer;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,0.35);';
+        mpBtn.innerHTML = '📻';
+        mpBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleMiniPlayer();
+        });
+        fallback.appendChild(mpBtn);
+        document.body.appendChild(fallback);
+    }
+
     function injectButtons() {
         const bar = ensureFreshBar();
-        if (!bar) return;
+        if (!bar) {
+            ensureMiniPlayerLauncherFallback();
+            return;
+        }
         const menuGroup = document.getElementById('sc-fresh-station-menu');   // 「⋯」の中
         const moreBtn = document.getElementById('sc-fresh-station-more-btn');
         const addMain = function (el) { bar.insertBefore(el, moreBtn); };
 
-        // 0. 発掘モード切替ボタン (アイコン: 🔍 または 👥)
+        const fallback = document.getElementById('sc-fresh-station-miniplayer-fallback');
+        const existingLauncher = document.getElementById('sc-fresh-station-miniplayer-btn');
+        if (fallback && existingLauncher && existingLauncher.parentNode === fallback) {
+            addMain(existingLauncher);
+            existingLauncher.style.cssText = 'margin-left:5px;width:26px;height:26px;min-width:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #ff5500;border-radius:4px;background:#ff5500;color:#fff;font-size:13px;cursor:pointer;line-height:1;';
+            fallback.remove();
+        }
+
+        // 0. 発掘モード切替ボタン (アイコン: ⛏️ または 👥)
         if (!document.getElementById('sc-fresh-station-mode-btn')) {
             const modeBtn = document.createElement('button');
             modeBtn.id = 'sc-fresh-station-mode-btn';
@@ -3099,7 +3444,7 @@
         }
         updateModeButtonUI();
 
-        // 1. ステーション開始ボタン (アイコン: 📻)
+        // 1. ステーション開始ボタン (アイコン: 📡)
         if (!document.getElementById('sc-fresh-station-station-btn')) {
             const stBtn = document.createElement('button');
             stBtn.id = 'sc-fresh-station-station-btn';
@@ -3107,7 +3452,7 @@
             stBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             stBtn.title = getI18nTexts().barStationTitle;
             stBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #00e676; background: transparent; color: #00e676; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle; transition: all 0.15s ease;';
-            stBtn.innerHTML = '📻';
+            stBtn.innerHTML = '📡';
             stBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -3173,7 +3518,7 @@
             plBtn.id = 'sc-fresh-station-playlist-btn';
             plBtn.type = 'button';
             plBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
-            plBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; background: #ff5500; color: #fff; font-size: 13px; font-weight: bold; cursor: pointer; line-height: 1; vertical-align: middle;';
+            plBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; background: transparent; color: #ff5500; font-size: 13px; font-weight: bold; cursor: pointer; line-height: 1; vertical-align: middle;';
             plBtn.innerHTML = '➕';
             
             plBtn.addEventListener('click', function (e) {
@@ -3188,19 +3533,19 @@
                 chooseTargetPlaylistPrompt();
             });
 
-            addMain(plBtn);
+            menuGroup.appendChild(plBtn);
             updatePlaylistButtonUI();
         }
 
-        // 5. ミニプレイヤー起動ボタン (アイコン1個: 🪟)
+        // 5. ミニプレイヤー起動ボタン (アイコン1個: 📻)
         if (!document.getElementById('sc-fresh-station-miniplayer-btn')) {
             const mpBtn = document.createElement('button');
             mpBtn.id = 'sc-fresh-station-miniplayer-btn';
             mpBtn.type = 'button';
             mpBtn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             mpBtn.title = getI18nTexts().barMiniPlayerTitle;
-            mpBtn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #777; background: transparent; color: #ccc; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
-            mpBtn.innerHTML = '🪟';
+            mpBtn.style.cssText = 'margin-left:5px;width:26px;height:26px;min-width:26px;padding:0;display:inline-flex;align-items:center;justify-content:center;border:1px solid #ff5500;border-radius:4px;background:#ff5500;color:#fff;font-size:13px;cursor:pointer;line-height:1;';
+            mpBtn.innerHTML = '📻';
             mpBtn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -3208,6 +3553,16 @@
             });
             addMain(mpBtn);
         }
+        // Keep one consistent order even when the radio launcher started as a
+        // floating fallback before SoundCloud mounted the native player bar.
+        let nextButton = moreBtn;
+        ['sc-fresh-station-miniplayer-btn', 'sc-fresh-station-dislike-btn', 'sc-fresh-station-mode-btn'].forEach(function (id) {
+            const button = document.getElementById(id);
+            if (button) {
+                if (button.parentNode !== bar || button.nextSibling !== nextButton) bar.insertBefore(button, nextButton);
+                nextButton = button;
+            }
+        });
     }
 
     // 言語を変えたとき: ページのボタン・開いているミニプレイヤーの文字をすぐ入れ替える（R2）
@@ -3226,7 +3581,7 @@
                     if (withText) el.textContent = (tx)[withText];
                 };
                 set('mp-follow', 'mpFollowBtnTitle', null);
-                set('mp-station', 'mpStationBtnTitle', 'mpStationBtn');
+                set('mp-station', 'mpStationBtnTitle', null);
                 set('mp-prev', 'mpPrevTitle');
                 set('mp-play', 'mpPlayTitle');
                 set('mp-like', 'mpLikeTitle');
@@ -3264,7 +3619,7 @@
         if (!btn) return;
         const tx = getI18nTexts();
         if (!state.discoveryEnabled) {
-            btn.innerHTML = '🔍';
+            btn.innerHTML = '⛏️';
             btn.style.borderColor = '#555';
             btn.style.color = '#777';
             btn.style.background = 'transparent';
@@ -3274,10 +3629,10 @@
         }
         btn.style.opacity = '1';
         if (state.playbackMode === 'DISCOVERY') {
-            btn.innerHTML = '🔍';
+            btn.innerHTML = '⛏️';
             btn.style.borderColor = '#ff5500';
-            btn.style.color = '#ffaa00';
-            btn.style.background = 'rgba(255, 85, 0, 0.15)';
+            btn.style.color = '#fff';
+            btn.style.background = '#ff5500';
             btn.title = tx.barDiscoveryOnTitle;
         } else {
             btn.innerHTML = '👥';
@@ -3372,7 +3727,8 @@
         if (btn && btn.innerHTML !== '⏳') {
             btn.title = title;
             btn.innerHTML = inPl ? '✔' : '➕';
-            btn.style.background = inPl ? '#00c853' : '#ff5500';
+            btn.style.background = 'transparent';
+            btn.style.color = inPl ? '#00c853' : '#ff5500';
             btn.style.borderColor = inPl ? '#00c853' : '#ff5500';
         }
 
@@ -3666,6 +4022,7 @@
                         title: sound.title || (state.currentTrack && state.currentTrack.title) || '',
                         artistId: sound.user ? sound.user.id : sound.user_id,
                         artistName: sound.user ? (sound.user.username || sound.user.name) : 'Unknown',
+                        artistPermalink: sound.user ? (sound.user.permalink || '') : '',
                         genre: (sound.genre || '').trim(),
                         href: sound.permalink_url ? new URL(sound.permalink_url).pathname : (sound.permalink || '')
                     };
@@ -3726,6 +4083,7 @@
                             title: rData.title || title,
                             artistId: rData.user ? rData.user.id : rData.user_id,
                             artistName: rData.user ? (rData.user.username || rData.user.name) : artistName,
+                            artistPermalink: rData.user ? (rData.user.permalink || '') : '',
                             genre: (rData.genre || '').trim(),
                             href: href
                         };
@@ -4120,9 +4478,15 @@
     function setLaterList(list) {
         const m = {};
         (Array.isArray(list) ? list : []).forEach(function (x) { if (x && x.artistId !== undefined) m[String(x.artistId)] = x; });
+        const changed = JSON.stringify(Object.keys(laterState.map).sort()) !== JSON.stringify(Object.keys(m).sort());
         laterState.map = m;
         try { updateLaterButton(); } catch (e) {}
         try { syncMiniPlayerUI(); } catch (e) {}
+        // Reconsider only future queue items. A user who is already listening to a
+        // track should not lose it merely because the Later list changed.
+        if (changed) {
+            try { scheduleQueuePrune(); } catch (e) {}
+        }
     }
 
     window.addEventListener('message', function (event) {
@@ -4151,18 +4515,38 @@
         return !!(t && t.artistId && laterState.map[String(t.artistId)]);
     }
 
+    // フォロー中の作者を、その作者自身のページで意図的に聴いているか。
+    // 曲のメタデータで作者を照合し、別の作者や古いフッターの表示を流用しない。
+    function isOnFollowedArtistPage(info) {
+        try {
+            const track = info || state.currentTrack;
+            const id = track && toNumId(track.artistId);
+            if (!id || !state.followingUserIds || !state.followingUserIds.has(id) || !track.artistPermalink) return false;
+            const parts = window.location.pathname.split('/').filter(Boolean);
+            const individualTrack = parts.length === 2 && ['likes', 'reposts', 'followers', 'following', 'stations'].indexOf(parts[1].toLowerCase()) === -1;
+            if (!FreshDigCore.isArtistPagePath(window.location.pathname) && !individualTrack) return false;
+            return String(track.artistPermalink).toLowerCase() === (parts[0] || '').toLowerCase();
+        } catch (e) {}
+        return false;
+    }
+
+    function shouldKeepTrackOnArtistPage(reason, info) {
+        if (isOnLaterArtistPage(info)) return true;
+        return (reason === 'skipReasonFollowing' || reason === 'skipReasonLiked') &&
+            isOnFollowedArtistPage(info) && !getSkipReason(info);
+    }
+
     // いま開いているのが「後で聴く」に入れた作者のページか（そのページから聴くときは、ライク済み・フォロー中でも飛ばさない）
-    function isOnLaterArtistPage() {
+    function isOnLaterArtistPage(info) {
         try {
             const path = window.location.pathname;
-            if (!FreshDigCore.isArtistPagePath(path)) return false;
-            const seg = (path.split('/').filter(Boolean)[0] || '').toLowerCase();
-            if (!seg) return false;
-            const vals = Object.keys(laterState.map);
-            for (let i = 0; i < vals.length; i++) {
-                const p = laterState.map[vals[i]] && laterState.map[vals[i]].permalink;
-                if (p && String(p).toLowerCase() === seg) return true;
-            }
+            const parts = path.split('/').filter(Boolean);
+            const trackPage = parts.length === 2 && ['likes', 'reposts', 'followers', 'following', 'stations'].indexOf(parts[1].toLowerCase()) === -1;
+            if (!FreshDigCore.isArtistPagePath(path) && !trackPage) return false;
+            const track = info || state.currentTrack;
+            const id = track && toNumId(track.artistId);
+            const saved = id && laterState.map[String(id)];
+            return !!(saved && saved.permalink && String(saved.permalink).toLowerCase() === (parts[0] || '').toLowerCase());
         } catch (e) {}
         return false;
     }
@@ -4178,12 +4562,14 @@
             if (!r.ok) return tt('m_laterFail');
             delete laterState.map[id];
             updateLaterButton();
+            try { scheduleQueuePrune(); } catch (e) {}
             return tt('m_laterRemoved', { name: name });
         }
         const r = await laterOp({ op: 'add', item: { artistId: id, name: name, permalink: getArtistPermalink(t), avatarUrl: t.avatarUrl || '', fromTrackTitle: t.title || '' } });
         if (!r.ok) return r.reason === 'limit' ? tt('m_laterLimit') : tt('m_laterFail');
-        laterState.map[id] = { artistId: id, name: name, permalink: getArtistPermalink(t) };
+        laterState.map[id] = laterState.map[id] || { artistId: id, name: name, permalink: getArtistPermalink(t), addedAt: Date.now() };
         updateLaterButton();
+        try { scheduleQueuePrune(); } catch (e) {}
         return tt('m_laterAdded', { name: name });
     }
 
@@ -4203,7 +4589,143 @@
     let lastNonZeroVolume = 0.8;
     // SoundCloud 内部モジュールが見つからない場合のフォールバック用：最後に play() された要素
     let lastPlayedMedia = null;
+    let lastPlayedMediaTrackKey = '';
+    const trackedMediaEvents = new WeakSet();
     let volumePrecisionRestored = false;
+
+    function rememberPlaybackMedia(media) {
+        lastPlayedMedia = media;
+        lastPlayedMediaTrackKey = playbackTrackKey();
+        if (!media || trackedMediaEvents.has(media) || typeof media.addEventListener !== 'function') return;
+        trackedMediaEvents.add(media);
+        ['play', 'pause', 'waiting', 'stalled', 'error', 'ended'].forEach(function (type) {
+            media.addEventListener(type, function () {
+                // Connected media is already observed by the document capture listener.
+                if (isConnectedMedia(media) || lastPlayedMedia !== media) return;
+                if (type === 'play') playbackIntent.wanted = true;
+                else if (type === 'pause' && !media.ended) notePausedMedia(media);
+                else if (type !== 'pause') schedulePlaybackRecovery(media, type);
+            });
+        });
+    }
+
+    function isConnectedMedia(media) {
+        if (!media || (media.tagName !== 'AUDIO' && media.tagName !== 'VIDEO')) return false;
+        if (media.isConnected === false) return false;
+        try {
+            if (document.documentElement && typeof document.documentElement.contains === 'function' && !document.documentElement.contains(media)) return false;
+        } catch (e) {}
+        return !!media.src;
+    }
+
+    function getActiveMedia(includePaused) {
+        let media = [];
+        try { media = Array.from(document.querySelectorAll('audio,video')).filter(isConnectedMedia); } catch (e) {}
+        const playing = media.filter(function (m) { return !m.paused && !m.ended && m.readyState > 0; });
+        if (playing.length) return playing[0];
+        // SoundCloud may use new Audio() without inserting it into the DOM.
+        // A prototype-observed player is valid even when detached, but a paused
+        // player from an older track must not be resumed after a track change.
+        if (lastPlayedMedia && (lastPlayedMedia.src || lastPlayedMedia.currentSrc) && !lastPlayedMedia.ended) {
+            if (!lastPlayedMedia.paused || (includePaused && lastPlayedMediaTrackKey === playbackTrackKey())) return lastPlayedMedia;
+        }
+        if (!includePaused) return null;
+        return media.find(function (m) { return !m.ended && m.readyState > 0; }) || null;
+    }
+
+    function playbackTrackKey() {
+        const t = state.currentTrack;
+        return t && (t.id || normalizeTrackPath(t.href) || t.title) ? String(t.id || normalizeTrackPath(t.href) || t.title) : '';
+    }
+
+    function waitForLocalPlaying(expected, timeoutMs) {
+        const timeout = timeoutMs || 700;
+        return new Promise(function (resolve) {
+            const started = Date.now();
+            const check = function () {
+                const playing = isLocalPlaying();
+                if (playing === expected || Date.now() - started >= timeout) {
+                    resolve(playing === expected);
+                    return;
+                }
+                setTimeout(check, 50);
+            };
+            check();
+        });
+    }
+
+    // HTMLMediaElement.play() can reject or remain pending when the browser's
+    // autoplay/permission state is unresolved. Never leave a remote command or
+    // recovery attempt waiting forever, and never fall back to a second toggle.
+    function invokeMediaPlay(media, timeoutMs) {
+        const timeout = timeoutMs || 700;
+        return new Promise(function (resolve) {
+            let settled = false;
+            let timer = null;
+            const done = function (result) {
+                if (settled) return;
+                settled = true;
+                if (timer) clearTimeout(timer);
+                resolve(result);
+            };
+            let result;
+            try {
+                result = media && typeof media.play === 'function' ? media.play() : null;
+            } catch (e) {
+                done({ success: false, error: e });
+                return;
+            }
+            Promise.resolve(result).then(function () {
+                done({ success: true });
+            }, function (e) {
+                done({ success: false, error: e });
+            });
+            timer = setTimeout(function () {
+                try { if (media && media.pause) media.pause(); } catch (e) {}
+                done({ success: false, error: { name: 'PlayTimeout' } });
+            }, timeout);
+        });
+    }
+
+    function schedulePlaybackRecovery(media, reason) {
+        const key = playbackTrackKey();
+        if (!key || !playbackIntent.wanted || !state.discoveryEnabled || state.robotBlocked || playbackIntent.recoveryInFlight) return;
+        if (playbackIntent.trackKey !== key) {
+            playbackIntent.trackKey = key;
+            playbackIntent.recoveries = 0;
+            playbackIntent.lastRecoveryAt = 0;
+        }
+        if (playbackIntent.recoveries >= 2 || Date.now() - playbackIntent.lastRecoveryAt < 1500) return;
+        playbackIntent.recoveryInFlight = true;
+        playbackIntent.recoveries++;
+        playbackIntent.lastRecoveryAt = Date.now();
+        dlog('playback-recovery-attempt', { reason: reason, n: playbackIntent.recoveries });
+        setTimeout(async function () {
+            try {
+                if (!playbackIntent.wanted || !state.discoveryEnabled || state.robotBlocked || playbackTrackKey() !== key) return;
+                if (reason === 'ended') {
+                    const pm = getScPlaybackManager();
+                    if (!pm || typeof pm.playNext !== 'function') return;
+                    pm.playNext({ userInitiated: false });
+                    await sleepMs(250);
+                    if (!isLocalPlaying()) dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+                    return;
+                }
+                const active = getActiveMedia(true);
+                if (!active || (media && active !== media && !isConnectedMedia(media))) return;
+                const playResult = await invokeMediaPlay(active, 700);
+                if (!playResult.success) {
+                    dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(playResult.error) });
+                    return;
+                }
+                if (!(await waitForLocalPlaying(true, 500))) dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+            } catch (e) {
+                dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(e) });
+            } finally {
+                playbackIntent.recoveryInFlight = false;
+            }
+        }, reason === 'ended' ? 700 : 350);
+    }
 
     // ユーザーが本拡張で設定した音量（未設定なら null）
     function getSavedVolume() {
@@ -4250,17 +4772,39 @@
         return saved !== null ? saved : 0.8;
     }
 
+    function setVolumeThroughNativeControl(v) {
+        try {
+            const input = document.querySelector('.volume input[type="range"]');
+            if (input) {
+                const min = Number(input.min || 0);
+                const max = Number(input.max || 1);
+                input.value = String(min + (max - min) * v);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            }
+            const mute = document.querySelector('.volume__button');
+            const current = getSoundCloudVolume();
+            if (mute && ((v === 0 && current > 0) || (v > 0 && current === 0))) mute.click();
+            const root = document.querySelector('.volume');
+            if (root) root.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            const slider = document.querySelector('.volume__sliderWrapper');
+            if (!slider) return !!mute && Math.abs(getSoundCloudVolume() - v) < 0.02;
+            const rect = slider.getBoundingClientRect();
+            if (!rect.height || !rect.width) return false;
+            const point = { bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height * (1 - v), button: 0 };
+            slider.dispatchEvent(new MouseEvent('mousedown', point));
+            document.dispatchEvent(new MouseEvent('mousemove', point));
+            document.dispatchEvent(new MouseEvent('mouseup', point));
+            return true;
+        } catch (e) { return false; }
+    }
+
     function setSoundCloudVolume(vol) {
         const v = Math.max(0, Math.min(1, Number(vol) || 0));
         dlog('freshdig-set-volume', { v: v });
-        if (v > 0) {
-            lastNonZeroVolume = v;
-        }
-        try {
-            localStorage.setItem(VOLUME_STORAGE_KEY, v.toString());
-        } catch (e) {}
-
         const volMod = getScVolumeModule();
+        let applied = false;
         if (volMod) {
             // SoundCloud 本体の音量として設定 → 曲が変わっても維持され、本体スライダーとも同期する
             try {
@@ -4269,52 +4813,35 @@
                 } else {
                     volMod.setVolumeAndMuted({ volume: v, muted: false });
                 }
+                applied = true;
             } catch (e) {
                 console.warn('[SC-FreshStation] SoundCloud volume module error:', e);
             }
         } else {
-            // フォールバック：内部モジュールが見つからない場合は audio 要素へ直接反映
-            const audios = Array.from(document.querySelectorAll('audio'));
-            if (lastPlayedMedia && audios.indexOf(lastPlayedMedia) === -1) audios.push(lastPlayedMedia);
-            audios.forEach(function (a) {
-                try {
-                    a.volume = v;
-                    a.muted = v === 0;
-                } catch (e) {}
-            });
+            applied = setVolumeThroughNativeControl(v);
+            if (!applied) dlog('volume-module-unavailable', { v: v });
         }
-
+        // Never report mute/volume success when no native control applied it.
+        applied = applied && Math.abs(getSoundCloudVolume() - v) < 0.02;
+        if (applied) {
+            if (v > 0) lastNonZeroVolume = v;
+            try { localStorage.setItem(VOLUME_STORAGE_KEY, String(v)); } catch (e) {}
+        } else {
+            showGlobalToast(tt('m_volumeUnavailable'));
+        }
         syncMiniPlayerVolumeUI(getSoundCloudVolume());
-        return v;
+        return applied ? v : null;
     }
 
     function toggleSoundCloudMute() {
-        const volMod = getScVolumeModule();
-        if (volMod) {
-            try {
-                if (volMod.getMuted() || volMod.getVolume() === 0) {
-                    const restore = volMod.getVolume() > 0 ? volMod.getVolume() : (lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8);
-                    volMod.setVolumeAndMuted({ volume: restore, muted: false });
-                    showGlobalToast(tt('m_volRestored', { n: Math.round(restore * 100) }));
-                } else {
-                    lastNonZeroVolume = volMod.getVolume();
-                    volMod.setMuted(true);
-                    showGlobalToast(tt('m_muted'));
-                }
-            } catch (e) {}
-            syncMiniPlayerVolumeUI(getSoundCloudVolume());
-            return;
-        }
         const cur = getSoundCloudVolume();
-        if (cur > 0) {
-            lastNonZeroVolume = cur;
-            setSoundCloudVolume(0);
-            showGlobalToast(tt('m_muted'));
-        } else {
-            const restore = lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8;
-            setSoundCloudVolume(restore);
-            showGlobalToast(tt('m_volRestored', { n: Math.round(restore * 100) }));
-        }
+        if (cur > 0) lastNonZeroVolume = cur;
+        const target = cur > 0 ? 0 : (lastNonZeroVolume > 0 ? lastNonZeroVolume : 0.8);
+        const applied = setSoundCloudVolume(target);
+        if (applied === null) return { success: false, verified: false, message: tt('m_volumeUnavailable') };
+        const message = target === 0 ? tt('m_muted') : tt('m_volRestored', { n: Math.round(target * 100) });
+        showGlobalToast(message);
+        return { success: true, verified: true, muted: target === 0 };
     }
 
     function syncMiniPlayerVolumeUI(vol) {
@@ -4337,20 +4864,16 @@
         } catch (e) {}
     }
 
-    // フォールバック時のみ：曲が変わって audio が再生された時に保存音量を再適用
-    // （SoundCloud 内部モジュール経由で設定していれば、本体が全プレイヤーに適用するので何もしない）
+    // SoundCloud 内部モジュール経由で音量を設定できない場合は、音声要素へ直接
+    // 書き込まず、次回の本体同期で適用できるよう保存値だけを維持する。
     function applySavedVolumeTo(media) {
-        if (getScVolumeModule()) return;
-        const v = getSavedVolume();
-        if (v === null || !media) return;
-        try {
-            if (Math.abs(media.volume - v) > 0.001) media.volume = v;
-        } catch (err) {}
+        if (!media || getScVolumeModule()) return;
+        getSavedVolume();
     }
 
     document.addEventListener('play', function (e) {
         if (e.target && e.target.tagName === 'AUDIO') {
-            lastPlayedMedia = e.target;
+            rememberPlaybackMedia(e.target);
             applySavedVolumeTo(e.target);
         }
     }, true);
@@ -4361,7 +4884,7 @@
         HTMLMediaElement.prototype.play = function () {
             try {
                 if (this && this.tagName === 'AUDIO') {
-                    lastPlayedMedia = this;
+                    rememberPlaybackMedia(this);
                     applySavedVolumeTo(this);
                 }
             } catch (e) {}
@@ -4611,6 +5134,51 @@
         ownMetaArt: '',
         handlersAt: 0
     };
+    const autoPipState = {
+        callable: false,
+        status: 'unsupported',
+        lastError: null,
+        registered: false,
+        lastLogged: ''
+    };
+
+    function errorName(err) {
+        const raw = err && err.name ? String(err.name) : 'UnknownError';
+        return raw.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80) || 'UnknownError';
+    }
+
+    function isAutoPipCallable() {
+        try {
+            return !!(window.documentPictureInPicture && typeof window.documentPictureInPicture.requestWindow === 'function');
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function logAutoPipState(reason) {
+        const key = autoPipState.status + '|' + autoPipState.lastError;
+        if (key === autoPipState.lastLogged) return;
+        autoPipState.lastLogged = key;
+        dlog('auto-pip-registration', {
+            status: autoPipState.status,
+            error: autoPipState.lastError,
+            reason: reason || ''
+        });
+        console.log('[SC-FreshStation] Auto-PiP ' + autoPipState.status + (autoPipState.lastError ? ' (' + autoPipState.lastError + ')' : ''));
+    }
+
+    function setAutoPipFailure(err, reason) {
+        autoPipState.lastError = errorName(err);
+        logAutoPipState(reason || 'callback');
+    }
+
+    function getAutoPipDiagnostics() {
+        return {
+            autoPipSupported: autoPipState.callable && autoPipState.status === 'registered',
+            autoPipStatus: autoPipState.status,
+            autoPipLastError: autoPipState.lastError
+        };
+    }
 
     function getScPlaybackManager() {
         return findScModule('playback', function (ex) {
@@ -4663,7 +5231,7 @@
         if (sound) {
             try {
                 sound.seek(Math.floor(sound.duration() * ratio));
-                return;
+                return true;
             } catch (e) {}
         }
         const progressWrapper = document.querySelector('.playbackTimeline__progressWrapper');
@@ -4673,7 +5241,9 @@
             const clientY = rect.top + rect.height / 2;
             progressWrapper.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: clientX, clientY: clientY }));
             progressWrapper.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: clientX, clientY: clientY }));
+            return true;
         }
+        return false;
     }
 
     // 別タブに切り替えたときにミニプレイヤーを自動表示（Edge / Chrome の「自動ピクチャー イン ピクチャー」）
@@ -4688,21 +5258,43 @@
     }
 
     function registerAutoMiniPlayerHandler() {
-        if (!('mediaSession' in navigator)) return;
+        autoPipState.callable = isAutoPipCallable();
+        if (!('mediaSession' in navigator) || typeof navigator.mediaSession.setActionHandler !== 'function' || !autoPipState.callable) {
+            if (autoPipState.registered && navigator.mediaSession && typeof navigator.mediaSession.setActionHandler === 'function') {
+                try { navigator.mediaSession.setActionHandler('enterpictureinpicture', null); } catch (e) {}
+            }
+            autoPipState.registered = false;
+            autoPipState.status = 'unsupported';
+            autoPipState.lastError = null;
+            logAutoPipState('unsupported');
+            return;
+        }
+        if (autoPipState.registered) return;
         try {
-            navigator.mediaSession.setActionHandler('enterpictureinpicture', state.autoMiniPlayer && ('documentPictureInPicture' in window) ? function () {
+            navigator.mediaSession.setActionHandler('enterpictureinpicture', function (details) {
+                const reason = details && (details.enterPictureInPictureReason || details.reason);
+                dlog('auto-pip-callback', { reason: reason || 'unknown' });
+                if (!state.autoMiniPlayer) return;
                 if (miniPlayerWindow && !miniPlayerWindow.closed) return;
-                openMiniPlayer({ auto: true });
-            } : null);
+                Promise.resolve(openMiniPlayer({ auto: true, reason: reason || 'unknown' })).then(function (result) {
+                    if (result && result.success === false) setAutoPipFailure({ name: result.error || 'OpenFailed' }, 'callback');
+                }).catch(function (err) { setAutoPipFailure(err, 'callback'); });
+            });
+            autoPipState.registered = true;
+            autoPipState.status = 'registered';
+            autoPipState.lastError = null;
+            logAutoPipState('registered');
         } catch (e) {
-            // 未対応のブラウザ（'enterpictureinpicture' を知らない）では何もしない
+            autoPipState.registered = false;
+            autoPipState.status = 'unsupported';
+            autoPipState.lastError = errorName(e);
+            logAutoPipState('registration-error');
         }
     }
 
     function registerExtraMediaSessionHandlers() {
         if (!('mediaSession' in navigator)) return;
         const ms = navigator.mediaSession;
-        registerAutoMiniPlayerHandler();
         try {
             ms.setActionHandler('seekto', function (details) {
                 const pos = getPlaybackPositionSeconds();
@@ -4801,37 +5393,184 @@
         return !!(id && state.repostedTrackIds && state.repostedTrackIds.has(id));
     }
 
+    // 曲が変わった直後は画面のボタンがまだ前の曲のまま。読み取りは画面の曲と記録の曲が同じで、1 秒以上変わっていないときだけ
+    const domInteractionSync = { href: '', since: 0 };
+    const pendingInteractions = Object.create(null);
+    const INTERACTION_TIMEOUT_MS = 2500;
+
+    function interactionKey(action, id) { return action + ':' + String(id); }
+
+    function beginInteraction(action, id, expected, trackId) {
+        const key = interactionKey(action, id);
+        const token = { key: key, action: action, id: toNumId(id), trackId: toNumId(trackId || (state.currentTrack && state.currentTrack.id)), expected: !!expected, startedAt: Date.now() };
+        pendingInteractions[key] = token;
+        setTimeout(function () {
+            if (pendingInteractions[key] === token) delete pendingInteractions[key];
+        }, INTERACTION_TIMEOUT_MS);
+        return token;
+    }
+
+    function getPendingInteraction(action, id) {
+        const key = interactionKey(action, id);
+        const token = pendingInteractions[key];
+        if (token && Date.now() - token.startedAt <= INTERACTION_TIMEOUT_MS) return token;
+        if (token) delete pendingInteractions[key];
+        return null;
+    }
+
+    function endInteraction(token) {
+        if (token && pendingInteractions[token.key] === token) delete pendingInteractions[token.key];
+    }
+
+    function nativeButtonActive(button) {
+        if (!button) return false;
+        if (button.classList && button.classList.contains('sc-button-selected')) return true;
+        if (button.getAttribute && (button.getAttribute('aria-checked') === 'true' || button.getAttribute('aria-pressed') === 'true')) return true;
+        const text = ((button.getAttribute && (button.getAttribute('title') || button.getAttribute('aria-label')) || '') + ' ' + (button.textContent || '')).toLowerCase();
+        return /unlike|unfollow|unrepost|following|フォロー中|フォロー解除|リポスト解除/.test(text);
+    }
+
+    function nativeLikeButton() { return document.querySelector('.playbackSoundBadge__like'); }
+
+    function nativeRepostButton() {
+        return document.querySelector('.playbackSoundBadge__actions button[title*="Repost" i], .playbackSoundBadge__actions button[aria-label*="Repost" i], .playbackSoundBadge__repost');
+    }
+
+    function nativeFollowButton() {
+        // A profile/recommendation button can belong to a different artist than
+        // the playing track. Only the current playback footer is safe to use.
+        const domHref = normalizeTrackPath(getPlayingTrackHref());
+        const curHref = normalizeTrackPath(state.currentTrack && state.currentTrack.href);
+        if (!domHref || domHref !== curHref) return null;
+        return document.querySelector('.playbackSoundBadge__follow');
+    }
+
+    function currentTrackMatches(id) {
+        return !!(state.currentTrack && toNumId(state.currentTrack.id) === toNumId(id));
+    }
+
+    async function waitForNativeInteraction(action, id, button, expected, token) {
+        let stable = 0;
+        for (let i = 0; i < 20; i++) {
+            await sleepMs(100);
+            if (getPendingInteraction(action, id) !== token || !currentTrackMatches(token.trackId) || button.isConnected === false) return false;
+            if (nativeButtonActive(button) === !!expected) {
+                stable++;
+                if (stable >= 2) return true;
+            } else {
+                stable = 0;
+            }
+        }
+        return false;
+    }
+
+    function commitInteraction(action, id, active) {
+        const numId = toNumId(id);
+        if (!numId) return;
+        if (action === 'like') {
+            if (active) state.likedTrackIds.add(numId); else state.likedTrackIds.delete(numId);
+        } else if (action === 'repost') {
+            if (active) state.repostedTrackIds.add(numId); else state.repostedTrackIds.delete(numId);
+        } else if (action === 'follow') {
+            if (active) state.followingUserIds.add(numId); else state.followingUserIds.delete(numId);
+        }
+        saveCacheData();
+        fdBus.post('interaction-changed', { action: action, id: numId, active: !!active });
+        syncMiniPlayerUI();
+    }
+
+    fdBus.on('interaction-changed', function (m) {
+        const id = toNumId(m && m.id);
+        if (!id || !m || typeof m.action !== 'string') return;
+        if (m.action === 'like') {
+            if (m.active) state.likedTrackIds.add(id); else state.likedTrackIds.delete(id);
+        } else if (m.action === 'repost') {
+            if (m.active) state.repostedTrackIds.add(id); else state.repostedTrackIds.delete(id);
+        } else if (m.action === 'follow') {
+            if (m.active) state.followingUserIds.add(id); else state.followingUserIds.delete(id);
+        } else return;
+        syncMiniPlayerUI();
+    });
+
+    async function runNativeInteraction(action, id, button, expected, toast, successText, trackId) {
+        const expectedTrack = toNumId(trackId || (action === 'follow' ? state.currentTrack && state.currentTrack.id : id));
+        const domHref = normalizeTrackPath(getPlayingTrackHref());
+        const curHref = normalizeTrackPath(state.currentTrack && state.currentTrack.href);
+        if (!button || !currentTrackMatches(expectedTrack) || !domHref || domHref !== curHref) return { success: false, verified: false, message: tt('m_trackLoading') };
+        if (getPendingInteraction(action, id)) return { success: false, pending: true, message: tt('m_actionPending') };
+        const before = nativeButtonActive(button);
+        if (before === !!expected) {
+            commitInteraction(action, id, before);
+            if (toast && successText) toast(successText);
+            return { success: true, verified: true, changed: false, active: before };
+        }
+        const token = beginInteraction(action, id, expected, expectedTrack);
+        try {
+            button.click();
+            const verified = await waitForNativeInteraction(action, id, button, expected, token);
+            if (!verified) {
+                const failure = { success: false, message: tt('m_commErr'), verified: false };
+                if (toast) toast(failure.message);
+                return failure;
+            }
+            commitInteraction(action, id, expected);
+            if (toast && successText) toast(successText);
+            return { success: true, verified: true, changed: true, active: !!expected };
+        } catch (e) {
+            const failure = { success: false, message: errorName(e), verified: false };
+            if (toast) toast(failure.message);
+            return failure;
+        } finally {
+            endInteraction(token);
+        }
+    }
+
+    async function toggleLikeFromNative(toast) {
+        toast = toast || showGlobalToast;
+        const id = state.currentTrack && toNumId(state.currentTrack.id);
+        const button = nativeLikeButton();
+        if (!id || !button) {
+            const failure = { success: false, message: !button ? tt('m_noLikeBtn') : tt('m_trackLoading') };
+            toast(failure.message);
+            return failure;
+        }
+        const expected = !nativeButtonActive(button);
+        return runNativeInteraction('like', id, button, expected, toast, expected ? tt('mpToastLiked') : tt('mpToastUnliked'));
+    }
+
     // 再生中の曲の DOM ボタン（Repost / Like）の状態を読み取り、ローカル状態＆キャッシュへ自動同期
     function syncCurrentTrackInteractionsFromDom() {
         const trackId = state.currentTrack && toNumId(state.currentTrack.id);
         if (!trackId) return;
+        const domHref = normalizeTrackPath(getPlayingTrackHref());
+        const curHref = normalizeTrackPath(state.currentTrack.href);
+        if (!domHref || !curHref || domHref !== curHref) { domInteractionSync.href = ''; return; }
+        const now = Date.now();
+        if (domInteractionSync.href !== domHref) { domInteractionSync.href = domHref; domInteractionSync.since = now; return; }
+        if (now - domInteractionSync.since < 1000) return;
 
-        // Repost 状態の同期
-        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
-        if (repostBtn) {
-            const isReposted = repostBtn.classList.contains('sc-button-selected') || repostBtn.getAttribute('aria-checked') === 'true';
-            if (isReposted && (!state.repostedTrackIds || !state.repostedTrackIds.has(trackId))) {
-                if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
-                state.repostedTrackIds.add(trackId);
-                saveCacheData();
-            } else if (!isReposted && state.repostedTrackIds && state.repostedTrackIds.has(trackId)) {
-                state.repostedTrackIds.delete(trackId);
-                saveCacheData();
-            }
+        // Do not let the 500ms DOM poll undo a native click while SoundCloud is
+        // still resolving it. The pending key contains both action and track id.
+        const pendingRepost = getPendingInteraction('repost', trackId);
+        const repostBtn = nativeRepostButton();
+        if (repostBtn && !pendingRepost) {
+            const isReposted = nativeButtonActive(repostBtn);
+            if (isReposted !== state.repostedTrackIds.has(trackId)) commitInteraction('repost', trackId, isReposted);
         }
 
-        // Like 状態の同期
-        const likeBtn = document.querySelector('.playbackSoundBadge__like');
-        if (likeBtn) {
-            const isLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
-            if (isLiked && (!state.likedTrackIds || !state.likedTrackIds.has(trackId))) {
-                if (!state.likedTrackIds) state.likedTrackIds = new Set();
-                state.likedTrackIds.add(trackId);
-                saveCacheData();
-            } else if (!isLiked && state.likedTrackIds && state.likedTrackIds.has(trackId)) {
-                state.likedTrackIds.delete(trackId);
-                saveCacheData();
-            }
+        const pendingLike = getPendingInteraction('like', trackId);
+        const likeBtn = nativeLikeButton();
+        if (likeBtn && !pendingLike) {
+            const isLiked = nativeButtonActive(likeBtn);
+            if (isLiked !== state.likedTrackIds.has(trackId)) commitInteraction('like', trackId, isLiked);
+        }
+
+        const artistId = state.currentTrack && toNumId(state.currentTrack.artistId);
+        const pendingFollow = artistId && getPendingInteraction('follow', artistId);
+        const followBtn = nativeFollowButton();
+        if (followBtn && artistId && !pendingFollow) {
+            const isFollowing = nativeButtonActive(followBtn);
+            if (isFollowing !== state.followingUserIds.has(artistId)) commitInteraction('follow', artistId, isFollowing);
         }
     }
 
@@ -4843,45 +5582,48 @@
         } catch (e) {}
     }
 
-    // 通常リポスト実行と検証
-    async function repostTrack(trackId, toast) {
+    // 通常リポスト実行と検証。ネイティブ操作がある場合は SoundCloud に状態を
+    // 任せ、完了を DOM で確認してから FreshDig のキャッシュを更新する。
+    async function repostTrack(trackId, toast, desired) {
         toast = toast || showGlobalToast;
         const numId = toNumId(trackId);
-        if (!numId) return false;
-        toast(tt('m_reposting'));
+        if (!numId) return { success: false, message: tt('m_trackLoading') };
+        const native = nativeRepostButton();
+        if (native && currentTrackMatches(numId)) {
+            const want = desired === undefined ? true : !!desired;
+            return runNativeInteraction('repost', numId, native, want, toast, want ? tt('mpToastReposted') : tt('mpToastUnreposted'));
+        }
+        if (!(await waitForAuthToken(1500))) {
+            const failure = { success: false, message: tt('m_loginPlease'), verified: false };
+            toast(failure.message);
+            return failure;
+        }
+        toast(desired === false ? tt('m_unreposting') : tt('m_reposting'));
         try {
-            const res = await scApi('me/track_reposts/' + numId, { method: 'PUT' });
+            const res = await scApi('me/track_reposts/' + numId, { method: desired === false ? 'DELETE' : 'PUT' });
             if (!res.ok) {
                 dlog('repost-fail', { trackId: numId, status: res.status });
-                toast(tt('m_repostFail', { s: res.status }));
-                return false;
+                const failure = { success: false, message: tt(desired === false ? 'm_unrepostFail' : 'm_repostFail', { s: res.status }), verified: false };
+                toast(failure.message);
+                return failure;
             }
 
-            // PUT 成功で即時追加・キャッシュ反映（100件リスト取得による偽陰性判定を排除）
-            if (!state.repostedTrackIds) state.repostedTrackIds = new Set();
-            state.repostedTrackIds.add(numId);
-            saveCacheData();
-
-            // 現在再生中の曲であれば SoundCloud 本体の DOM ボタンも同期
-            const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
-            if (repostBtn && state.currentTrack && toNumId(state.currentTrack.id) === numId) {
-                repostBtn.classList.add('sc-button-selected');
-                repostBtn.setAttribute('aria-checked', 'true');
-            }
-
-            toast(tt('m_reposted'));
-            dlog('repost', { trackId: numId, status: res.status, verified: true });
-            return true;
+            const active = desired !== false;
+            commitInteraction('repost', numId, active);
+            toast(active ? tt('m_reposted') : tt('mpToastUnreposted'));
+            dlog('repost', { trackId: numId, status: res.status, verified: false, apiOk: true });
+            return { success: true, verified: false, active: active };
         } catch (err) {
             console.error('[SC-FreshStation] Repost error:', err);
-            dlog('repost-fail', { trackId: numId, error: String(err) });
-            toast(tt('m_commErr'));
-            return false;
+            dlog('repost-fail', { trackId: numId, error: errorName(err) });
+            const failure = { success: false, message: tt('m_commErr'), verified: false };
+            toast(failure.message);
+            return failure;
         }
     }
 
     // =========================================================================
-    // 🪟 浮遊ミニプレイヤー (Document Picture-in-Picture & Fallback)
+    // 📻 浮遊ミニプレイヤー (Document Picture-in-Picture & Fallback)
     // =========================================================================
     let miniPlayerWindow = null;
 
@@ -4930,7 +5672,7 @@
 
             if (!miniPlayerWindow) {
                 if (!isAuto) showMiniPlayerLaunchPrompt();
-                return;
+                return { success: false, error: 'NoWindow' };
             }
 
             const win = miniPlayerWindow;
@@ -4947,15 +5689,19 @@
             dlog('miniplayer-opened', { auto: isAuto });
             syncMiniPlayerUI();
             updatePlaylistButtonUI();
-            console.log('[SC-FreshStation] 🪟 Mini Player opened successfully' + (isAuto ? ' (auto on tab switch)' : ''));
+            console.log('[SC-FreshStation] 📻 Mini Player opened successfully' + (isAuto ? ' (auto on tab switch)' : ''));
+            return { success: true };
         } catch (err) {
             miniPlayerWindow = null;
+            const name = errorName(err);
             if (err && err.name === 'NotAllowedError') {
                 // ページ内のクリック直後でないため開けなかった
                 if (!isAuto) showMiniPlayerLaunchPrompt();
             } else {
-                console.error('[SC-FreshStation] Failed to open Mini Player:', err);
+                console.error('[SC-FreshStation] Failed to open Mini Player:', name);
             }
+            if (isAuto) dlog('auto-pip-failure', { name: name });
+            return { success: false, error: name };
         }
     }
 
@@ -5021,6 +5767,7 @@
                     overflow: hidden;
                 }
                 .track-info-row {
+                    position: relative;
                     display: flex;
                     align-items: center;
                     gap: 10px;
@@ -5038,6 +5785,7 @@
                     min-width: 0;
                 }
                 .title {
+                    padding-right: 85px;
                     font-size: 13px;
                     font-weight: bold;
                     white-space: nowrap;
@@ -5062,6 +5810,7 @@
                     margin-top: 4px;
                 }
                 .badge-row button {
+                    flex: 0 0 26px;
                     height: 24px;
                     width: 24px;
                     min-width: 24px;
@@ -5079,6 +5828,9 @@
                     overflow: hidden;
                 }
                 .status-badge {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
@@ -5087,9 +5839,9 @@
                     height: 24px;
                     padding: 0 8px;
                     border-radius: 6px;
-                    background: #222;
+                    background: #ff5500;
                     border: 1px solid #ff5500;
-                    color: #ffaa00;
+                    color: #fff;
                     white-space: nowrap;
                     flex-shrink: 0;
                     cursor: pointer;
@@ -5102,6 +5854,7 @@
                     color: #fff;
                     transform: scale(1.04);
                 }
+                .badge-row .status-badge { width: auto; min-width: 72px; max-width: 155px; padding: 0 7px; font-size: 10px; text-overflow: ellipsis; background: #ff5500; color: #fff; }
                 .status-badge.following-mode {
                     border-color: #29b6f6;
                     background: #222;
@@ -5149,10 +5902,29 @@
                 }
                 .btn-follow {
                     border: 1px solid #444;
-                    color: #888;
+                    color: #eee;
                     font-size: 17px;
-                    opacity: 0.75;
+                    opacity: 1;
                 }
+                .btn-follow svg { width: 21px; height: 21px; pointer-events: none; }
+                .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; padding: 0 6px; font-size: 12px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
+                .later-panel { position: fixed; inset: 0; z-index: 40; background: #141414; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
+                .later-panel[hidden] { display: none; }
+                .later-panel-header { display: flex; flex: 0 0 auto; gap: 8px; align-items: center; margin-bottom: 8px; }
+                .later-panel-header strong { flex: 1; font-size: 14px; color: #ff9a55; }
+                .later-panel-header button { flex: 0 0 30px; height: 28px; color: #eee; background: #2a2a2a; border: 1px solid #666; border-radius: 5px; cursor: pointer; }
+                #mp-later-items { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: auto; }
+                #mp-later-items::-webkit-scrollbar { width: 14px; }
+                #mp-later-items::-webkit-scrollbar-track { background: #252525; }
+                #mp-later-items::-webkit-scrollbar-thumb { background: #888; border: 3px solid #252525; border-radius: 8px; }
+                #mp-later-items::-webkit-scrollbar-thumb:hover { background: #bbb; }
+                .later-item { display: flex; align-items: center; gap: 6px; min-height: 38px; border-bottom: 1px solid #333; padding: 4px 2px; }
+                .later-item a, .later-item-name { flex: 1; min-width: 0; color: #ffb36b; font-size: 13px; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .later-item time { flex: 0 0 auto; color: #aaa; font-size: 10px; white-space: nowrap; }
+                .later-item .later-remove { flex: 0 0 28px; width: 28px; height: 28px; padding: 0; color: #eee; background: #2a2a2a; border: 1px solid #666; border-radius: 5px; font-size: 18px; cursor: pointer; }
+                .later-item .later-remove:disabled { opacity: .5; cursor: wait; }
+                .later-panel p { color: #aaa; font-size: 12px; }
+                button:focus-visible, .later-panel a:focus-visible { outline: 2px solid #ffb36b; outline-offset: 1px; }
                 .btn-follow:hover {
                     background: #333;
                     color: #fff;
@@ -5447,10 +6219,10 @@
                     <div class="title" id="mp-title">${tx.mpLoadingTrack}</div>
                     <div class="artist" id="mp-artist">SoundCloud</div>
                     <div class="badge-row">
-                        <span class="status-badge" id="mp-status">${tx.mpStatusWaiting}</span>
-                        <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}">📻</button>
-                        <button class="btn-later" id="mp-later" title="">🧐</button>
-                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}">👤</button>
+                        <button class="status-badge" id="mp-status" type="button">${tx.mpStatusWaiting}</button>
+                        <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9 6 21h12L12 9Zm-3 6h6M7 21l5-6 5 6M12 4v5M8 3a6 6 0 0 0 0 8M16 3a6 6 0 0 1 0 8M5 1a9 9 0 0 0 0 12M19 1a9 9 0 0 1 0 12"/></svg></button>
+                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
+                        <button class="btn-later-list" id="mp-later-list" type="button" aria-expanded="false" aria-controls="mp-later-panel">${tx.mpLaterListLabel}</button>
                         <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                     </div>
                 </div>
@@ -5488,7 +6260,12 @@
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
+                <button class="btn-later" id="mp-later" title="">🧐</button>
             </div>
+            <section id="mp-later-panel" class="later-panel" hidden role="dialog" aria-modal="true" aria-label="${tx.mpLaterListLabel}">
+                <div class="later-panel-header"><strong id="mp-later-heading">${tx.mpLaterListLabel}</strong><button id="mp-later-close" type="button" aria-label="${tx.onboardingClose}">×</button></div>
+                <div id="mp-later-items"></div>
+            </section>
             <div class="toast" id="mp-toast"></div>
             <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
         `;
@@ -5568,14 +6345,105 @@
         doc.getElementById('mp-dislike')?.addEventListener('click', function () { run('dislike'); });
         doc.getElementById('mp-hate')?.addEventListener('click', function () { run('hate'); });
         doc.getElementById('mp-later')?.addEventListener('click', function () { run('later'); });
+        const listButton = doc.getElementById('mp-later-list');
+        const listPanel = doc.getElementById('mp-later-panel');
+        const closeList = function () {
+            listPanel.hidden = true;
+            listButton.setAttribute('aria-expanded', 'false');
+            listButton.focus();
+        };
+        listButton.addEventListener('click', function () {
+            listPanel.hidden = false;
+            listButton.setAttribute('aria-expanded', 'true');
+            renderMiniLaterList(doc);
+            doc.getElementById('mp-later-close').focus();
+        });
+        doc.getElementById('mp-later-close').addEventListener('click', closeList);
+        listPanel.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') { event.preventDefault(); closeList(); }
+            if (event.key !== 'Tab') return;
+            const controls = Array.from(listPanel.querySelectorAll('button:not(:disabled), a[href]'));
+            const first = controls[0], last = controls[controls.length - 1];
+            if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
+        });
+    }
+
+    function renderMiniLaterList(doc) {
+        const items = doc.getElementById('mp-later-items');
+        if (!items) return;
+        const tx = getI18nTexts();
+        const records = Object.keys(laterState.map).map(function (id) { return laterState.map[id]; }).sort(function (a, b) {
+            const oldest = function (record) {
+                const time = record.addedAt == null || record.addedAt === '' ? NaN : new Date(record.addedAt).getTime();
+                return Number.isFinite(time) ? time : Infinity;
+            };
+            const aTime = oldest(a), bTime = oldest(b);
+            if (aTime !== bTime) return aTime < bTime ? -1 : 1;
+            const aName = String(a.name || '').toLowerCase(), bName = String(b.name || '').toLowerCase();
+            if (aName !== bName) return aName < bName ? -1 : 1;
+            return String(a.artistId).localeCompare(String(b.artistId));
+        });
+        const signature = JSON.stringify([state.preferredLanguage, records.map(function (r) { return [r.artistId, r.name, r.permalink, r.addedAt]; })]);
+        if (items.dataset.signature === signature) return;
+        items.dataset.signature = signature;
+        const scrollTop = items.scrollTop;
+        items.textContent = '';
+        records.forEach(function (record, index) {
+            const row = doc.createElement('div');
+            row.className = 'later-item';
+            const link = doc.createElement(record.permalink ? 'a' : 'span');
+            link.className = 'later-item-name';
+            link.textContent = record.name || String(record.artistId);
+            if (record.permalink) {
+                link.href = 'https://soundcloud.com/' + encodeURIComponent(record.permalink) + '/tracks';
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+            }
+            row.appendChild(link);
+            const savedTime = record.addedAt == null || record.addedAt === '' ? NaN : new Date(record.addedAt).getTime();
+            const date = doc.createElement('time');
+            date.textContent = '—';
+            if (Number.isFinite(savedTime)) {
+                date.dateTime = new Date(savedTime).toISOString();
+                date.textContent = new Date(savedTime).toLocaleDateString(FreshDigI18n.resolveLanguage(state.preferredLanguage));
+            }
+            row.appendChild(date);
+            const remove = doc.createElement('button');
+            remove.type = 'button';
+            remove.className = 'later-remove';
+            remove.textContent = '×';
+            remove.title = tx.listLaterDelete;
+            remove.setAttribute('aria-label', tx.listLaterDelete + ': ' + (record.name || record.artistId));
+            remove.addEventListener('click', async function () {
+                if (remove.disabled) return;
+                remove.disabled = true;
+                const result = await laterOp({ op: 'remove', artistId: String(record.artistId) });
+                if (!result.ok) { remove.disabled = false; mpToast(tt('m_laterFail')); return; }
+                delete laterState.map[String(record.artistId)];
+                updateLaterButton();
+                try { scheduleQueuePrune(); } catch (e) {}
+                renderMiniLaterList(doc);
+                const buttons = items.querySelectorAll('.later-remove');
+                (buttons[Math.min(index, buttons.length - 1)] || doc.getElementById('mp-later-close')).focus();
+            });
+            row.appendChild(remove);
+            items.appendChild(row);
+        });
+        if (!records.length) {
+            const empty = doc.createElement('p'); empty.textContent = tx.listEmpty; items.appendChild(empty);
+        }
+        items.scrollTop = scrollTop;
+        doc.getElementById('mp-later-heading').textContent = tx.mpLaterListLabel;
+        doc.getElementById('mp-later-close').setAttribute('aria-label', tx.onboardingClose);
     }
 
     // ---- R4: 複数タブ。音を出しているタブの「今の曲」を BroadcastChannel で流し、ミニプレイヤーはそれを写す ----
     const fdRemote = { now: null, active: false, seq: 0, pending: {} };
 
     function isLocalPlaying() {
-        const m = lastPlayedMedia;
-        if (m && m.src && m.readyState > 0 && !m.ended) return !m.paused;
+        const m = getActiveMedia(false);
+        if (m) return !m.paused && !m.ended;
         const playBtn = document.querySelector('.playControls__play');
         return !!(playBtn && playBtn.classList.contains('playing'));
     }
@@ -5673,6 +6541,7 @@
             ratio: ratio,
             hated: isCurrentArtistHated(),
             later: isCurrentArtistSavedLater(),
+            digSuspended: isOnLaterArtistPage(),
             vol: getSoundCloudVolume()
         };
     }
@@ -5705,160 +6574,217 @@
     // ミニプレイヤーの操作を、音を出しているタブへ送る
     function mpRemoteCall(name, args) {
         const r = fdRemote.now;
-        if (!r) return;
+        if (!r) return Promise.resolve({ success: false, message: tt('m_tabNoReply') });
+        const existing = Object.keys(fdRemote.pending).map(function (key) { return fdRemote.pending[key]; }).find(function (p) {
+            return p.tabId === r.tabId && p.name === name;
+        });
+        if (existing) return existing.promise;
         const id = ++fdRemote.seq;
-        fdRemote.pending[id] = true;
+        let resolveCommand;
+        const promise = new Promise(function (resolve) { resolveCommand = resolve; });
+        const pending = { name: name, tabId: r.tabId, resolve: resolveCommand, promise: promise, received: false };
+        pending.onTimeout = function () {
+            if (fdRemote.pending[id] !== pending) return;
+            const result = { success: false, uncertain: true, pending: pending.received, message: pending.received ? tt('m_actionPending') : tt('m_tabNoReply') };
+            mpToast(result.message);
+            pending.resolve(result);
+            // Keep the in-flight key for late completion instead of retrying a
+            // mutation that may already have reached SoundCloud. Bound retention.
+            pending.cleanupTimer = setTimeout(function () {
+                if (fdRemote.pending[id] === pending) delete fdRemote.pending[id];
+            }, 240000);
+        };
+        fdRemote.pending[id] = pending;
+        pending.receiptTimer = setTimeout(pending.onTimeout, 1500);
         fdBus.post('cmd', { to: r.tabId, id: id, name: name, args: args });
-        setTimeout(function () {
-            if (!fdRemote.pending[id]) return;
-            delete fdRemote.pending[id];
-            if (fdRemote.now && fdRemote.now.tabId === r.tabId) fdRemote.now = null;
-            mpToast(tt('m_tabNoReply'));
-            // 相手タブが応答しなかった場合、再生/一時停止('play')のみ自タブでフォールバック可能
-            // （他の操作は曲や作者が別物の可能性があるため自タブ実行しない）
-            if (name === 'play') {
-                const localFn = MP_ACTIONS.play;
-                if (localFn) {
-                    try {
-                        const res = localFn(args || {}, mpToast, null);
-                        if (res && typeof res.catch === 'function') res.catch(function () {});
-                    } catch (e) {}
-                }
-            }
-        }, 1500);
+        return promise;
     }
+
+    fdBus.on('cmd-received', function (m) {
+        if (m.to !== TAB_ID) return;
+        const pending = fdRemote.pending[m.id];
+        if (!pending || pending.tabId !== m.fromTabId || pending.received) return;
+        pending.received = true;
+        clearTimeout(pending.receiptTimer);
+        pending.completionTimer = setTimeout(pending.onTimeout, 60000);
+    });
 
     fdBus.on('cmd', function (m) {
         if (m.to !== TAB_ID) return;
-        fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id });
+        fdBus.post('cmd-received', { to: m.fromTabId, id: m.id });
         const fn = MP_ACTIONS[m.name];
-        if (!fn) return;
         const reply = function (text) { fdBus.post('cmd-toast', { to: m.fromTabId, text: text }); };
+        if (!fn) {
+            fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id, result: { success: false, message: 'Unknown action: ' + m.name } });
+            return;
+        }
         try {
             const r = fn(m.args || {}, reply, null);
-            if (r && typeof r.catch === 'function') r.catch(function (e) { dlog('remote-cmd-error', m.name + ' ' + (e && e.message)); });
-        } catch (e) { dlog('remote-cmd-error', m.name + ' ' + (e && e.message)); }
+            Promise.resolve(r).then(function (result) {
+                fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id, result: result || { success: true, verified: false } });
+            }, function (e) {
+                const failure = { success: false, message: tt('m_commErr') };
+                dlog('remote-cmd-error', m.name + ' ' + errorName(e));
+                fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id, result: failure });
+            });
+        } catch (e) {
+            const failure = { success: false, message: tt('m_commErr') };
+            dlog('remote-cmd-error', m.name + ' ' + errorName(e));
+            fdBus.post('cmd-ack', { to: m.fromTabId, id: m.id, result: failure });
+        }
     });
     fdBus.on('cmd-ack', function (m) {
-        if (m.to === TAB_ID) delete fdRemote.pending[m.id];
+        if (m.to !== TAB_ID) return;
+        const pending = fdRemote.pending[m.id];
+        if (!pending || pending.tabId !== m.fromTabId) return;
+        clearTimeout(pending.receiptTimer);
+        clearTimeout(pending.completionTimer);
+        clearTimeout(pending.cleanupTimer);
+        delete fdRemote.pending[m.id];
+        const result = m.result || { success: true };
+        if (result.success === false) mpToast(result.message || tt('m_commErr'));
+        if (pending.resolve) pending.resolve(result);
     });
     fdBus.on('cmd-toast', function (m) {
         if (m.to === TAB_ID && typeof m.text === 'string') mpToast(m.text);
     });
 
     // 前・次: 再生管理があればそれで、なければ画面のボタンを押す
-    function scTransport(method, selector) {
+    async function scTransport(method, selector, toast) {
+        let invoked = false;
         try {
             const pm = getScPlaybackManager();
-            if (pm && typeof pm[method] === 'function') { pm[method]({ userInitiated: true }); return; }
-        } catch (e) {}
+            if (pm && typeof pm[method] === 'function') { pm[method]({ userInitiated: true }); invoked = true; }
+        } catch (e) { dlog('transport-fail', { method: method, error: errorName(e) }); }
+        if (invoked) return { success: true, method: method, verified: false };
         const b = document.querySelector(selector);
-        if (b) b.click();
+        if (b) {
+            try { b.click(); invoked = true; } catch (e) {}
+        }
+        if (!invoked) {
+            const failure = { success: false, message: tt('m_commErr') };
+            if (toast) toast(failure.message);
+            return failure;
+        }
+        return { success: true, method: method, verified: false };
     }
 
-    // 再生/一時停止: 音声そのもの・再生管理を直接動かす。画面のボタンは裏のタブでは反応しないことがあるため、最後の手段にする
-    function scTogglePlay() {
-        const clickBtn = function () { const b = document.querySelector('.playControls__play'); if (b) b.click(); };
-        const media = lastPlayedMedia;
-        if (isLocalPlaying()) {
+    // 再生/一時停止: 一度だけネイティブ経路を選び、結果を検証して返す。
+    async function scTogglePlay(toast) {
+        playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
+        const playing = isLocalPlaying();
+        const media = getActiveMedia(true);
+        const fail = function (message) {
+            const result = { success: false, message: message || tt('m_commErr') };
+            if (toast) toast(result.message);
+            return result;
+        };
+        if (playing) {
+            playbackIntent.wanted = false;
+            playbackIntent.suppressPauseUntil = Date.now() + 500;
+            let invoked = false;
             try {
                 const pm = getScPlaybackManager();
-                if (pm && typeof pm.pauseCurrent === 'function') { pm.pauseCurrent(); return; }
+                if (pm && typeof pm.pauseCurrent === 'function') { pm.pauseCurrent(); invoked = true; }
             } catch (e) {}
-            if (media && !media.paused) { try { media.pause(); return; } catch (e) {} }
-            clickBtn();
-            return;
+            if (!invoked && media && typeof media.pause === 'function') {
+                try { media.pause(); invoked = true; } catch (e) {}
+            }
+            if (!invoked) {
+                const b = document.querySelector('.playControls__play.playing, .playControls__play');
+                if (b) { try { b.click(); invoked = true; } catch (e) {} }
+            }
+            if (!invoked) return fail(tt('m_commErr'));
+            if (!(await waitForLocalPlaying(false, 700))) return fail(tt('m_commErr'));
+            return { success: true, playing: false, verified: true };
         }
-        if (media && media.src && media.paused && !media.ended) {
-            let r;
-            try { r = media.play(); } catch (e) { clickBtn(); return; }
-            if (r && typeof r.catch === 'function') r.catch(function (e) { dlog('mini-play-blocked', e && e.name); clickBtn(); });
-            setTimeout(function () { if (media.paused && !isLocalPlaying()) clickBtn(); }, 600);
-            return;
+
+        playbackIntent.wanted = true;
+        let invoked = false;
+        try {
+            if (media && typeof media.play === 'function' && !media.ended) {
+                const playResult = await invokeMediaPlay(media, 700);
+                if (!playResult.success) {
+                    playbackIntent.wanted = false;
+                    dlog('mini-play-blocked', errorName(playResult.error));
+                    return fail(errorName(playResult.error));
+                }
+                invoked = true;
+            }
+        } catch (e) {
+            playbackIntent.wanted = false;
+            dlog('mini-play-blocked', errorName(e));
+            return fail(errorName(e));
         }
-        clickBtn();
+        if (!invoked) {
+            const b = document.querySelector('.playControls__play');
+            if (!b) {
+                playbackIntent.wanted = false;
+                return fail(tt('m_commErr'));
+            }
+            try { b.click(); invoked = true; } catch (e) {
+                playbackIntent.wanted = false;
+                return fail(errorName(e));
+            }
+        }
+        if (!(await waitForLocalPlaying(true, 700))) {
+            playbackIntent.wanted = false;
+            return fail(tt('m_commErr'));
+        }
+        return { success: true, playing: true, verified: true };
     }
 
     // ミニプレイヤーの操作の中身。(args, toast, doc) を受ける。doc はこのタブのミニプレイヤー（別タブから呼ばれたときは null）
     const MP_ACTIONS = {
-        prev: function () { scTransport('playPrev', '.playControls__prev'); },
-        play: function () { scTogglePlay(); },
-        next: function () { scTransport('playNext', '.playControls__next'); },
-        seek: function (a) { if (typeof a.ratio === 'number') seekToSoundCloudRatio(a.ratio); },
-        vol: function (a) { if (typeof a.v === 'number') setSoundCloudVolume(a.v); },
-        mute: function () { toggleSoundCloudMute(); },
-        like: function (a, toast) {
-            const likeBtn = document.querySelector('.playbackSoundBadge__like');
-            if (!likeBtn) { toast(tt('m_noLikeBtn')); return; }
-            const isCurrentlyLiked = likeBtn.classList.contains('sc-button-selected') || likeBtn.getAttribute('aria-checked') === 'true';
-            likeBtn.click();
-            const likedId = state.currentTrack && toNumId(state.currentTrack.id);
-            if (likedId) {
-                if (isCurrentlyLiked) state.likedTrackIds.delete(likedId); else state.likedTrackIds.add(likedId);
-            }
-            toast(isCurrentlyLiked ? tt('mpToastUnliked') : tt('mpToastLiked'));
-            setTimeout(syncMiniPlayerUI, 300);
+        prev: function (a, toast) { return scTransport('playPrev', '.playControls__prev', toast); },
+        play: function (a, toast) { return scTogglePlay(toast); },
+        next: function (a, toast) { return scTransport('playNext', '.playControls__next', toast); },
+        seek: function (a, toast) {
+            if (typeof a.ratio !== 'number') return { success: false, message: tt('m_commErr') };
+            const ok = seekToSoundCloudRatio(a.ratio);
+            if (!ok && toast) toast(tt('m_commErr'));
+            return { success: !!ok, verified: !!ok, message: ok ? '' : tt('m_commErr') };
         },
+        vol: function (a) { return { success: typeof a.v === 'number' && setSoundCloudVolume(a.v) !== null }; },
+        mute: function () { return toggleSoundCloudMute(); },
+        like: function (a, toast) { return toggleLikeFromNative(toast); },
         repost: async function (a, toast) {
             const t = await ensureCurrentTrackInfo();
             const trackId = t && toNumId(t.id);
-            if (!trackId) { toast(tt('m_trackLoading')); return; }
-            if (!(await waitForAuthToken(1500))) { toast(tt('m_loginPlease')); return; }
-            if (a.unrepost) {
-                toast(tt('m_unreposting'));
-                try {
-                    const res = await scApi('me/track_reposts/' + trackId, { method: 'DELETE' });
-                    if (res.ok) {
-                        state.repostedTrackIds.delete(trackId);
-                        saveCacheData();
-                        const repostBtn = document.querySelector('.playbackSoundBadge__actions button[title*="Repost"], .playbackSoundBadge__actions button[aria-label*="Repost"], .playbackSoundBadge__repost');
-                        if (repostBtn && state.currentTrack && toNumId(state.currentTrack.id) === trackId) {
-                            repostBtn.classList.remove('sc-button-selected');
-                            repostBtn.setAttribute('aria-checked', 'false');
-                        }
-                        dlog('unrepost', { trackId: trackId, status: res.status });
-                        toast(tt('mpToastUnreposted'));
-                    } else {
-                        dlog('unrepost-fail', { trackId: trackId, status: res.status });
-                        toast(tt('m_unrepostFail', { s: res.status }));
-                    }
-                } catch (err) {
-                    console.error('[SC-FreshStation] Unrepost error:', err);
-                    dlog('unrepost-fail', { trackId: trackId, error: String(err) });
-                    toast(tt('m_commErr'));
-                }
-            } else {
-                await repostTrack(trackId, toast);
-            }
-            syncMiniPlayerUI();
+            if (!trackId) { const failure = { success: false, message: tt('m_trackLoading') }; toast(failure.message); return failure; }
+            return repostTrack(trackId, toast, !a.unrepost);
         },
         follow: async function (a, toast) {
             const t = await ensureCurrentTrackInfo();
-            const artistId = t && t.artistId;
+            const artistId = t && toNumId(t.artistId);
             const artistName = (t && t.artistName) || tt('m_artistDefault');
-            if (!artistId) { toast(tt('m_artistLoading')); return; }
+            if (!artistId) { const failure = { success: false, message: tt('m_artistLoading') }; toast(failure.message); return failure; }
+            const native = nativeFollowButton();
+            if (native && currentTrackMatches(t.id)) {
+                const expected = !nativeButtonActive(native);
+                return runNativeInteraction('follow', artistId, native, expected, toast, expected ? tt('mpToastFollowed') : tt('mpToastUnfollowed'), t.id);
+            }
             const isFollowing = state.followingUserIds.has(artistId);
             toast(isFollowing ? tt('m_unfollowing') : tt('m_following'));
             try {
-                if (!(await waitForAuthToken(1500))) { toast(tt('m_loginPlease')); return; }
+                if (!(await waitForAuthToken(1500))) { const failure = { success: false, message: tt('m_loginPlease'), verified: false }; toast(failure.message); return failure; }
                 // SoundCloud API: フォローは POST、解除は DELETE
                 const res = await scApi('me/followings/' + artistId, { method: isFollowing ? 'DELETE' : 'POST' });
                 if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
-                    if (isFollowing) {
-                        state.followingUserIds.delete(artistId);
-                        toast(tt('m_unfollowed', { name: artistName }));
-                    } else {
-                        state.followingUserIds.add(artistId);
-                        toast(tt('m_followed', { name: artistName }));
-                    }
-                    saveCacheData();
-                    syncMiniPlayerUI();
+                    const active = !isFollowing;
+                    commitInteraction('follow', artistId, active);
+                    toast(active ? tt('m_followed', { name: artistName }) : tt('m_unfollowed', { name: artistName }));
+                    return { success: true, verified: false, active: active };
                 } else {
-                    toast(tt('m_followFail', { s: res.status }));
+                    const failure = { success: false, message: tt('m_followFail', { s: res.status }), verified: false };
+                    toast(failure.message);
+                    return failure;
                 }
             } catch (e) {
                 console.error('[SC-FreshStation] Follow error:', e);
-                toast(tt('m_commErr'));
+                const failure = { success: false, message: tt('m_commErr'), verified: false };
+                toast(failure.message);
+                return failure;
             }
         },
         station: function () { return startTrackStation(); },
@@ -5931,9 +6857,9 @@
 
         // Follow 状態
         if (mpFollow && d.following !== null && d.following !== undefined) {
-            mpFollow.textContent = '👤';
             mpFollow.classList.toggle('following', !!d.following);
             mpFollow.title = d.following ? tt('m_followingLbl') : tt('mpFollowBtnTitle');
+            mpFollow.setAttribute('aria-label', mpFollow.title);
         }
 
         const mpHate = doc.getElementById('mp-hate');
@@ -5950,12 +6876,17 @@
         if (mpStatus) {
             const isOn = state.discoveryEnabled;
             const isDiscovery = state.playbackMode === 'DISCOVERY';
-            const label = state.robotBlocked ? ('⚠️ ' + getI18nTexts().robotShort) : (!isOn ? tt('m_stOff') : (isDiscovery ? tt('m_stOn') : tt('m_stFollow')));
+            const suspended = isOn && !!d.digSuspended;
+            const label = state.robotBlocked ? ('⚠️ ' + getI18nTexts().robotShort) : (suspended ? tt('mpDigListening') : (!isOn ? tt('m_stOff') : (isDiscovery ? tt('m_stOn') : tt('m_stFollow'))));
             if (mpStatus.textContent !== label) mpStatus.textContent = label;
             const tStatus = getI18nTexts(); mpStatus.title = isOn ? tStatus.mpStatusToggleOff : tStatus.mpStatusToggleOn;
-            mpStatus.classList.toggle('off', !isOn);
+            mpStatus.classList.toggle('off', !isOn || suspended);
             mpStatus.classList.toggle('following-mode', isOn && !isDiscovery);
         }
+        const listButton = doc.getElementById('mp-later-list');
+        if (listButton) listButton.textContent = getI18nTexts().mpLaterListLabel;
+        const listPanel = doc.getElementById('mp-later-panel');
+        if (listPanel && !listPanel.hidden) renderMiniLaterList(doc);
 
         // シークバーの同期
         if (!isSeekingInMiniPlayer) {
@@ -5975,6 +6906,7 @@
     }
 
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
+    registerAutoMiniPlayerHandler();
     registerExtraMediaSessionHandlers();
 
 })();

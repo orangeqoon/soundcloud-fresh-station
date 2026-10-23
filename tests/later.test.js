@@ -8,10 +8,11 @@ const vm = require('vm');
 function loadBackground() {
   const store = {};
   let listener = null;
+  let installed = null;
   const chrome = {
     cookies: null,
     tabs: { onUpdated: { addListener() {} }, query() {}, sendMessage() { return Promise.resolve(); } },
-    runtime: { lastError: null, onMessage: { addListener(fn) { listener = fn; } } },
+    runtime: { lastError: null, onMessage: { addListener(fn) { listener = fn; } }, onInstalled: { addListener(fn) { installed = fn; } } },
     storage: {
       local: {
         get(key) { return Promise.resolve(key in store ? { [key]: JSON.parse(JSON.stringify(store[key])) } : {}); },
@@ -22,8 +23,19 @@ function loadBackground() {
   const code = fs.readFileSync(path.join(__dirname, '..', 'background.js'), 'utf8');
   vm.runInNewContext(code, { chrome, console: { log() {}, warn() {} }, Promise, JSON, Date, String, Array });
   const send = (req) => new Promise((resolve) => { listener(req, {}, resolve); });
-  return { store, send };
+  return { store, send, install: (reason) => installed({ reason }) };
 }
+
+test('onboarding is scheduled on install, not on an extension update', () => {
+  const { store, install } = loadBackground();
+  install('update');
+  assert.strictEqual(store.onboardingPending, undefined);
+  install('install');
+  assert.strictEqual(store.onboardingPending, true);
+  store.onboardingPending = false;
+  install('update');
+  assert.strictEqual(store.onboardingPending, false);
+});
 
 test('later: add, duplicate, remove', async () => {
   const { store, send } = loadBackground();

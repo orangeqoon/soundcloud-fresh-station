@@ -109,8 +109,17 @@
     // 後で聴く作者が変わったら（どのタブ・ポップアップからでも）MAIN world へ知らせる
     try {
         chrome.storage.onChanged.addListener(function (changes, area) {
-            if (area !== 'local' || !changes.laterArtists) return;
-            window.postMessage({ type: 'SC_FRESH_STATION_LATER_CHANGED', list: changes.laterArtists.newValue || [] }, window.location.origin);
+            if (area !== 'local') return;
+            if (changes.laterArtists) {
+                window.postMessage({ type: 'SC_FRESH_STATION_LATER_CHANGED', list: changes.laterArtists.newValue || [] }, window.location.origin);
+            }
+            const settings = {};
+            SYNCABLE_KEYS.forEach(function (key) {
+                if (changes[key]) settings[key] = changes[key].newValue;
+            });
+            if (Object.keys(settings).length) {
+                window.postMessage({ type: 'SC_FRESH_STATION_RESTORE_STORAGE', data: settings }, window.location.origin);
+            }
         });
     } catch (e) {}
 

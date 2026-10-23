@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FreshDig</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 16px; background: #151515; color: #f4f4f4; font: 16px/1.65 system-ui, sans-serif; }
+    main { max-width: 680px; margin: auto; }
+    header { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
+    h1 { flex: 1; font-size: 26px; margin: 0; }
+    nav { display: flex; gap: 5px; }
+    button { color: #eee; background: #252525; border: 1px solid #666; border-radius: 6px; padding: 7px; cursor: pointer; }
+    button[aria-pressed="true"] { border-color: #ff5500; background: #ff5500; color: #fff; }
+    section { margin: 20px 0; padding: 22px; border: 1px solid #555; border-left: 4px solid #ff5500; border-radius: 10px; background: #222; }
+    h2 { margin: 0 0 12px; color: #ff9a55; font-size: 21px; line-height: 1.4; }
+    p { margin: 0; }
+    a { display: inline-block; padding: 10px 18px; background: #ff5500; border-radius: 7px; color: #fff; font-weight: 700; text-decoration: none; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #ffd166; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="guide-title">FreshDig</h1>
+      <nav aria-label="Language">
+        <button type="button" data-lang="ja" aria-pressed="false">日本語</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        <button type="button" data-lang="de" aria-pressed="false">DE</button>
+        <button type="button" data-lang="ru" aria-pressed="false">RU</button>
+      </nav>
+    </header>
+    <section aria-labelledby="guide-step-1"><h2 id="guide-step-1"></h2><p id="guide-body-1"></p></section>
+    <section aria-labelledby="guide-step-2"><h2 id="guide-step-2"></h2><p id="guide-body-2"></p></section>
+    <section aria-labelledby="guide-step-3"><h2 id="guide-step-3"></h2><p id="guide-body-3"></p></section>
+    <a href="https://soundcloud.com/" target="_blank" rel="noopener noreferrer">SoundCloud ↗</a>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="guide.js"></script>
+</body>
+</html>

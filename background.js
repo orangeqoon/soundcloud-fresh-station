@@ -4,6 +4,13 @@
 
     console.log('[SC-FreshStation] Background Service Worker initialized');
 
+    // 新規インストール後、最初に開いた SoundCloud でだけ案内する。
+    if (chrome.runtime.onInstalled) {
+        chrome.runtime.onInstalled.addListener(function (details) {
+            if (details.reason === 'install') chrome.storage.local.set({ onboardingPending: true });
+        });
+    }
+
     function getSoundCloudAuthToken(callback) {
         if (!chrome.cookies) {
             callback(null);

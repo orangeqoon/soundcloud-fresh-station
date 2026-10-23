@@ -42,6 +42,26 @@ test('liked / following; library and artist page keep known tracks', () => {
   assert.strictEqual(core.getSkipReasonKey({ id: 3, artistId: 8 }, { ...c, onArtistPage: true }), 'skipReasonHated');
 });
 
+test('Later artists are excluded in Dig except on their own intentional artist page', () => {
+  const c = { ...base(), laterArtists: { '8': { name: 'Saved artist' } } };
+  const track = { id: 3, artistId: 8 };
+  assert.deepStrictEqual(core.getSkipReasonDetails(track, c), { reason: 'skipReasonLater', key: '8' });
+  assert.strictEqual(core.getSkipReasonKey(track, { ...c, onArtistPage: true }), null);
+  assert.strictEqual(core.getSkipReasonKey(track, { ...c, discoveryEnabled: false }), null);
+  assert.strictEqual(core.getSkipReasonKey(track, { ...c, playbackMode: 'FOLLOWING_NEW' }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 4, artistId: 9, artistName: 'Saved artist' }, c), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 4 }, c), null);
+  c.dislikedArtists[8] = true;
+  assert.strictEqual(core.getSkipReasonKey(track, c), 'skipReasonHated');
+  assert.strictEqual(core.getSkipReasonKey(track, { ...c, onArtistPage: true }), null);
+});
+
+test('Later exemption requires the matching saved author on the artist page', () => {
+  const c = { ...base(), laterArtists: { '8': { name: 'Saved artist' } }, followingUserIds: new Set([9]) };
+  assert.strictEqual(core.getSkipReasonKey({ id: 3, artistId: 8 }, { ...c, onArtistPage: true }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 4, artistId: 9 }, c), 'skipReasonFollowing');
+});
+
 test('undefined / empty ids never match', () => {
   const c = base(); c.dislikedTracks['undefined'] = true; c.dislikedArtists[''] = true;
   assert.strictEqual(core.getSkipReasonKey({ id: undefined, artistId: null, title: '', artistName: '' }, c), null);

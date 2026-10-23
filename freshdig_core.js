@@ -30,6 +30,9 @@
     if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
     const id = toNumId(info.id);
     const artistId = toNumId(info.artistId);
+    // 後で聴く作者のページでは、その作者を意図的に聴いているので Dig の除外を解除する
+    if (ctx.onArtistPage && artistId && hasOwn(ctx.laterArtists, artistId)) return null;
+
     const title = (info.title || '').trim();
     const artist = (info.artistName || '').trim();
     const genre = (info.genre || '').trim().toLowerCase();
@@ -79,6 +82,11 @@
     // 4. 自分の曲
     if (artistId && ctx.myUserId && artistId === toNumId(ctx.myUserId)) {
       return { reason: 'skipReasonOwn', key: String(artistId) };
+    }
+
+    // 後で聴く作者は Dig 中には流さない。実際に聴くときは Dig を OFF にする。
+    if (artistId && hasOwn(ctx.laterArtists, artistId)) {
+      return { reason: 'skipReasonLater', key: String(artistId) };
     }
 
     // 5. 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は除外しない

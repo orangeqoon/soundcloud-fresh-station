@@ -49,19 +49,26 @@ document.addEventListener('DOMContentLoaded', async function () {
   function applyStaticTranslations() {
     document.documentElement.lang = FreshDigI18n.resolveLanguage(currentLang);
     document.getElementById('btn-miniplayer').textContent = t.btnMiniPlayer;
-    const btnStation = document.getElementById('btn-station');
-    btnStation.textContent = t.btnStation;
-    btnStation.title = t.btnStationTitle;
 
     document.getElementById('auto-mp-label-wrapper').title = t.autoMpTitle;
     document.getElementById('auto-mp-text').textContent = t.autoMpLabel;
-
-    document.getElementById('label-vol-control').textContent = t.volControl;
-    const btnMute = document.getElementById('btn-vol-mute');
-    btnMute.title = t.volMute;
-    document.getElementById('vol-slider').title = t.volSliderTitle;
+    const autoMpNote = document.getElementById('auto-mp-note');
+    if (autoMpNote) {
+      autoMpNote.textContent = t.autoMpPermissionNote;
+      autoMpNote.classList.remove('unsupported');
+    }
+    const autoMpStatus = document.getElementById('auto-mp-status');
+    if (autoMpStatus) {
+      autoMpStatus.textContent = t.autoMpStatusUnknown;
+      autoMpStatus.classList.remove('unsupported');
+    }
 
     document.getElementById('label-discovery-title').textContent = t.discoveryMode;
+    const discoveryToggle = document.getElementById('discovery-toggle');
+    if (discoveryToggle) discoveryToggle.setAttribute('aria-label', t.discoveryMode);
+
+    const guideBtn = document.getElementById('btn-open-guide');
+    if (guideBtn) guideBtn.textContent = t.onboardingGuideButton;
 
     document.getElementById('label-target-pl').textContent = t.targetPlaylist;
     document.getElementById('sync-btn').textContent = t.btnSync;
@@ -103,8 +110,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   let tab = null;
 
-  // ---- リスト（R3 除外した作者 / R6 後で聴く） ----
-  let listTab = 'hated';
+  // ---- リスト（R3 除外した作者 / R6 後で聴く / NoPlay） ----
+  let listTab = 'later';
   let listLimit = 50;
   let laterList = [];
 
@@ -133,14 +140,53 @@ document.addEventListener('DOMContentLoaded', async function () {
     return row;
   }
 
+  function laterDateValue(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) ? timestamp : null;
+  }
+
+  function compareLaterEntries(a, b) {
+    const aDate = laterDateValue(a && a.addedAt);
+    const bDate = laterDateValue(b && b.addedAt);
+    if (aDate !== bDate) {
+      if (aDate === null) return 1;
+      if (bDate === null) return -1;
+      return aDate - bDate;
+    }
+
+    // Keep records without a date deterministic instead of relying on object order.
+    const aName = String((a && a.name) || '').toLowerCase();
+    const bName = String((b && b.name) || '').toLowerCase();
+    if (aName !== bName) return aName < bName ? -1 : 1;
+    const aId = String(a && a.artistId !== undefined ? a.artistId : '');
+    const bId = String(b && b.artistId !== undefined ? b.artistId : '');
+    if (aId !== bId) return aId < bId ? -1 : 1;
+    return 0;
+  }
+
   function renderLists() {
     const body = document.getElementById('list-body');
     if (!body) return;
     const q = (document.getElementById('list-search').value || '').trim().toLowerCase();
-    document.getElementById('tab-hated').textContent = t.tabHated;
+    const hatedTab = document.getElementById('tab-hated');
+    const noPlayTab = document.getElementById('tab-noplay');
+    hatedTab.textContent = '🤬';
+    hatedTab.title = t.tabHated;
+    hatedTab.setAttribute('aria-label', t.tabHated);
+    if (noPlayTab) {
+      noPlayTab.textContent = '⏭️';
+      noPlayTab.title = t.tabNoPlay || 'NoPlay';
+      noPlayTab.setAttribute('aria-label', t.tabNoPlay || 'NoPlay');
+    }
     document.getElementById('tab-later').textContent = t.tabLater;
     document.getElementById('tab-hated').classList.toggle('active', listTab === 'hated');
+    if (noPlayTab) noPlayTab.classList.toggle('active', listTab === 'noplay');
     document.getElementById('tab-later').classList.toggle('active', listTab === 'later');
+    hatedTab.setAttribute('aria-pressed', String(listTab === 'hated'));
+    if (noPlayTab) noPlayTab.setAttribute('aria-pressed', String(listTab === 'noplay'));
+    document.getElementById('tab-later').setAttribute('aria-pressed', String(listTab === 'later'));
+    body.setAttribute('aria-labelledby', 'tab-' + listTab);
     document.getElementById('list-search').placeholder = t.listSearch;
     body.textContent = '';
     let rows = [];
@@ -165,11 +211,48 @@ document.addEventListener('DOMContentLoaded', async function () {
           };
         });
       }
+    } else if (listTab === 'noplay') {
+      if (!cachedData) {
+        rows = null;
+      } else {
+        const dt = cachedData.dislikedTracks || {};
+        const items = Object.keys(dt).map(function (k) { return { key: k, rec: dt[k] || {} }; });
+        rows = items.filter(function (it) {
+          const rec = it.rec || {};
+          const searchText = [rec.title, rec.artist, it.key].filter(Boolean).join(' ').toLowerCase();
+          return !q || searchText.indexOf(q) !== -1;
+        }).map(function (it) {
+          return function () {
+            const rec = it.rec || {};
+            let href = '';
+            try {
+              const url = new URL(rec.permalink_url || rec.permalink || '', 'https://soundcloud.com');
+              if ((rec.permalink_url || rec.permalink) && url.protocol === 'https:' && url.hostname === 'soundcloud.com') href = url.href;
+            } catch (e) {}
+            const sub = [rec.artist, rec.date].filter(Boolean).join(' · ');
+            return rowEl(rec.title || rec.name || it.key, href, sub, t.listLaterDelete, function () {
+              if (!tab) return;
+              chrome.tabs.sendMessage(tab.id, {
+                target: 'SC_FRESH_STATION',
+                action: 'REMOVE',
+                targetType: 'track',
+                targetId: it.key
+              }, function (result) {
+                if (chrome.runtime.lastError || !result || result.success !== true) return;
+                if (cachedData && cachedData.dislikedTracks) delete cachedData.dislikedTracks[it.key];
+                renderLists();
+              });
+            });
+          };
+        });
+      }
     } else {
-      rows = laterList.filter(function (x) { return !q || String(x.name || '').toLowerCase().indexOf(q) !== -1; }).map(function (x) {
+      const sortedLater = laterList.slice().sort(compareLaterEntries);
+      rows = sortedLater.filter(function (x) { return !q || String(x.name || '').toLowerCase().indexOf(q) !== -1; }).map(function (x) {
         return function () {
           const href = x.permalink ? 'https://soundcloud.com/' + encodeURIComponent(x.permalink) + '/tracks' : '';
-          const d = x.addedAt ? new Date(x.addedAt).toLocaleDateString() : '';
+          const timestamp = laterDateValue(x.addedAt);
+          const d = timestamp === null ? '' : new Date(timestamp).toLocaleDateString();
           const row = rowEl(x.name || x.artistId, href, d, t.listLaterDelete, function () {
             chrome.runtime.sendMessage({ action: 'LATER_REMOVE', artistId: x.artistId }, function () { void chrome.runtime.lastError; });
           });
@@ -199,6 +282,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
   document.getElementById('tab-hated').addEventListener('click', function () { listTab = 'hated'; listLimit = 50; renderLists(); });
+  document.getElementById('tab-noplay').addEventListener('click', function () { listTab = 'noplay'; listLimit = 50; renderLists(); });
   document.getElementById('tab-later').addEventListener('click', function () { listTab = 'later'; listLimit = 50; renderLists(); });
   document.getElementById('list-search').addEventListener('input', function () { listLimit = 50; renderLists(); });
   document.getElementById('list-more').addEventListener('click', function () { listLimit += 50; renderLists(); });
@@ -260,6 +344,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   applyStaticTranslations();
 
+
+  const guideButton = document.getElementById('btn-open-guide');
+  if (guideButton) {
+    guideButton.addEventListener('click', function () {
+      chrome.tabs.create({ url: chrome.runtime.getURL('guide.html') }, function () {
+        if (!chrome.runtime.lastError) window.close();
+      });
+    });
+  }
 
   const currentTabs = await chrome.tabs.query({ active: true, currentWindow: true });
   if (currentTabs[0] && currentTabs[0].url && currentTabs[0].url.indexOf('soundcloud.com') !== -1) {
@@ -439,23 +532,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
 
-  // ステーション開始ボタン
-  const stationBtn = document.getElementById('btn-station');
-  if (stationBtn) {
-    stationBtn.addEventListener('click', function () {
-      stationBtn.disabled = true;
-      stationBtn.textContent = t.btnSyncing;
-      chrome.tabs.sendMessage(tab.id, {
-        target: 'SC_FRESH_STATION',
-        action: 'START_STATION'
-      }, function (res) {
-        stationBtn.disabled = false;
-        stationBtn.textContent = t.btnStation;
-        setTimeout(function () { window.close(); }, 350);
-      });
-    });
-  }
-
   // 別タブを開いたらミニプレイヤーを自動表示 ON/OFF
   const autoMpToggle = document.getElementById('auto-mp-toggle');
   if (autoMpToggle) {
@@ -468,7 +544,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         target: 'SC_FRESH_STATION',
         action: 'SET_AUTO_MINI_PLAYER',
         enabled: enabled
-      }, function () { void chrome.runtime.lastError; });
+      }, function () {
+        if (!chrome.runtime.lastError) requestData();
+      });
     });
   }
 
@@ -489,43 +567,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
   }
 
-  // 音量コントロール
-  const volSlider = document.getElementById('vol-slider');
-  const volText = document.getElementById('vol-display-text');
-  const volMuteBtn = document.getElementById('btn-vol-mute');
-
-  if (volSlider) {
-    volSlider.addEventListener('input', function (e) {
-      const val = parseFloat(e.target.value);
-      if (volText) volText.textContent = Math.round(val) + '%';
-      if (volMuteBtn) {
-        volMuteBtn.textContent = val === 0 ? '🔇' : (val < 50 ? '🔉' : '🔊');
-      }
-      chrome.tabs.sendMessage(tab.id, {
-        target: 'SC_FRESH_STATION',
-        action: 'SET_VOLUME',
-        volume: val / 100
-      });
-    });
-  }
-
-  if (volMuteBtn) {
-    volMuteBtn.addEventListener('click', function () {
-      chrome.tabs.sendMessage(tab.id, {
-        target: 'SC_FRESH_STATION',
-        action: 'TOGGLE_MUTE'
-      }, function () {
-        setTimeout(requestData, 200);
-      });
-    });
-  }
-
   function updateDiscoveryUI(enabled) {
     const toggle = document.getElementById('discovery-toggle');
     const card = document.getElementById('discovery-card');
     const desc = document.getElementById('discovery-desc');
+    const status = document.getElementById('discovery-status');
     if (toggle && toggle.checked !== enabled) toggle.checked = enabled;
     if (card) card.classList.toggle('off', !enabled);
+    if (status) status.textContent = enabled ? t.discoveryStatusOn : t.discoveryStatusOff;
     if (desc) {
       desc.textContent = enabled ? t.discoveryOnDesc : t.discoveryOffDesc;
     }
@@ -557,10 +606,25 @@ document.addEventListener('DOMContentLoaded', async function () {
     const autoMpToggleEl = document.getElementById('auto-mp-toggle');
     if (autoMpToggleEl) {
       autoMpToggleEl.checked = data.autoMiniPlayer !== false;
-      if (data.autoPipSupported === false) {
-        autoMpToggleEl.disabled = true;
-        autoMpToggleEl.parentElement.title = t.autoMpNotSupported;
+      const unsupported = data.autoPipSupported === false || data.autoPipStatus === 'unsupported';
+      autoMpToggleEl.disabled = unsupported;
+      autoMpToggleEl.setAttribute('aria-describedby', 'auto-mp-note');
+      const status = document.getElementById('auto-mp-status');
+      if (status) {
+        status.textContent = unsupported
+          ? t.autoMpStatusUnsupported
+          : !autoMpToggleEl.checked ? t.discoveryStatusOff
+          : data.autoPipStatus === 'registered' ? t.autoMpStatusRegistered : t.autoMpStatusUnknown;
+        status.classList.toggle('unsupported', unsupported || !!data.autoPipLastError);
       }
+      const note = document.getElementById('auto-mp-note');
+      if (note) {
+        note.classList.toggle('unsupported', unsupported || !!data.autoPipLastError);
+        note.textContent = (unsupported ? t.autoMpNotSupported + ' ' : '') + t.autoMpPermissionNote +
+          (data.autoPipLastError ? ' ' + t.autoMpLastError : '');
+      }
+      const wrapper = document.getElementById('auto-mp-label-wrapper');
+      if (wrapper) wrapper.title = unsupported ? t.autoMpNotSupported : t.autoMpTitle;
     }
 
     const statLikes = document.getElementById('stat-likes');
@@ -607,24 +671,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             });
           }
         };
-      }
-    }
-
-    // 音量同期
-    if (typeof data.volume === 'number') {
-      const volSlider = document.getElementById('vol-slider');
-      const volText = document.getElementById('vol-display-text');
-      const volMuteBtn = document.getElementById('btn-vol-mute');
-      const pct = Math.round(data.volume * 100);
-
-      if (volSlider && document.activeElement !== volSlider) {
-        volSlider.value = pct;
-      }
-      if (volText) {
-        volText.textContent = pct + '%';
-      }
-      if (volMuteBtn) {
-        volMuteBtn.textContent = data.volume === 0 ? '🔇' : (data.volume < 0.5 ? '🔉' : '🔊');
       }
     }
 
