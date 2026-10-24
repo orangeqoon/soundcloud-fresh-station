@@ -1,5 +1,7 @@
 # FreshDig for SoundCloud
 
+> 🌐 日本語 | [English](docs/readme/README.en.md) | [Deutsch](docs/readme/README.de.md) | [Русский](docs/readme/README.ru.md) | [Español](docs/readme/README.es.md) | [Tiếng Việt](docs/readme/README.vi.md)
+
 FreshDigは、SoundCloudのステーション再生を整理するEdge / Chrome拡張機能です。いいね済み、フォロー中、または自分で除外した曲や作者をDigモードでスキップし、気になった作者をその場で保存できます。
 
 ## 解決する問題
@@ -35,20 +37,3 @@ Tampermonkeyでは、リポジトリの `soundcloud_fresh_station.user.js` を�
 ## ライセンス
 
 MIT License
-
-## Giới thiệu bằng tiếng Việt
-
-FreshDig là tiện ích Edge / Chrome giúp sắp xếp việc phát station trên SoundCloud. Dig mode tự bỏ qua bài hát đã thích, nghệ sĩ đang theo dõi và các mục bạn đã loại trừ, đồng thời cho phép lưu nghệ sĩ để nghe sau.
-
-### Tính năng chính
-
-- Dig mode bỏ qua bài hát, nghệ sĩ và thể loại đã loại trừ
-- Tùy chọn bỏ qua bài đã nghe một lần: mặc định tắt; khi bật, ghi nhận sau 10 giây phát thực tế
-- Dislike cho một bài hát và Hate cho toàn bộ nghệ sĩ
-- Danh sách nghệ sĩ để nghe sau, mở từ biểu tượng tiện ích
-- Mini player riêng để phát, chuyển bài, chỉnh âm lượng, Like, Repost, Follow và thêm playlist
-- Xuất bốn danh sách sang Markdown và nhập bản sao lưu JSON
-- Lưu báo cáo chẩn đoán cục bộ khi cần kiểm tra lỗi phát
-
-Cài đặt, danh sách và lịch sử bài đã nghe được lưu trong trình duyệt. FreshDig không sử dụng máy chủ phân tích riêng. Các thao tác tài khoản như Like, Follow, Repost và thêm playlist vẫn được gửi tới SoundCloud.
-
