@@ -73,13 +73,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('label-target-pl').textContent = t.targetPlaylist;
     document.getElementById('sync-btn').textContent = t.btnSync;
 
-    document.getElementById('label-dislike-section').textContent = t.dislikeSection;
-    document.getElementById('btn-export-dislikes').textContent = t.btnExportDislikes;
-    document.getElementById('btn-import-dislikes').textContent = t.btnImportDislikes;
-
     document.getElementById('label-advanced').textContent = t.advancedSettings;
     const btnReport = document.getElementById('btn-download-report');
     if (btnReport) btnReport.textContent = t.btnDownloadReport;
+    document.getElementById('btn-export-lists').textContent = t.btnExportLists;
+    document.getElementById('btn-import-lists').textContent = t.btnImportLists;
     const btnCopyLog = document.getElementById('btn-copy-log');
     if (btnCopyLog) btnCopyLog.textContent = t.btnCopyLog;
 
@@ -307,6 +305,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     ['ageDays', 'fresh-age', 'freshAgePre', 'freshAgePost']
   ];
   let freshFilter = FreshDigCore.normalizeFreshFilter(null);
+  let heardSkipEnabled = false;
 
   function renderFresh() {
     document.getElementById('fresh-title').textContent = t.freshTitle;
@@ -318,6 +317,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       const n = document.getElementById(r[1] + '-n');
       if (document.activeElement !== n) n.value = freshFilter[r[0]].n;
     });
+    const heardToggle = document.getElementById('heard-skip-on');
+    if (heardToggle) heardToggle.checked = !!heardSkipEnabled;
+    const heardLabel = document.getElementById('heard-skip-label');
+    if (heardLabel) heardLabel.textContent = t.heardSkipLabel;
+    const heardHint = document.getElementById('heard-skip-hint');
+    if (heardHint) heardHint.textContent = t.heardSkipHint;
   }
 
   function saveFresh() {
@@ -335,15 +340,30 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById(r[1] + '-on').addEventListener('change', saveFresh);
     document.getElementById(r[1] + '-n').addEventListener('change', saveFresh);
   });
+  const heardSkipToggle = document.getElementById('heard-skip-on');
+  if (heardSkipToggle) heardSkipToggle.addEventListener('change', function () {
+    heardSkipEnabled = !!heardSkipToggle.checked;
+    if (chrome.storage && chrome.storage.local) chrome.storage.local.set({ heardSkipEnabled: heardSkipEnabled });
+    if (tab) chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'SET_HEARD_SKIP_ENABLED', enabled: heardSkipEnabled }, function () { void chrome.runtime.lastError; });
+  });
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get('freshFilter', function (st) {
+    chrome.storage.local.get(['freshFilter', 'heardSkipEnabled'], function (st) {
       if (st && st.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(st.freshFilter);
+      heardSkipEnabled = !!(st && st.heardSkipEnabled);
       renderFresh();
     });
   }
 
   applyStaticTranslations();
 
+
+  ['export', 'import'].forEach(function (mode) {
+    document.getElementById('btn-' + mode + '-lists').addEventListener('click', function () {
+      chrome.tabs.create({ url: chrome.runtime.getURL('lists.html?mode=' + mode) }, function () {
+        if (!chrome.runtime.lastError) window.close();
+      });
+    });
+  });
 
   const guideButton = document.getElementById('btn-open-guide');
   if (guideButton) {
@@ -435,6 +455,8 @@ document.addEventListener('DOMContentLoaded', async function () {
           const report = {
             schema: 1,
             version: manifest.version || '2.1.0',
+            runtimeVersion: response.runtimeVersion || null,
+            playback: response.playback || null,
             createdAt: new Date().toISOString(),
             browser: navigator.userAgent,
             page: tab.url || '',
@@ -464,54 +486,6 @@ document.addEventListener('DOMContentLoaded', async function () {
           if (hint) hint.textContent = t.reportSaved;
         } catch (e) {
           if (hint) hint.textContent = t.reportFailed;
-        }
-      });
-    });
-  }
-
-  // Dislike エクスポート / インポートボタン
-  const exportBtn = document.getElementById('btn-export-dislikes');
-  const importBtn = document.getElementById('btn-import-dislikes');
-  const syncMsg = document.getElementById('dislike-sync-msg');
-
-  function showSyncMsg(text, isError) {
-    if (!syncMsg) return;
-    syncMsg.style.display = 'block';
-    syncMsg.textContent = text;
-    syncMsg.style.color = isError ? '#ff5252' : '#69f0ae';
-  }
-
-  if (exportBtn) {
-    exportBtn.addEventListener('click', function () {
-      exportBtn.disabled = true;
-      exportBtn.textContent = t.btnExportingDislikes;
-      showSyncMsg(t.exportingMsg, false);
-      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'EXPORT_DISLIKES' }, function (res) {
-        exportBtn.disabled = false;
-        exportBtn.textContent = t.btnExportDislikes;
-        if (chrome.runtime.lastError || !res) {
-          showSyncMsg(t.commErrorMsg, true);
-        } else {
-          showSyncMsg(res.message, !res.success);
-          requestData();
-        }
-      });
-    });
-  }
-
-  if (importBtn) {
-    importBtn.addEventListener('click', function () {
-      importBtn.disabled = true;
-      importBtn.textContent = t.btnImportingDislikes;
-      showSyncMsg(t.importingMsg, false);
-      chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'IMPORT_DISLIKES' }, function (res) {
-        importBtn.disabled = false;
-        importBtn.textContent = t.btnImportDislikes;
-        if (chrome.runtime.lastError || !res) {
-          showSyncMsg(t.commErrorMsg, true);
-        } else {
-          showSyncMsg(res.message, !res.success);
-          requestData();
         }
       });
     });
@@ -599,6 +573,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     updateDiscoveryUI(data.discoveryEnabled !== false);
+    heardSkipEnabled = !!data.heardSkipEnabled;
     if (data.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(data.freshFilter);
     renderFresh();
     renderLists();

@@ -42,6 +42,14 @@ test('liked / following; library and artist page keep known tracks', () => {
   assert.strictEqual(core.getSkipReasonKey({ id: 3, artistId: 8 }, { ...c, onArtistPage: true }), 'skipReasonHated');
 });
 
+test('heard track mode skips known tracks but keeps intentional library/artist pages', () => {
+  const c = { ...base(), heardSkipEnabled: true, heardTrackIds: new Set([7]) };
+  assert.strictEqual(core.getSkipReasonKey({ id: 7, artistId: 2 }, c), 'skipReasonHeard');
+  assert.strictEqual(core.getSkipReasonKey({ id: 7, artistId: 2 }, { ...c, heardSkipEnabled: false }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 7, artistId: 2 }, { ...c, inLibrary: true }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 7, artistId: 2 }, { ...c, onArtistPage: true }), null);
+});
+
 test('Later artists are excluded in Dig except on their own intentional artist page', () => {
   const c = { ...base(), laterArtists: { '8': { name: 'Saved artist' } } };
   const track = { id: 3, artistId: 8 };

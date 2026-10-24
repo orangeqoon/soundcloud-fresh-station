@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extensionName__",
-  "version": "2.2.4",
+  "version": "2.4.0",
   "default_locale": "en",
   "description": "__MSG_extensionDesc__",
   "permissions": [
@@ -36,7 +36,7 @@
   "content_scripts": [
     {
       "matches": ["https://soundcloud.com/*"],
-      "js": ["i18n.js", "freshdig_core.js", "station_hook.js"],
+      "js": ["i18n.js", "freshdig_core.js", "list_backup.js", "station_hook.js"],
       "world": "MAIN",
       "run_at": "document_start"
     },

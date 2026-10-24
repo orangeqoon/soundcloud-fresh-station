@@ -25,6 +25,7 @@ function instrumentHook() {
     'syncCurrentTrackInteractionsFromDom', 'toggleLikeFromNative', 'injectButtons',
     'fdRemote', 'TAB_ID', 'getAutoPipDiagnostics', 'registerAutoMiniPlayerHandler', 'setAutoMiniPlayer', 'mpRemoteCall',
     'schedulePlaybackRecovery', 'playbackIntent', 'scTogglePlay', 'scInternals',
+    'getDiagLogEntries', 'getPlaybackDiagnostic',
     'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute'
   ];
   return hookSource.slice(0, at) + '\nwindow.__runtimeHooks = {' + hooks.map((name) => name + ': ' + name).join(', ') + '};\n' + hookSource.slice(at);
@@ -233,6 +234,7 @@ function makeEnv(options) {
   win.FreshDigI18n = i18n;
   win.FreshDigCore = core;
   const context = vm.createContext(win);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, '../list_backup.js'), 'utf8'), context, { filename: 'list_backup.js' });
   vm.runInContext(instrumentHook(), context, { filename: 'station_hook.runtime.js' });
   return { win, context, hooks: win.__runtimeHooks, store, listeners, windowListeners, posted, fetchCalls, mediaSessionHandlers, selectors, media };
 }
@@ -545,6 +547,74 @@ test('detached media registered through prototype play remains controllable', as
   assert.strictEqual(detached.paused, false);
 });
 
+async function sendPopupAction(env, action, extra) {
+  const payload = { type: 'SC_FRESH_STATION_POPUP_ACTION', action, requestId: 'test-' + action, ...(extra || {}) };
+  const data = vm.runInContext('JSON.parse(' + JSON.stringify(JSON.stringify(payload)) + ')', env.context);
+  const source = vm.runInContext('window', env.context);
+  for (const listener of env.windowListeners.message || []) await listener({ source, data });
+  return env.posted.find(message => message.requestId === payload.requestId)?.result;
+}
+
+test('four-list backup reads exclusions without network and additive import preserves existing records', async () => {
+  const env = makeEnv();
+  vm.runInContext('__runtimeHooks.state.dislikedTracks = { "1": {title: "Existing"} }', env.context);
+  const beforeFetches = env.fetchCalls.length;
+  const snapshot = await sendPopupAction(env, 'GET_LISTS');
+  assert.equal(snapshot.success, true);
+  assert.equal(snapshot.lists.dislikedTracks['1'].title, 'Existing');
+  assert.equal(env.fetchCalls.length, beforeFetches);
+  const result = await sendPopupAction(env, 'IMPORT_EXCLUSIONS', { lists: { laterArtists: [],
+    dislikedTracks: { '1': {title: 'Do not overwrite'}, '2': {title: 'New'} },
+    dislikedArtists: { '3': {name: 'Artist'} }, dislikedGenres: { rock: true }
+  } });
+  assert.equal(result.success, true);
+  assert.equal(env.hooks.state.dislikedTracks['1'].title, 'Existing');
+  assert.equal(env.hooks.state.dislikedTracks['2'].title, 'New');
+  const stored = JSON.parse(env.store.sc_fresh_station_data_v1);
+  assert.equal(stored.dislikedArtists['3'].name, 'Artist');
+  assert.equal(stored.dislikedGenres.rock, true);
+  assert.equal(env.fetchCalls.length, beforeFetches, 'local list import must not write to SoundCloud');
+});
+
+test('invalid list input or a quota error cannot change the live exclusion maps', async () => {
+  for (const mode of ['invalid', 'quota']) {
+    const env = makeEnv();
+    vm.runInContext('__runtimeHooks.state.dislikedTracks = { "1": true }', env.context);
+    if (mode === 'quota') {
+      const originalSet = env.win.localStorage.setItem;
+      env.win.localStorage.setItem = (key, value) => {
+        if (key === 'sc_fresh_station_data_v1') throw new Error('QuotaExceededError');
+        originalSet(key, value);
+      };
+    }
+    const lists = mode === 'invalid' ? { unrelated: 'not-a-backup' } : {
+      laterArtists: [], dislikedTracks: { '2': true }, dislikedArtists: {}, dislikedGenres: {}
+    };
+    const result = await sendPopupAction(env, 'IMPORT_EXCLUSIONS', { lists });
+    assert.equal(result.success, false, mode);
+    assert.equal(env.hooks.state.dislikedTracks['1'], true);
+    assert.equal(env.hooks.state.dislikedTracks['2'], undefined);
+  }
+});
+
+test('backup and import read an exclusion saved by another tab before its notification arrives', async () => {
+  const env = makeEnv();
+  vm.runInContext('__runtimeHooks.state.dislikedTracks = { "1": true }', env.context);
+  env.store.sc_fresh_station_data_v1 = JSON.stringify({ dislikedTracks: { '1': true, '9': { title: 'Other tab' } },
+    dislikedArtists: { '8': { name: 'Other artist' } }, dislikedGenres: { ambient: true } });
+  const snapshot = await sendPopupAction(env, 'GET_LISTS');
+  assert.equal(snapshot.lists.dislikedTracks['9'].title, 'Other tab');
+  assert.equal(snapshot.lists.dislikedGenres.ambient, true);
+  const result = await sendPopupAction(env, 'IMPORT_EXCLUSIONS', { lists: { laterArtists: [],
+    dislikedTracks: { '2': { title: 'Imported' } }, dislikedArtists: {}, dislikedGenres: {} } });
+  assert.equal(result.success, true);
+  const stored = JSON.parse(env.store.sc_fresh_station_data_v1);
+  assert.equal(stored.dislikedTracks['9'].title, 'Other tab');
+  assert.equal(stored.dislikedTracks['2'].title, 'Imported');
+  assert.equal(stored.dislikedArtists['8'].name, 'Other artist');
+  assert.equal(stored.dislikedGenres.ambient, true);
+});
+
 test('followed author Tracks page keeps their known tracks while unrelated and explicit exclusions still apply', () => {
   const env = makeEnv({ pathname: '/followed-artist/tracks' });
   const h = env.hooks;
@@ -747,6 +817,32 @@ test('stall recovery is bounded and does not resume an intentional pause', async
   env.hooks.schedulePlaybackRecovery(media, 'ended');
   await tick(800);
   assert.strictEqual(playCalls, 1, 'ended recovery must stay bounded when no native queue is available');
+});
+
+test('a pending recovery play must not pause buffering audio or cancel the user playback intent', async () => {
+  let pauses = 0;
+  let plays = 0;
+  const media = makeMedia({ paused: false, readyState: 2, currentTime: 35,
+    play() { plays++; return new Promise(() => {}); },
+    pause() { pauses++; media.paused = true; env.win.document.dispatchEvent({ type: 'pause', target: media }); }
+  });
+  const env = makeEnv({ media: [media] });
+  const h = env.hooks;
+  h.state.discoveryEnabled = true;
+  h.state.currentTrack = { id: 71, href: '/artist/buffering', title: 'Buffering' };
+  h.playbackIntent.wanted = true;
+  h.schedulePlaybackRecovery(media, 'waiting');
+  await tick(1150);
+  assert.equal(plays, 1);
+  assert.equal(pauses, 0, 'a bounded recovery wait must not stop SoundCloud buffering');
+  assert.equal(media.paused, false);
+  assert.equal(h.playbackIntent.wanted, true);
+  assert.equal(h.playbackIntent.recoveryInFlight, false, 'the command must still settle within its time limit');
+  const result = h.getDiagLogEntries().find(entry => entry.type === 'playback-recovery-result');
+  assert.equal(result.detail.outcome, 'PlayTimeout');
+  assert.equal(result.detail.playback.paused, false);
+  assert.equal(result.detail.playback.wanted, true);
+  assert.equal(result.detail.playback.readyState, 2);
 });
 
 test('natural end keeps play intent through the pause event for one bounded next-track attempt', async () => {

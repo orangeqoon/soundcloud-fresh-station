@@ -30,3 +30,43 @@ test('storage changes propagate Dig settings and Later removals to the MAIN worl
   onChange({ discoveryEnabled: { newValue: true } }, 'sync');
   assert.equal(posted.length, 0);
 });
+
+test('Later bridge maps openList exactly and rejects unknown operations', () => {
+  const posted = [];
+  const calls = [];
+  let onMessage;
+  const window = {
+    location: { origin: 'https://soundcloud.com' },
+    addEventListener(type, fn) { if (type === 'message') onMessage = fn; },
+    postMessage(m) { posted.push(m); }
+  };
+  const chrome = {
+    runtime: {
+      lastError: null,
+      sendMessage(req, cb) { calls.push(req); cb({ ok: true }); },
+      onMessage: { addListener() {} }
+    },
+    storage: {
+      local: { get(keys, cb) { cb({}); }, set() {} },
+      onChanged: { addListener() {} }
+    }
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../content_bridge.js'), 'utf8'), {
+    window, chrome, console: { log() {} }, setTimeout() {}, clearTimeout() {}, Map
+  });
+  calls.length = 0;
+  posted.length = 0;
+  onMessage({ source: window, data: { type: 'SC_FRESH_STATION_LATER_OP', op: 'openList', reqId: 7 } });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].action, 'OPEN_LATER_WINDOW');
+  assert.equal(posted.length, 1);
+  assert.equal(posted[0].type, 'SC_FRESH_STATION_LATER_RESULT');
+  assert.equal(posted[0].reqId, 7);
+  assert.equal(posted[0].result.ok, true);
+
+  posted.length = 0;
+  onMessage({ source: window, data: { type: 'SC_FRESH_STATION_LATER_OP', op: 'unexpected', reqId: 8 } });
+  assert.equal(calls.length, 1, 'unknown operations never reach the background');
+  assert.equal(posted[0].result.ok, false);
+  assert.equal(posted[0].result.reason, 'unknown');
+});

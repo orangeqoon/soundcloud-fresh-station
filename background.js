@@ -2,6 +2,14 @@
 (function () {
     'use strict';
 
+    // The list module is bundled with the service worker. Tests can inject the
+    // same UMD export directly, so importScripts is intentionally optional.
+    if (typeof importScripts === 'function') {
+        try { importScripts('list_backup.js'); } catch (e) {
+            console.warn('[SC-FreshStation] Later list module unavailable:', e);
+        }
+    }
+
     console.log('[SC-FreshStation] Background Service Worker initialized');
 
     // 新規インストール後、最初に開いた SoundCloud でだけ案内する。
@@ -98,6 +106,218 @@
     // 「後で聴く作者」: 読み出し→変更→保存を、ここ(サービスワーカー)の 1 か所で順番に行う（タブ同士の上書き事故を防ぐ）
     const LATER_MAX = 500;
     let laterChain = Promise.resolve();
+    let laterWindowId = null;
+    let laterWindowOpen = null;
+
+    function getLaterListsModule() {
+        try {
+            if (typeof FreshDigLists !== 'undefined' && FreshDigLists) return FreshDigLists;
+        } catch (e) {}
+        return null;
+    }
+
+    function chromeCall(api, args, owner) {
+        return new Promise(function (resolve, reject) {
+            if (typeof api !== 'function') {
+                reject(new Error('api-unavailable'));
+                return;
+            }
+            let settled = false;
+            const finish = function (fn, value) {
+                if (settled) return;
+                settled = true;
+                fn(value);
+            };
+            const callback = function (value) {
+                const err = chrome.runtime && chrome.runtime.lastError;
+                if (err) finish(reject, new Error(err.message || 'chrome-error'));
+                else finish(resolve, value);
+            };
+            try {
+                const result = api.apply(owner || chrome, (args || []).concat(callback));
+                if (result && typeof result.then === 'function') {
+                    result.then(function (value) { finish(resolve, value); }, function (err) { finish(reject, err); });
+                } else if (result !== undefined) finish(resolve, result);
+            } catch (e) {
+                finish(reject, e);
+            }
+        });
+    }
+
+    function laterWindowPageUrl() {
+        if (chrome.runtime && typeof chrome.runtime.getURL === 'function') return chrome.runtime.getURL('later.html');
+        return 'later.html';
+    }
+
+    async function findExistingLaterWindow() {
+        if (!chrome.windows) return null;
+        if (laterWindowId !== null && laterWindowId !== undefined) {
+            if (typeof chrome.windows.get !== 'function') {
+                // Minimal test/browser shims may expose update without get. A
+                // successful focus still proves that the tracked window lives.
+                if (typeof chrome.windows.update === 'function') {
+                    try {
+                        await chromeCall(chrome.windows.update, [laterWindowId, { focused: true }], chrome.windows);
+                        return { id: laterWindowId, focused: true };
+                    } catch (e) {}
+                }
+                laterWindowId = null;
+            }
+        }
+        if (laterWindowId !== null && laterWindowId !== undefined) {
+            try {
+                const existing = await chromeCall(chrome.windows.get, [laterWindowId], chrome.windows);
+                if (existing && existing.id !== undefined) return existing;
+            } catch (e) {}
+            laterWindowId = null;
+        }
+        // A service worker can be restarted while the popup window stays open.
+        // Recover it by looking for the extension page before creating another.
+        if (typeof chrome.windows.getAll !== 'function') return null;
+        try {
+            const all = await chromeCall(chrome.windows.getAll, [{ populate: true }], chrome.windows);
+            const windows = Array.isArray(all) ? all : [];
+            for (let i = 0; i < windows.length; i += 1) {
+                const tabs = Array.isArray(windows[i].tabs) ? windows[i].tabs : [];
+                if (tabs.some(function (tab) { return tab && tab.url === laterWindowPageUrl(); })) {
+                    laterWindowId = windows[i].id;
+                    return windows[i];
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    async function openLaterWindow() {
+        if (laterWindowOpen) return laterWindowOpen;
+        laterWindowOpen = (async function () {
+            if (!chrome.windows || typeof chrome.windows.create !== 'function') {
+                return { ok: false, reason: 'unavailable' };
+            }
+            const existing = await findExistingLaterWindow();
+            if (existing && existing.id !== undefined) {
+                laterWindowId = existing.id;
+                if (typeof chrome.windows.update === 'function' && !existing.focused) {
+                    try {
+                        await chromeCall(chrome.windows.update, [existing.id, { focused: true }], chrome.windows);
+                    } catch (e) {
+                        laterWindowId = null;
+                    }
+                }
+                if (laterWindowId !== null) return { ok: true };
+            }
+            try {
+                const created = await chromeCall(chrome.windows.create, [{
+                    url: laterWindowPageUrl(),
+                    type: 'popup',
+                    width: 420,
+                    height: 600
+                }], chrome.windows);
+                if (!created || created.id === undefined) return { ok: false, reason: 'error' };
+                laterWindowId = created.id;
+                return { ok: true };
+            } catch (e) {
+                laterWindowId = null;
+                return { ok: false, reason: 'error' };
+            }
+        })().finally(function () { laterWindowOpen = null; });
+        return laterWindowOpen;
+    }
+
+    // Chrome messages and VM based tests can hand the list module values from
+    // another JavaScript realm. The module deliberately accepts plain objects
+    // only, so copy plain records into this realm while leaving special
+    // objects (Date, Map, etc.) intact for the module to reject.
+    function copyListValue(value, stack) {
+        if (value === null || typeof value !== 'object') return value;
+        const seen = stack || new Set();
+        if (seen.has(value)) throw new Error('invalid-list');
+        seen.add(value);
+        try {
+            if (Array.isArray(value)) {
+                if (Object.keys(value).length !== value.length) throw new Error('invalid-list');
+                const array = [];
+                for (let i = 0; i < value.length; i += 1) {
+                    array.push(copyListValue(value[i], seen));
+                }
+                return array;
+            }
+            const proto = Object.getPrototypeOf(value);
+            const plain = proto === null || (
+                proto && Object.prototype.hasOwnProperty.call(proto, 'constructor') &&
+                proto.constructor && proto.constructor.name === 'Object' &&
+                Object.getPrototypeOf(proto) === null
+            );
+            if (!plain) return value;
+            const object = Object.create(null);
+            Object.keys(value).forEach(function (key) {
+                object[key] = copyListValue(value[key], seen);
+            });
+            return object;
+        } finally {
+            seen.delete(value);
+        }
+    }
+
+    function copyListItems(items) {
+        if (!Array.isArray(items)) throw new Error('invalid-items');
+        if (Object.keys(items).length !== items.length) throw new Error('invalid-items');
+        const copied = [];
+        for (let i = 0; i < items.length; i += 1) copied.push(copyListValue(items[i]));
+        return copied;
+    }
+
+    function normalizeImportedList(items) {
+        const api = getLaterListsModule();
+        if (!api || typeof api.create !== 'function' || typeof api.normalize !== 'function' || typeof api.merge !== 'function') {
+            throw new Error('later-module-unavailable');
+        }
+        if (!Array.isArray(items)) throw new Error('invalid-items');
+        if (items.length > LATER_MAX) throw new Error('limit');
+
+        // Keep the non-Later maps explicit and empty so a backup cannot import
+        // unrelated blacklist data into extension storage.
+        const importedLists = Object.create(null);
+        importedLists.dislikedTracks = Object.create(null);
+        importedLists.dislikedArtists = Object.create(null);
+        importedLists.dislikedGenres = Object.create(null);
+        importedLists.laterArtists = copyListItems(items);
+        const imported = api.create(importedLists);
+        const normalized = api.normalize(imported);
+        if (!normalized || !normalized.lists || !Array.isArray(normalized.lists.laterArtists)) {
+            throw new Error('invalid-list');
+        }
+        return normalized.lists.laterArtists;
+    }
+
+    function importLaterItems(current, items) {
+        const api = getLaterListsModule();
+        if (!api || typeof api.create !== 'function' || typeof api.normalize !== 'function' || typeof api.merge !== 'function') {
+            throw new Error('later-module-unavailable');
+        }
+        const incoming = normalizeImportedList(items);
+        const currentList = Array.isArray(current) ? copyListItems(current) : [];
+        const currentLists = Object.create(null);
+        currentLists.dislikedTracks = Object.create(null);
+        currentLists.dislikedArtists = Object.create(null);
+        currentLists.dislikedGenres = Object.create(null);
+        currentLists.laterArtists = currentList;
+        const currentEnvelope = api.create(currentLists);
+        const normalizedCurrent = api.normalize(currentEnvelope);
+        if (!normalizedCurrent || !normalizedCurrent.lists || !Array.isArray(normalizedCurrent.lists.laterArtists)) throw new Error('invalid-list');
+        const incomingLists = Object.create(null);
+        incomingLists.dislikedTracks = Object.create(null);
+        incomingLists.dislikedArtists = Object.create(null);
+        incomingLists.dislikedGenres = Object.create(null);
+        incomingLists.laterArtists = incoming;
+        const incomingEnvelope = api.create(incomingLists);
+        const normalizedIncoming = api.normalize(incomingEnvelope);
+        const merged = api.merge(normalizedCurrent.lists, normalizedIncoming.lists);
+        const output = Array.isArray(merged) ? merged : merged && merged.laterArtists;
+        if (!Array.isArray(output)) throw new Error('invalid-list');
+        if (output.length > LATER_MAX) throw new Error('limit');
+        return output;
+    }
 
     function cleanStr(v, n) { return String(v === undefined || v === null ? '' : v).slice(0, n); }
 
@@ -127,15 +347,38 @@
             if (next.length !== list.length) await chrome.storage.local.set({ laterArtists: next });
             return { ok: true };
         }
+        if (req.action === 'LATER_IMPORT') {
+            if (!Array.isArray(req.items)) return { ok: false, reason: 'invalid' };
+            try {
+                const next = importLaterItems(list, req.items);
+                await chrome.storage.local.set({ laterArtists: next });
+                return { ok: true };
+            } catch (e) {
+                const message = e && e.message ? String(e.message) : '';
+                if (message === 'limit' || /500 (?:item )?limit|would exceed the 500/i.test(message)) return { ok: false, reason: 'limit' };
+                if (message === 'invalid-items' || message === 'invalid-list' || /^Invalid FreshDigLists backup:/i.test(message)) return { ok: false, reason: 'invalid' };
+                return { ok: false, reason: 'error' };
+            }
+        }
         return { ok: false, reason: 'unknown' };
+    }
+
+    if (chrome.windows && chrome.windows.onRemoved && chrome.windows.onRemoved.addListener) {
+        chrome.windows.onRemoved.addListener(function (windowId) {
+            if (windowId === laterWindowId) laterWindowId = null;
+        });
     }
 
     // 3. content_bridge や popup からの要求に応答
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
-        if (request && (request.action === 'LATER_ADD' || request.action === 'LATER_REMOVE')) {
+        if (request && (request.action === 'LATER_ADD' || request.action === 'LATER_REMOVE' || request.action === 'LATER_IMPORT')) {
             laterChain = laterChain.then(function () { return doLater(request); }).catch(function (e) { return { ok: false, reason: 'error' }; });
             laterChain.then(function (res) { try { sendResponse(res); } catch (e) {} });
             return true; // 非同期レスポンス
+        }
+        if (request && request.action === 'OPEN_LATER_WINDOW') {
+            openLaterWindow().catch(function () { return { ok: false, reason: 'error' }; }).then(function (res) { try { sendResponse(res); } catch (e) {} });
+            return true;
         }
         if (request && request.action === 'GET_AUTH_TOKEN') {
             getSoundCloudAuthToken(function (token) {

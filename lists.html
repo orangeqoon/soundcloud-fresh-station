@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreshDig lists</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #181818;
+      color: #eee;
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    main { width: min(760px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 42px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid #333; padding-bottom: 14px; }
+    h1 { color: #ff5500; font-size: 22px; margin: 0; }
+    h2 { font-size: 16px; margin: 0 0 8px; color: #ff8a45; }
+    p { margin: 8px 0; color: #bbb; }
+    .card { background: #202020; border: 1px solid #383838; border-radius: 8px; padding: 16px; margin-top: 16px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button, select {
+      border: 1px solid #666;
+      border-radius: 5px;
+      background: #2a2a2a;
+      color: #eee;
+      cursor: pointer;
+      font: inherit;
+      padding: 8px 12px;
+    }
+    button { border-color: #ff5500; color: #ff9a55; font-weight: 600; }
+    button:hover:not(:disabled), button:focus-visible { background: #ff5500; color: #fff; }
+    button:disabled { cursor: wait; opacity: .55; }
+    select { padding: 5px 8px; }
+    :focus-visible { outline: 2px solid #ffaa00; outline-offset: 2px; }
+    .lang { display: flex; align-items: center; gap: 6px; color: #aaa; }
+    .status { min-height: 24px; margin-top: 12px; white-space: pre-wrap; }
+    .status.error { color: #ff8a80; }
+    .status.ok { color: #69f0ae; }
+    .status.partial { color: #ffcc80; }
+    .preview { margin-top: 12px; border-top: 1px solid #383838; padding-top: 12px; }
+    .preview[hidden] { display: none; }
+    .preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, minmax(72px, auto)); gap: 5px 12px; color: #ccc; }
+    .preview-grid span { padding: 2px 0; }
+    .preview-grid .head { color: #888; font-size: 11px; }
+    .preview-grid .name { color: #eee; }
+    .file-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+    input[type="file"] { max-width: 100%; color: #bbb; }
+    .note { font-size: 12px; color: #888; }
+    .hidden { display: none !important; }
+    @media (max-width: 520px) {
+      main { width: calc(100% - 20px); padding-top: 18px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .preview-grid { grid-template-columns: minmax(0, 1fr) repeat(3, 60px); gap: 4px 6px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1 id="page-title">FreshDig lists</h1>
+      <label class="lang" for="language-select">
+        <span id="language-label">Language</span>
+        <select id="language-select" aria-label="Language">
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="de">Deutsch</option>
+          <option value="ru">Русский</option>
+        </select>
+      </label>
+    </header>
+
+    <section class="card" id="export-card">
+      <h2 id="export-title">Export your lists</h2>
+      <p id="export-description">Save a JSON backup for restoring later, or a Markdown copy for reading.</p>
+      <div class="toolbar">
+        <button id="export-json" type="button">Download JSON backup</button>
+        <button id="export-markdown" type="button">Download Markdown</button>
+      </div>
+    </section>
+
+    <section class="card" id="import-card">
+      <h2 id="import-title">Import a JSON backup</h2>
+      <p id="import-description">Choose a FreshDig JSON backup, review the additions, then apply them.</p>
+      <div class="file-row">
+        <input id="backup-file" type="file" accept=".json,application/json">
+        <span class="note" id="file-note">JSON only, up to 5 MiB</span>
+      </div>
+      <div class="preview" id="preview" hidden>
+        <div id="preview-title">Preview</div>
+        <div class="preview-grid" id="preview-grid" aria-live="polite"></div>
+        <div class="toolbar">
+          <button id="apply-import" type="button" disabled>Apply import</button>
+          <button id="retry-later" class="hidden" type="button">Retry Later artists</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="status" id="status" role="status" aria-live="polite"></div>
+  </main>
+  <script src="list_backup.js"></script>
+  <script src="lists.js"></script>
+</body>
+</html>

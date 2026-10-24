@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.2.4
+// @version      2.4.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -73,11 +73,17 @@
       skipReasonManyTracks: '投稿曲が多い作者',
       skipReasonManyPlays: '再生回数が多い曲',
       skipReasonOldTrack: '古い曲',
+      skipReasonHeard: '一度聴いた曲',
+      heardSkipLabel: '一度でも聴いた曲を飛ばす',
+      heardSkipHint: '実際に10秒再生した曲を、発掘モード中は自動で飛ばします。初期状態はOFFです。',
       robotBanner: 'SoundCloud のロボット確認が出ています。ページで確認を済ませてください',
       robotShort: 'ロボット確認中',
-      advancedSettings: '⚙ Dig Config',
+      advancedSettings: '⚙ Dig設定',
       btnCopyLog: '📋 診断ログをコピー',
-      btnDownloadReport: '📥 診断レポート保存 (JSON)',
+      btnDownloadReport: '📥 不具合レポート保存 (JSON)',
+      btnExportLists: '📤 リスト書き出し',
+      btnImportLists: '📥 読み込み',
+      m_laterOpenFail: '⚠️ 後で聴く人リストを開けませんでした',
       reportSaved: '✅ レポートを保存しました',
       reportFailed: '⚠️ レポート保存に失敗しました',
       logCopied: 'コピーしました。止まった時の状況と一緒に貼ってください',
@@ -118,7 +124,7 @@
       mpFollowBtnTitle: '作者をフォロー',
       mpStationBtn: '📡 ステーション',
       mpStationBtnTitle: 'この曲からステーションを開始',
-      mpLaterListLabel: '🧐 後で聴くリスト',
+      mpLaterListLabel: '🧐 後で聴く人リスト',
       mpDigListening: '⏸ 作者を試聴中',
       mpPrevTitle: '前の曲',
       mpPlayTitle: '再生 / 一時停止',
@@ -239,7 +245,7 @@
       m_profileUnban: '解除',
       listsTitle: '📚 リスト',
       tabHated: '🤬 作者除外',
-      tabLater: '🧐 後で聴くリスト',
+      tabLater: '🧐 後で聴く人リスト',
       tabNoPlay: '⏭️ 不再生リスト',
       listSearch: '検索',
       listMore: 'もっと見る',
@@ -278,7 +284,7 @@
       onboardingStep1Body: 'FreshDigの一押し機能です。拡張機能アイコン、またはSoundCloudの📻から開けます。',
       onboardingStep2Title: 'Dig ONモード',
       onboardingStep2Body: 'ONにすると、不再生にした曲・Like済みの曲・フォロー中の作者の曲を飛ばします。',
-      onboardingStep3Title: '🧐 後で聴くリスト',
+      onboardingStep3Title: '🧐 後で聴く人リスト',
       onboardingStep3Body: '下段の🧐で作者を保存。拡張機能アイコンから一覧を開き、作者を選ぶとトラックページへ移動できます。',
       onboardingOpenLauncher: '📻 ページのランチャーを開く',
       onboardingLauncherHint: 'ページのプレイヤー操作欄にある 📻 をクリックしてください。',
@@ -349,11 +355,17 @@
       skipReasonManyTracks: 'Artist with many tracks',
       skipReasonManyPlays: 'Track with many plays',
       skipReasonOldTrack: 'Old track',
+      skipReasonHeard: 'Already heard',
+      heardSkipLabel: 'Skip tracks heard once',
+      heardSkipHint: 'Tracks played for 10 seconds are skipped in Discovery Mode. Starts OFF.',
       robotBanner: 'SoundCloud is showing a robot check. Please complete it on the page.',
       robotShort: 'Robot check',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Copy diagnostic log',
-      btnDownloadReport: '📥 Save Diagnostic Report (JSON)',
+      btnDownloadReport: '📥 Save Bug Report (JSON)',
+      btnExportLists: '📤 Export lists',
+      btnImportLists: '📥 Import',
+      m_laterOpenFail: '⚠️ Could not open Saved artists',
       reportSaved: '✅ Report saved',
       reportFailed: '⚠️ Failed to save report',
       logCopied: 'Copied. Paste it together with what happened.',
@@ -394,7 +406,7 @@
       mpFollowBtnTitle: 'Follow artist',
       mpStationBtn: '📡 Station',
       mpStationBtnTitle: 'Start station from this track',
-      mpLaterListLabel: '🧐 Listen later list',
+      mpLaterListLabel: '🧐 Saved artists',
       mpDigListening: '⏸ Listening to artist',
       mpPrevTitle: 'Previous track',
       mpPlayTitle: 'Play / Pause',
@@ -515,7 +527,7 @@
       m_profileUnban: 'Remove',
       listsTitle: '📚 Lists',
       tabHated: '🤬 Excluded artists',
-      tabLater: '🧐 Listen Later List',
+      tabLater: '🧐 Saved artists',
       tabNoPlay: '⏭️ NoPlay List',
       listSearch: 'Search',
       listMore: 'Show more',
@@ -554,7 +566,7 @@
       onboardingStep1Body: 'FreshDig’s standout feature. Open it from the extension icon or the 📻 on SoundCloud.',
       onboardingStep2Title: 'Dig ON mode',
       onboardingStep2Body: 'When ON, Dig skips NoPlay tracks, liked tracks, and tracks by artists you follow.',
-      onboardingStep3Title: '🧐 Listen Later List',
+      onboardingStep3Title: '🧐 Saved artists',
       onboardingStep3Body: 'Save an artist with 🧐 in the bottom row. Open the list from the extension icon, then select an artist to open their tracks page.',
       onboardingOpenLauncher: '📻 Open the page launcher',
       onboardingLauncherHint: 'Click the 📻 in the player controls on the SoundCloud page.',
@@ -625,11 +637,17 @@
       skipReasonManyTracks: 'Künstler mit vielen Titeln',
       skipReasonManyPlays: 'Titel mit vielen Aufrufen',
       skipReasonOldTrack: 'Älterer Titel',
+      skipReasonHeard: 'Bereits gehört',
+      heardSkipLabel: 'Einmal gehörte Titel überspringen',
+      heardSkipHint: 'Titel nach 10 Sekunden Wiedergabe im Entdeckungsmodus überspringen. Standardmäßig AUS.',
       robotBanner: 'SoundCloud zeigt eine Bot-Prüfung an. Bitte schließe sie auf der Seite ab.',
       robotShort: 'Bot-Prüfung',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Diagnoseprotokoll kopieren',
-      btnDownloadReport: '📥 Diagnosebericht speichern (JSON)',
+      btnDownloadReport: '📥 Fehlerbericht speichern (JSON)',
+      btnExportLists: '📤 Listen exportieren',
+      btnImportLists: '📥 Importieren',
+      m_laterOpenFail: '⚠️ Die Später-Liste konnte nicht geöffnet werden',
       reportSaved: '✅ Bericht gespeichert',
       reportFailed: '⚠️ Bericht konnte nicht gespeichert werden',
       logCopied: 'Kopiert. Bitte zusammen mit dem Fehlerbericht einfügen.',
@@ -670,7 +688,7 @@
       mpFollowBtnTitle: 'Künstler folgen',
       mpStationBtn: '📡 Station',
       mpStationBtnTitle: 'Station für diesen Titel starten',
-      mpLaterListLabel: '🧐 Später-Liste',
+      mpLaterListLabel: '🧐 Gespeicherte Künstler',
       mpDigListening: '⏸ Künstler anhören',
       mpPrevTitle: 'Vorheriger Titel',
       mpPlayTitle: 'Wiedergabe / Pause',
@@ -791,7 +809,7 @@
       m_profileUnban: 'Entfernen',
       listsTitle: '📚 Listen',
       tabHated: '🤬 Ausgeschlossene Künstler',
-      tabLater: '🧐 Später-Liste',
+      tabLater: '🧐 Gespeicherte Künstler',
       tabNoPlay: '⏭️ NoPlay-Liste',
       listSearch: 'Suchen',
       listMore: 'Mehr anzeigen',
@@ -830,7 +848,7 @@
       onboardingStep1Body: 'FreshDig-Highlight: Über das Erweiterungssymbol oder 📻 auf SoundCloud öffnen.',
       onboardingStep2Title: 'Dig-ON-Modus',
       onboardingStep2Body: 'Bei ON überspringt Dig NoPlay-Titel, gelikte Titel und Titel von Künstlern, denen du folgst.',
-      onboardingStep3Title: '🧐 Später-Liste',
+      onboardingStep3Title: '🧐 Gespeicherte Künstler',
       onboardingStep3Body: 'Speichere Künstler unten mit 🧐. Öffne die Liste über das Erweiterungssymbol und wähle einen Künstler, um seine Track-Seite zu öffnen.',
       onboardingOpenLauncher: '📻 Seiten-Launcher öffnen',
       onboardingLauncherHint: 'Klicke auf der SoundCloud-Seite in den Player-Steuerelementen auf 📻.',
@@ -901,11 +919,17 @@
       skipReasonManyTracks: 'Артист с большим числом треков',
       skipReasonManyPlays: 'Трек с большим числом прослушиваний',
       skipReasonOldTrack: 'Старый трек',
+      skipReasonHeard: 'Уже прослушан',
+      heardSkipLabel: 'Пропускать уже прослушанные треки',
+      heardSkipHint: 'Треки после 10 секунд воспроизведения пропускаются в режиме поиска. По умолчанию ВЫКЛ.',
       robotBanner: 'SoundCloud показывает проверку на робота. Пожалуйста, пройдите её на странице.',
       robotShort: 'Проверка на робота',
       advancedSettings: '⚙ Dig Config',
       btnCopyLog: '📋 Скопировать лог диагностики',
-      btnDownloadReport: '📥 Сохранить отчет о диагностике (JSON)',
+      btnDownloadReport: '📥 Сохранить отчёт об ошибке (JSON)',
+      btnExportLists: '📤 Экспорт списков',
+      btnImportLists: '📥 Импорт',
+      m_laterOpenFail: '⚠️ Не удалось открыть список на потом',
       reportSaved: '✅ Отчет сохранен',
       reportFailed: '⚠️ Не удалось сохранить отчет',
       logCopied: 'Скопировано. Вставьте вместе с описанием проблемы.',
@@ -946,7 +970,7 @@
       mpFollowBtnTitle: 'Подписаться на артиста',
       mpStationBtn: '📡 Станция',
       mpStationBtnTitle: 'Запустить станцию этого трека',
-      mpLaterListLabel: '🧐 Список на потом',
+      mpLaterListLabel: '🧐 Сохранённые авторы',
       mpDigListening: '⏸ Слушаем артиста',
       mpPrevTitle: 'Предыдущий трек',
       mpPlayTitle: 'Воспроизведение / Пауза',
@@ -1067,7 +1091,7 @@
       m_profileUnban: 'Удалить',
       listsTitle: '📚 Списки',
       tabHated: '🤬 Исключенные артисты',
-      tabLater: '🧐 Список «Послушать позже»',
+      tabLater: '🧐 Сохранённые авторы',
       tabNoPlay: '⏭️ Список NoPlay',
       listSearch: 'Поиск',
       listMore: 'Показать еще',
@@ -1106,7 +1130,7 @@
       onboardingStep1Body: 'Главная функция FreshDig. Откройте его через значок расширения или 📻 на SoundCloud.',
       onboardingStep2Title: 'Режим Dig ВКЛ',
       onboardingStep2Body: 'В режиме ВКЛ пропускаются треки NoPlay, лайкнутые треки и треки артистов, на которых вы подписаны.',
-      onboardingStep3Title: '🧐 Список «Послушать позже»',
+      onboardingStep3Title: '🧐 Сохранённые авторы',
       onboardingStep3Body: 'Сохраните артиста кнопкой 🧐 внизу. Откройте список через значок расширения и выберите артиста, чтобы открыть страницу его треков.',
       onboardingOpenLauncher: '📻 Открыть кнопку на странице',
       onboardingLauncherHint: 'Нажмите 📻 в элементах управления плеером на странице SoundCloud.',
@@ -1244,6 +1268,9 @@
 
     // 5. 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は除外しない
     const keepKnown = !!(ctx.inLibrary || ctx.onArtistPage);
+    if (!keepKnown && ctx.heardSkipEnabled && id && ctx.heardTrackIds && ctx.heardTrackIds.has(id)) {
+      return { reason: 'skipReasonHeard', key: String(id) };
+    }
     if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
       return { reason: 'skipReasonLiked', key: String(id) };
     }
@@ -1420,11 +1447,387 @@
   };
 });
 
+(function (root, factory) {
+    'use strict';
+    if (typeof module === 'object' && module.exports) {
+        module.exports = factory();
+    } else {
+        root.FreshDigLists = factory();
+    }
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+    'use strict';
+
+    const FORMAT = 'FreshDigLists';
+    const SCHEMA = 1;
+    const MAX_JSON_BYTES = 5 * 1024 * 1024;
+    const MAX_LATER_ARTISTS = 500;
+    const MAX_MAP_ENTRIES = 10000;
+    const MAX_ARRAY_ITEMS = 10000;
+    const MAX_STRING_LENGTH = 4096;
+    const MAX_KEY_LENGTH = 512;
+    const MAX_OBJECT_PROPERTIES = 64;
+    const MAX_DEPTH = 8;
+    const LIST_KEYS = ['laterArtists', 'dislikedTracks', 'dislikedArtists', 'dislikedGenres'];
+    const LIST_KEY_SET = new Set(LIST_KEYS);
+    const DANGEROUS_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+    const RESERVED_MAP_KEYS = new Set(['undefined', 'null', 'unknown', 'title_unknown', 'artist_unknown']);
+
+    function hasOwn(value, key) {
+        return Object.prototype.hasOwnProperty.call(value, key);
+    }
+
+    function isPlainObject(value) {
+        if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+        const proto = Object.getPrototypeOf(value);
+        return proto === Object.prototype || proto === null;
+    }
+
+    function invalid(message) {
+        throw new Error('Invalid FreshDigLists backup: ' + message);
+    }
+
+    function assertSafeProperty(key) {
+        if (DANGEROUS_KEYS.has(key)) invalid('unsafe property name "' + key + '"');
+
+        // List data must never be a way to carry credentials or API material.
+        const compact = String(key).replace(/[\s_-]/g, '').toLowerCase();
+        if (compact.indexOf('token') !== -1 || compact.indexOf('secret') !== -1 ||
+            compact.indexOf('password') !== -1 || compact.indexOf('credential') !== -1 ||
+            compact === 'authorization' || compact === 'cookie' ||
+            compact === 'clientid' || compact === 'apikey') {
+            invalid('credential-like property "' + key + '"');
+        }
+    }
+
+    function assertFiniteNumber(value, path) {
+        if (typeof value !== 'number' || !Number.isFinite(value) ||
+            Math.abs(value) > Number.MAX_SAFE_INTEGER) {
+            invalid(path + ' must be a finite number');
+        }
+    }
+
+    function cloneValue(value, path, depth, stack) {
+        if (depth > MAX_DEPTH) invalid(path + ' is too deeply nested');
+        if (value === null || typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            if (value.length > MAX_STRING_LENGTH) invalid(path + ' is too long');
+            return value;
+        }
+        if (typeof value === 'number') {
+            assertFiniteNumber(value, path);
+            return value;
+        }
+        if (typeof value !== 'object') invalid(path + ' has an unsupported value');
+
+        if (stack.has(value)) invalid(path + ' contains a circular reference');
+        stack.add(value);
+
+        let result;
+        if (Array.isArray(value)) {
+            if (value.length > MAX_ARRAY_ITEMS) invalid(path + ' has too many items');
+            const ownKeys = Object.keys(value);
+            if (ownKeys.length !== value.length) invalid(path + ' must be a dense array');
+            result = [];
+            for (let i = 0; i < value.length; i += 1) {
+                result.push(cloneValue(value[i], path + '[' + i + ']', depth + 1, stack));
+            }
+        } else {
+            if (!isPlainObject(value)) invalid(path + ' must be a plain object');
+            const keys = Object.keys(value);
+            if (keys.length > MAX_OBJECT_PROPERTIES) invalid(path + ' has too many properties');
+            result = {};
+            keys.forEach(function (key) {
+                assertSafeProperty(key);
+                result[key] = cloneValue(value[key], path + '.' + key, depth + 1, stack);
+            });
+        }
+        stack.delete(value);
+        return result;
+    }
+
+    function validateMapKey(key, path) {
+        if (typeof key !== 'string') invalid(path + ' must be a string');
+        if (!key.trim() || key.length > MAX_KEY_LENGTH) invalid(path + ' is empty or too long');
+        const trimmed = key.trim();
+        // Map keys are opaque SoundCloud IDs/title_/artist_ keys.  Credential
+        // checks belong to record property names; a song or genre may itself
+        // legitimately contain words such as "Token", "Secret", or "Unknown".
+        if (DANGEROUS_KEYS.has(key) || RESERVED_MAP_KEYS.has(trimmed.toLowerCase()) ||
+            trimmed === 'title_' || trimmed === 'artist_' || trimmed === '0' || trimmed === 'NaN') {
+            invalid(path + ' is not a valid list key');
+        }
+    }
+
+    function validateArtistId(value, path) {
+        if (typeof value === 'number') {
+            if (!Number.isFinite(value) || value <= 0 || value > Number.MAX_SAFE_INTEGER) {
+                invalid(path + ' must be a positive id');
+            }
+            return;
+        }
+        if (typeof value !== 'string' || !value.trim() || value.length > MAX_KEY_LENGTH) {
+            invalid(path + ' must be a non-empty id');
+        }
+        const lower = value.trim().toLowerCase();
+        if (lower === 'undefined' || lower === 'null') invalid(path + ' must be a real id');
+    }
+
+    function cloneMap(value, name) {
+        if (!isPlainObject(value)) invalid('lists.' + name + ' must be an object');
+        const keys = Object.keys(value);
+        if (keys.length > MAX_MAP_ENTRIES) invalid('lists.' + name + ' has too many entries');
+        const result = {};
+        keys.forEach(function (key) {
+            validateMapKey(key, 'lists.' + name + '[' + key + ']');
+            result[key] = cloneValue(value[key], 'lists.' + name + '[' + key + ']', 0, new Set());
+        });
+        return result;
+    }
+
+    function cloneLaterArtists(value) {
+        if (!Array.isArray(value)) invalid('lists.laterArtists must be an array');
+        if (value.length > MAX_LATER_ARTISTS) invalid('lists.laterArtists exceeds the 500 item limit');
+        const result = [];
+        const ids = new Set();
+        value.forEach(function (item, index) {
+            if (!isPlainObject(item)) invalid('lists.laterArtists[' + index + '] must be an object');
+            if (!hasOwn(item, 'artistId')) invalid('lists.laterArtists[' + index + '] is missing artistId');
+            validateArtistId(item.artistId, 'lists.laterArtists[' + index + '].artistId');
+            const id = String(item.artistId);
+            if (ids.has(id)) invalid('lists.laterArtists contains duplicate artistId ' + id);
+            ids.add(id);
+            result.push(cloneValue(item, 'lists.laterArtists[' + index + ']', 0, new Set()));
+        });
+        return result;
+    }
+
+    function normalizeLists(value, path) {
+        const prefix = path || 'lists';
+        if (!isPlainObject(value)) invalid(prefix + ' must be an object');
+        Object.keys(value).forEach(function (key) {
+            if (!LIST_KEY_SET.has(key)) invalid(prefix + ' has an unrecognized property "' + key + '"');
+        });
+        LIST_KEYS.forEach(function (key) {
+            if (!hasOwn(value, key)) invalid(prefix + ' is missing ' + key);
+        });
+        return {
+            laterArtists: cloneLaterArtists(value.laterArtists),
+            dislikedTracks: cloneMap(value.dislikedTracks, 'dislikedTracks'),
+            dislikedArtists: cloneMap(value.dislikedArtists, 'dislikedArtists'),
+            dislikedGenres: cloneMap(value.dislikedGenres, 'dislikedGenres')
+        };
+    }
+
+    function utf8ByteLength(value) {
+        if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(value).length;
+        if (typeof Buffer !== 'undefined' && Buffer.byteLength) return Buffer.byteLength(value, 'utf8');
+        return unescape(encodeURIComponent(value)).length;
+    }
+
+    function assertEnvelopeSize(envelope) {
+        let text;
+        try {
+            text = JSON.stringify(envelope);
+        } catch (e) {
+            invalid('cannot be serialized');
+        }
+        if (utf8ByteLength(text) > MAX_JSON_BYTES) invalid('file exceeds the 5 MiB limit');
+    }
+
+    function normalize(envelope) {
+        if (!isPlainObject(envelope)) invalid('root must be an object');
+        Object.keys(envelope).forEach(function (key) {
+            if (key !== 'format' && key !== 'schema' && key !== 'exportedAt' && key !== 'lists') {
+                invalid('unrecognized root property "' + key + '"');
+            }
+            assertSafeProperty(key);
+        });
+        if (envelope.format !== FORMAT) invalid('format is not FreshDigLists');
+        if (envelope.schema !== SCHEMA) invalid('unsupported schema version');
+        if (typeof envelope.exportedAt !== 'string' || !envelope.exportedAt.trim() ||
+            !Number.isFinite(Date.parse(envelope.exportedAt))) {
+            invalid('exportedAt must be a valid date');
+        }
+        if (!hasOwn(envelope, 'lists')) invalid('lists is missing');
+        const normalized = {
+            format: FORMAT,
+            schema: SCHEMA,
+            exportedAt: envelope.exportedAt,
+            lists: normalizeLists(envelope.lists, 'lists')
+        };
+        assertEnvelopeSize(normalized);
+        return normalized;
+    }
+
+    function create(lists) {
+        const normalizedLists = normalizeLists(lists, 'lists');
+        const envelope = {
+            format: FORMAT,
+            schema: SCHEMA,
+            exportedAt: new Date().toISOString(),
+            lists: normalizedLists
+        };
+        assertEnvelopeSize(envelope);
+        return envelope;
+    }
+
+    function merge(currentLists, incomingLists) {
+        const current = normalizeLists(currentLists, 'current lists');
+        const incoming = normalizeLists(incomingLists, 'incoming lists');
+        const merged = {
+            laterArtists: current.laterArtists.slice(),
+            dislikedTracks: Object.assign({}, current.dislikedTracks),
+            dislikedArtists: Object.assign({}, current.dislikedArtists),
+            dislikedGenres: Object.assign({}, current.dislikedGenres)
+        };
+
+        const existingLaterIds = new Set(merged.laterArtists.map(function (item) { return String(item.artistId); }));
+        incoming.laterArtists.forEach(function (item) {
+            const id = String(item.artistId);
+            if (!existingLaterIds.has(id)) {
+                if (merged.laterArtists.length >= MAX_LATER_ARTISTS) {
+                    invalid('merged lists would exceed the 500 later artist limit');
+                }
+                existingLaterIds.add(id);
+                merged.laterArtists.push(item);
+            }
+        });
+
+        ['dislikedTracks', 'dislikedArtists', 'dislikedGenres'].forEach(function (name) {
+            Object.keys(incoming[name]).forEach(function (key) {
+                if (!hasOwn(merged[name], key)) merged[name][key] = incoming[name][key];
+            });
+        });
+
+        // Keep a final finite bound check in case the constants are changed later.
+        normalizeLists(merged, 'merged lists');
+        return merged;
+    }
+
+    function counts(lists) {
+        const normalized = normalizeLists(lists, 'lists');
+        return {
+            laterArtists: normalized.laterArtists.length,
+            dislikedTracks: Object.keys(normalized.dislikedTracks).length,
+            dislikedArtists: Object.keys(normalized.dislikedArtists).length,
+            dislikedGenres: Object.keys(normalized.dislikedGenres).length
+        };
+    }
+
+    function markdownEscape(value) {
+        return String(value === undefined || value === null ? '' : value)
+            .replace(/[\\`*_[\]()<>&#|]/g, '\\$&')
+            .replace(/\b(javascript|data|vbscript):/gi, '$1\\:')
+            .replace(/[\r\n]+/g, ' ')
+            .trim();
+    }
+
+    function safeSoundCloudUrl(permalink) {
+        if (permalink === undefined || permalink === null) return '';
+        const raw = String(permalink).trim();
+        if (!raw || raw.length > MAX_KEY_LENGTH || /[\s?#]/.test(raw)) return '';
+        if (/^https?:\/\//i.test(raw)) {
+            try {
+                const parsed = new URL(raw);
+                if (parsed.protocol !== 'https:' || parsed.hostname.toLowerCase() !== 'soundcloud.com') return '';
+                const path = parsed.pathname.replace(/^\/+/, '').split('/').filter(Boolean);
+                if (path.length !== 1) return '';
+                return 'https://soundcloud.com/' + encodeURIComponent(path[0]);
+            } catch (e) {
+                return '';
+            }
+        }
+        if (raw.indexOf('/') !== -1 || raw.indexOf('\\') !== -1 || raw.indexOf(':') !== -1) return '';
+        return 'https://soundcloud.com/' + encodeURIComponent(raw);
+    }
+
+    function recordLabel(key, record) {
+        if (record && typeof record === 'object' && !Array.isArray(record)) {
+            return record.name || record.title || record.artist || record.genre || key;
+        }
+        return key;
+    }
+
+    function recordDate(record) {
+        if (!record || typeof record !== 'object' || Array.isArray(record)) return '';
+        if (record.date !== undefined && record.date !== null) return String(record.date);
+        if (record.addedAt !== undefined && record.addedAt !== null) return String(record.addedAt);
+        return '';
+    }
+
+    function mapMarkdown(title, map) {
+        const lines = ['## ' + title + ' (' + Object.keys(map).length + ')'];
+        const keys = Object.keys(map).sort();
+        if (!keys.length) {
+            lines.push('_None_');
+            return lines;
+        }
+        keys.forEach(function (key) {
+            const record = map[key];
+            const label = markdownEscape(recordLabel(key, record));
+            const url = record && typeof record === 'object' && !Array.isArray(record)
+                ? safeSoundCloudUrl(record.permalink) : '';
+            const linked = url ? '[' + label + '](' + url + ')' : label;
+            const date = recordDate(record);
+            const details = date ? ' — ' + markdownEscape(date) : '';
+            lines.push('- ' + linked + ' (`' + markdownEscape(key) + '`)' + details);
+        });
+        return lines;
+    }
+
+    function toMarkdown(envelope) {
+        const normalized = normalize(envelope);
+        const lists = normalized.lists;
+        const lines = [
+            '# FreshDig lists backup',
+            '',
+            '- Format: `' + FORMAT + '`',
+            '- Schema: `' + SCHEMA + '`',
+            '- Exported: ' + markdownEscape(normalized.exportedAt),
+            ''
+        ];
+        lines.push('## Later artists (' + lists.laterArtists.length + ')');
+        if (!lists.laterArtists.length) {
+            lines.push('_None_');
+        } else {
+            lists.laterArtists.forEach(function (item) {
+                const label = markdownEscape(item.name || item.artistId);
+                const url = safeSoundCloudUrl(item.permalink);
+                const linked = url ? '[' + label + '](' + url + ')' : label;
+                const date = item.addedAt === undefined || item.addedAt === null ? '' :
+                    ' — ' + markdownEscape(item.addedAt);
+                lines.push('- ' + linked + ' (`' + markdownEscape(item.artistId) + '`)' + date);
+            });
+        }
+        lines.push('');
+        lines.push.apply(lines, mapMarkdown('Disliked tracks', lists.dislikedTracks));
+        lines.push('');
+        lines.push.apply(lines, mapMarkdown('Disliked artists', lists.dislikedArtists));
+        lines.push('');
+        lines.push.apply(lines, mapMarkdown('Disliked genres', lists.dislikedGenres));
+        lines.push('');
+        return lines.join('\n');
+    }
+
+    return Object.freeze({
+        FORMAT: FORMAT,
+        SCHEMA: SCHEMA,
+        MAX_JSON_BYTES: MAX_JSON_BYTES,
+        MAX_LATER_ARTISTS: MAX_LATER_ARTISTS,
+        create: create,
+        normalize: normalize,
+        merge: merge,
+        counts: counts,
+        toMarkdown: toMarkdown
+    });
+}));
+
 // SoundCloud Fresh Station & Follower Stream
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.2.4)');
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.4.0)');
+    const RUNTIME_VERSION = '2.4.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1438,6 +1841,9 @@
     const DISCOVERY_ENABLED_KEY = 'sc_fresh_station_discovery_enabled';
     const AUTO_MINI_PLAYER_KEY = 'sc_fresh_station_auto_miniplayer';
     const PREFERRED_LANGUAGE_KEY = 'sc_fresh_station_preferred_language';
+    const HEARD_SKIP_ENABLED_KEY = 'sc_fresh_station_heard_skip_enabled';
+    const HEARD_TRACKS_FALLBACK_KEY = 'sc_fresh_station_heard_tracks_v1';
+    const HEARD_THRESHOLD_SEC = 10;
 
     // 画面に出す文字を辞書(i18n.js)から取る。{name} などは vars で差し込む
     function tt(key, vars) {
@@ -1519,6 +1925,10 @@
         }
     }
 
+    function readHeardSkipEnabled() {
+        try { return localStorage.getItem(HEARD_SKIP_ENABLED_KEY) === 'true'; } catch (e) { return false; }
+    }
+
     const MAX_STATION_EXTRA_PAGES = 5;      // ステーション補充で追加取得するページ数の上限
     const MAX_LIKES_SYNC = 20000;           // 同期するLikesの上限件数（ID のみ取得なので軽い）
     const MAX_FOLLOWINGS_SYNC = 20000;      // 同期するフォローの上限件数
@@ -1534,9 +1944,11 @@
         clientId: localStorage.getItem(CACHE_CLIENT_ID_KEY) || null,
         likedTrackIds: new Set(),
         followingUserIds: new Set(),
+        heardTrackIds: new Set(),
         isUserDataLoaded: false,
         playbackMode: normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY)), // 'DISCOVERY'（'FOLLOWING_NEW' は現在無効）
         discoveryEnabled: readDiscoveryEnabled(), // 発掘モード（自動スキップ・ステーション絞り込み）の ON/OFF
+        heardSkipEnabled: readHeardSkipEnabled(),
         autoMiniPlayer: (function () { try { return localStorage.getItem(AUTO_MINI_PLAYER_KEY) !== 'false'; } catch (e) { return true; } })(), // 別タブへ切替時にミニプレイヤーを自動表示
         preferredLanguage: (function () { try { return localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) { return 'auto'; } })(), // 表示言語: auto / ja / en
         dislikedTracks: {},
@@ -1563,6 +1975,7 @@
             state.targetPlaylistId = localStorage.getItem(TARGET_PLAYLIST_KEY) || null;
             state.playbackMode = normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY));
             state.discoveryEnabled = readDiscoveryEnabled();
+            state.heardSkipEnabled = readHeardSkipEnabled();
             try { state.preferredLanguage = localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) {}
 
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
@@ -1621,6 +2034,16 @@
         } catch (e) {
             console.error('[SC-FreshStation] Cache load error:', e);
         }
+    }
+
+    function currentExclusionsForBackup() {
+        // Another tab may have persisted a change before its BroadcastChannel
+        // notification reaches this tab. Read storage again for backup/import.
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return { dislikedTracks: state.dislikedTracks, dislikedArtists: state.dislikedArtists, dislikedGenres: state.dislikedGenres };
+        const saved = JSON.parse(raw);
+        if (!saved || typeof saved !== 'object' || Array.isArray(saved)) throw new Error('Invalid exclusion storage');
+        return { dislikedTracks: saved.dislikedTracks || {}, dislikedArtists: saved.dislikedArtists || {}, dislikedGenres: saved.dislikedGenres || {} };
     }
 
     function saveDislikeData() {
@@ -2172,6 +2595,11 @@
                 try { localStorage.setItem(DISCOVERY_ENABLED_KEY, String(state.discoveryEnabled)); } catch (e) {}
                 updateModeButtonUI();
             }
+            if (d && typeof d.heardSkipEnabled === 'boolean' && d.heardSkipEnabled !== state.heardSkipEnabled) {
+                state.heardSkipEnabled = d.heardSkipEnabled;
+                try { localStorage.setItem(HEARD_SKIP_ENABLED_KEY, String(state.heardSkipEnabled)); } catch (e) {}
+                marginGuard.hasChecked = false;
+            }
             return;
         }
 
@@ -2199,6 +2627,21 @@
                     console.log('[SC-FreshStation] Force sync requested from popup');
                     await initUserData({ force: true });
                     ack({ success: state.isUserDataLoaded });
+                } else if (action === 'GET_LISTS') {
+                    ack({ success: true, lists: currentExclusionsForBackup() });
+                } else if (action === 'IMPORT_EXCLUSIONS') {
+                    const incoming = FreshDigLists.normalize({ format: 'FreshDigLists', schema: 1, exportedAt: new Date().toISOString(), lists: event.data.lists }).lists;
+                    const merged = FreshDigLists.merge(Object.assign({ laterArtists: [] }, currentExclusionsForBackup()), incoming);
+                    // Persist before changing live state, so a quota/write failure cannot
+                    // leave an apparent successful import that disappears on reload.
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ dislikedTracks: merged.dislikedTracks,
+                        dislikedArtists: merged.dislikedArtists, dislikedGenres: merged.dislikedGenres, updatedAt: Date.now() }));
+                    state.dislikedTracks = merged.dislikedTracks;
+                    state.dislikedArtists = merged.dislikedArtists;
+                    state.dislikedGenres = merged.dislikedGenres;
+                    fdBus.post('dislike-changed');
+                    try { updateHateButtons(); scheduleQueuePrune(); } catch (e) {}
+                    ack({ success: true });
                 } else if (action === 'REMOVE') {
                     if (targetType === 'track') delete state.dislikedTracks[targetId];
                     if (targetType === 'artist') delete state.dislikedArtists[targetId];
@@ -2226,6 +2669,12 @@
                 } else if (action === 'SET_DISCOVERY_ENABLED') {
                     setDiscoveryEnabled(event.data.enabled !== false, { silent: true });
                     ack({ success: true, discoveryEnabled: state.discoveryEnabled });
+                } else if (action === 'SET_HEARD_SKIP_ENABLED') {
+                    state.heardSkipEnabled = event.data.enabled === true;
+                    try { localStorage.setItem(HEARD_SKIP_ENABLED_KEY, String(state.heardSkipEnabled)); } catch (e) {}
+                    marginGuard.hasChecked = false;
+                    soundChangeState.decidedPath = '';
+                    ack({ success: true, heardSkipEnabled: state.heardSkipEnabled });
                 } else if (action === 'EXPORT_DISLIKES') {
                     ack(await exportDislikesToPlaylist());
                 } else if (action === 'IMPORT_DISLIKES') {
@@ -2241,7 +2690,7 @@
                 } else if (action === 'TOGGLE_MUTE') {
                     ack(Object.assign({}, toggleSoundCloudMute(), { volume: getSoundCloudVolume() }));
                 } else if (action === 'GET_DIAG_LOG') {
-                    ack({ success: true, text: getDiagLogText(), entries: getDiagLogEntries(), stats: getStats() });
+                    ack({ success: true, runtimeVersion: RUNTIME_VERSION, playback: getPlaybackDiagnostic(), text: getDiagLogText(), entries: getDiagLogEntries(), stats: getStats() });
                 } else if (action === 'GET_DATA') {
                     loadCachedData();
                     extractAuthTokenFromCookie();
@@ -2256,6 +2705,7 @@
                         targetPlaylistId: state.targetPlaylistId,
                         playbackMode: state.playbackMode,
                         discoveryEnabled: state.discoveryEnabled,
+                        heardSkipEnabled: state.heardSkipEnabled,
                         autoMiniPlayer: state.autoMiniPlayer,
                         autoPipSupported: getAutoPipDiagnostics().autoPipSupported,
                         autoPipStatus: getAutoPipDiagnostics().autoPipStatus,
@@ -2801,6 +3251,7 @@
         } catch (e) {
             console.warn('[SC-FreshStation] monitorPlayback exception:', e);
         }
+        try { observeHeardPlayback(); } catch (e) {}
         try {
             updateHateButtons();
         } catch (e) {}
@@ -2842,6 +3293,82 @@
         return FreshDigCore.toNumId(v);
     }
 
+    // 既聴曲の正本。IndexedDBには曲IDと最小限の記録だけを保存し、判定用の直近IDだけをメモリに置く。
+    let heardDbPromise = null;
+    const heardPlayback = { key: '', lastTime: null, accumulated: 0, marked: false };
+    function heardDb() {
+        if (heardDbPromise) return heardDbPromise;
+        if (typeof indexedDB === 'undefined' || !indexedDB.open) return Promise.resolve(null);
+        heardDbPromise = new Promise(function (resolve) {
+            try {
+                const req = indexedDB.open('FreshDig', 1);
+                req.onupgradeneeded = function () { try { req.result.createObjectStore('heardTracks', { keyPath: 'id' }); } catch (e) {} };
+                req.onsuccess = function () { resolve(req.result); };
+                req.onerror = function () { resolve(null); };
+            } catch (e) { resolve(null); }
+        });
+        return heardDbPromise;
+    }
+    function heardFallbackRead() {
+        try { const raw = JSON.parse(localStorage.getItem(HEARD_TRACKS_FALLBACK_KEY) || '{}'); return raw && typeof raw === 'object' ? raw : {}; } catch (e) { return {}; }
+    }
+    function heardFallbackWrite(id, rec) {
+        try { const all = heardFallbackRead(); all[String(id)] = rec; localStorage.setItem(HEARD_TRACKS_FALLBACK_KEY, JSON.stringify(all)); } catch (e) {}
+    }
+    function heardLookup(id) {
+        id = toNumId(id);
+        if (!id) return Promise.resolve(false);
+        if (state.heardTrackIds.has(id)) return Promise.resolve(true);
+        return heardDb().then(function (db) {
+            if (!db) return !!heardFallbackRead()[String(id)];
+            return new Promise(function (resolve) {
+                try {
+                    const req = db.transaction('heardTracks', 'readonly').objectStore('heardTracks').get(id);
+                    req.onsuccess = function () { resolve(!!req.result); };
+                    req.onerror = function () { resolve(false); };
+                } catch (e) { resolve(false); }
+            });
+        });
+    }
+    function rememberHeardTrack(info) {
+        const id = toNumId(info && info.id);
+        if (!id || state.heardTrackIds.has(id)) return;
+        state.heardTrackIds.add(id);
+        const rec = { id: id, heardAt: Date.now(), title: String((info && info.title) || '').slice(0, 200), artistId: toNumId(info && info.artistId) };
+        heardDb().then(function (db) {
+            if (!db) { heardFallbackWrite(id, rec); return; }
+            try { db.transaction('heardTracks', 'readwrite').objectStore('heardTracks').put(rec); } catch (e) { heardFallbackWrite(id, rec); }
+        });
+        dlog('heard-track-recorded', { trackId: id, thresholdSec: HEARD_THRESHOLD_SEC });
+    }
+    function queueHeardLookup(info) {
+        if (!state.heardSkipEnabled || !info || !toNumId(info.id)) return;
+        const id = toNumId(info.id);
+        heardLookup(id).then(function (known) {
+            if (known) state.heardTrackIds.add(id);
+            if (state.currentTrack && toNumId(state.currentTrack.id) === id) {
+                marginGuard.hasChecked = false;
+                soundChangeState.decidedPath = '';
+            }
+        });
+    }
+    function observeHeardPlayback() {
+        if (!state.heardSkipEnabled || !state.currentTrack || !toNumId(state.currentTrack.id)) return;
+        const key = String(toNumId(state.currentTrack.id));
+        if (heardPlayback.key !== key) { heardPlayback.key = key; heardPlayback.lastTime = null; heardPlayback.accumulated = 0; heardPlayback.marked = false; }
+        if (heardPlayback.marked || state.heardTrackIds.has(Number(key))) return;
+        const media = getActiveMedia(true);
+        const now = media && Number.isFinite(media.currentTime) ? Number(media.currentTime) : getPlaybackPositionMs() / 1000;
+        const playing = media ? (!media.paused && !media.ended) : now > 0;
+        if (!playing || !Number.isFinite(now) || now < 0) { heardPlayback.lastTime = now; return; }
+        if (heardPlayback.lastTime !== null) {
+            const delta = now - heardPlayback.lastTime;
+            if (delta >= 0 && delta <= 3) heardPlayback.accumulated += delta;
+        }
+        heardPlayback.lastTime = now;
+        if (heardPlayback.accumulated >= HEARD_THRESHOLD_SEC) { heardPlayback.marked = true; rememberHeardTrack(state.currentTrack); }
+    }
+
     function getCoreSkipReason(info) {
         const details = FreshDigCore.getSkipReasonDetails(info, {
             discoveryEnabled: state.discoveryEnabled,
@@ -2853,6 +3380,8 @@
             laterArtists: laterState.map,
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
+            heardSkipEnabled: state.heardSkipEnabled,
+            heardTrackIds: state.heardTrackIds,
             inLibrary: isExplicitLibraryPage(),
             onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
         });
@@ -2876,6 +3405,8 @@
                     laterArtists: laterState.map,
                     likedTrackIds: state.likedTrackIds,
                     followingUserIds: state.followingUserIds,
+                    heardSkipEnabled: state.heardSkipEnabled,
+                    heardTrackIds: state.heardTrackIds,
                     inLibrary: isExplicitLibraryPage(),
                     onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
                 });
@@ -3155,8 +3686,8 @@
                     const unchangedIntent = pause.revision === (playbackIntent.pauseRevision || 0);
                     if (sameTrack && unchangedIntent && pause.wanted && pause.media && getActiveMedia(true) === pause.media) {
                         playbackIntent.wanted = true;
-                        invokeMediaPlay(pause.media, 700).then(function (result) {
-                            if (!result.success && pause.revision === (playbackIntent.pauseRevision || 0) && state.currentTrack && toNumId(state.currentTrack.id) === expectId) playbackIntent.wanted = false;
+                        invokeMediaPlay(pause.media, 700, false).then(function (result) {
+                            if (!result.success && !result.pending && pause.revision === (playbackIntent.pauseRevision || 0) && state.currentTrack && toNumId(state.currentTrack.id) === expectId) playbackIntent.wanted = false;
                         });
                     }
                     return;
@@ -3220,6 +3751,7 @@
         // 定期監視側で同じ曲を二重判定しないよう記録
         soundChangeState.decidedPath = normalizeTrackPath(info.href);
         soundChangeState.decidedAt = Date.now();
+        queueHeardLookup(info);
 
         const reason = getSkipReason(info);
         if (reason) {
@@ -3331,6 +3863,7 @@
             artistName: artist,
             genre: (state.currentTrack && state.currentTrack.genre) || ''
         };
+        queueHeardLookup(info);
 
         // 切替通知で判定済みの曲は、DOM の Like 表示（Likes 一覧の上限外やその場でのライク）だけ追加確認
         let reason = alreadyDecided ? null : getSkipReason(info);
@@ -4602,6 +5135,7 @@
             media.addEventListener(type, function () {
                 // Connected media is already observed by the document capture listener.
                 if (isConnectedMedia(media) || lastPlayedMedia !== media) return;
+                dlog('audio-' + type, getPlaybackDiagnostic(media));
                 if (type === 'play') playbackIntent.wanted = true;
                 else if (type === 'pause' && !media.ended) notePausedMedia(media);
                 else if (type !== 'pause') schedulePlaybackRecovery(media, type);
@@ -4657,7 +5191,7 @@
     // HTMLMediaElement.play() can reject or remain pending when the browser's
     // autoplay/permission state is unresolved. Never leave a remote command or
     // recovery attempt waiting forever, and never fall back to a second toggle.
-    function invokeMediaPlay(media, timeoutMs) {
+    function invokeMediaPlay(media, timeoutMs, cancelOnTimeout) {
         const timeout = timeoutMs || 700;
         return new Promise(function (resolve) {
             let settled = false;
@@ -4681,10 +5215,33 @@
                 done({ success: false, error: e });
             });
             timer = setTimeout(function () {
-                try { if (media && media.pause) media.pause(); } catch (e) {}
-                done({ success: false, error: { name: 'PlayTimeout' } });
+                // An automatic recovery must not turn slow buffering into a pause.
+                // Only an explicit play command cancels its pending request on timeout.
+                if (cancelOnTimeout !== false) {
+                    try { if (media && media.pause) media.pause(); } catch (e) {}
+                }
+                done({ success: false, pending: cancelOnTimeout === false, error: { name: 'PlayTimeout' } });
             }, timeout);
         });
+    }
+
+    function getPlaybackDiagnostic(media) {
+        const active = media || getActiveMedia(true);
+        const track = state.currentTrack;
+        return {
+            trackId: track ? toNumId(track.id) : null,
+            wanted: !!playbackIntent.wanted,
+            discoveryEnabled: !!state.discoveryEnabled,
+            robotBlocked: !!state.robotBlocked,
+            recoveryInFlight: !!playbackIntent.recoveryInFlight,
+            hasMedia: !!active,
+            paused: active ? !!active.paused : null,
+            ended: active ? !!active.ended : null,
+            currentTime: active && Number.isFinite(active.currentTime) ? Math.round(active.currentTime * 10) / 10 : null,
+            readyState: active ? active.readyState : null,
+            networkState: active ? active.networkState : null,
+            mediaError: active && active.error ? active.error.code : null
+        };
     }
 
     function schedulePlaybackRecovery(media, reason) {
@@ -4699,30 +5256,36 @@
         playbackIntent.recoveryInFlight = true;
         playbackIntent.recoveries++;
         playbackIntent.lastRecoveryAt = Date.now();
-        dlog('playback-recovery-attempt', { reason: reason, n: playbackIntent.recoveries });
+        dlog('playback-recovery-attempt', { reason: reason, n: playbackIntent.recoveries, playback: getPlaybackDiagnostic(media) });
         setTimeout(async function () {
+            let outcome = 'cancelled';
             try {
                 if (!playbackIntent.wanted || !state.discoveryEnabled || state.robotBlocked || playbackTrackKey() !== key) return;
                 if (reason === 'ended') {
                     const pm = getScPlaybackManager();
-                    if (!pm || typeof pm.playNext !== 'function') return;
+                    if (!pm || typeof pm.playNext !== 'function') { outcome = 'no-queue'; return; }
                     pm.playNext({ userInitiated: false });
                     await sleepMs(250);
-                    if (!isLocalPlaying()) dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+                    outcome = isLocalPlaying() ? 'playing' : 'not-playing';
+                    if (outcome === 'not-playing') dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
                     return;
                 }
                 const active = getActiveMedia(true);
-                if (!active || (media && active !== media && !isConnectedMedia(media))) return;
-                const playResult = await invokeMediaPlay(active, 700);
+                if (!active || (media && active !== media && !isConnectedMedia(media))) { outcome = 'no-current-media'; return; }
+                const playResult = await invokeMediaPlay(active, 700, false);
                 if (!playResult.success) {
+                    outcome = errorName(playResult.error);
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(playResult.error) });
                     return;
                 }
-                if (!(await waitForLocalPlaying(true, 500))) dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+                outcome = (await waitForLocalPlaying(true, 500)) ? 'playing' : 'not-playing';
+                if (outcome === 'not-playing') dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
             } catch (e) {
+                outcome = errorName(e);
                 dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(e) });
             } finally {
                 playbackIntent.recoveryInFlight = false;
+                dlog('playback-recovery-result', { reason: reason, forTrack: key, outcome: outcome, playback: getPlaybackDiagnostic() });
             }
         }, reason === 'ended' ? 700 : 350);
     }
@@ -5908,23 +6471,7 @@
                 }
                 .btn-follow svg { width: 21px; height: 21px; pointer-events: none; }
                 .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; padding: 0 6px; font-size: 12px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
-                .later-panel { position: fixed; inset: 0; z-index: 40; background: #141414; padding: 10px; display: flex; flex-direction: column; overflow: hidden; }
-                .later-panel[hidden] { display: none; }
-                .later-panel-header { display: flex; flex: 0 0 auto; gap: 8px; align-items: center; margin-bottom: 8px; }
-                .later-panel-header strong { flex: 1; font-size: 14px; color: #ff9a55; }
-                .later-panel-header button { flex: 0 0 30px; height: 28px; color: #eee; background: #2a2a2a; border: 1px solid #666; border-radius: 5px; cursor: pointer; }
-                #mp-later-items { flex: 1; min-height: 0; overflow-y: scroll; overflow-x: hidden; overscroll-behavior: contain; scrollbar-gutter: stable; scrollbar-width: auto; }
-                #mp-later-items::-webkit-scrollbar { width: 14px; }
-                #mp-later-items::-webkit-scrollbar-track { background: #252525; }
-                #mp-later-items::-webkit-scrollbar-thumb { background: #888; border: 3px solid #252525; border-radius: 8px; }
-                #mp-later-items::-webkit-scrollbar-thumb:hover { background: #bbb; }
-                .later-item { display: flex; align-items: center; gap: 6px; min-height: 38px; border-bottom: 1px solid #333; padding: 4px 2px; }
-                .later-item a, .later-item-name { flex: 1; min-width: 0; color: #ffb36b; font-size: 13px; text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .later-item time { flex: 0 0 auto; color: #aaa; font-size: 10px; white-space: nowrap; }
-                .later-item .later-remove { flex: 0 0 28px; width: 28px; height: 28px; padding: 0; color: #eee; background: #2a2a2a; border: 1px solid #666; border-radius: 5px; font-size: 18px; cursor: pointer; }
-                .later-item .later-remove:disabled { opacity: .5; cursor: wait; }
-                .later-panel p { color: #aaa; font-size: 12px; }
-                button:focus-visible, .later-panel a:focus-visible { outline: 2px solid #ffb36b; outline-offset: 1px; }
+                button:focus-visible, a:focus-visible { outline: 2px solid #ffb36b; outline-offset: 1px; }
                 .btn-follow:hover {
                     background: #333;
                     color: #fff;
@@ -6222,7 +6769,7 @@
                         <button class="status-badge" id="mp-status" type="button">${tx.mpStatusWaiting}</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9 6 21h12L12 9Zm-3 6h6M7 21l5-6 5 6M12 4v5M8 3a6 6 0 0 0 0 8M16 3a6 6 0 0 1 0 8M5 1a9 9 0 0 0 0 12M19 1a9 9 0 0 1 0 12"/></svg></button>
                         <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
-                        <button class="btn-later-list" id="mp-later-list" type="button" aria-expanded="false" aria-controls="mp-later-panel">${tx.mpLaterListLabel}</button>
+                        <button class="btn-later-list" id="mp-later-list" type="button">${tx.mpLaterListLabel}</button>
                         <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                     </div>
                 </div>
@@ -6262,10 +6809,6 @@
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
                 <button class="btn-later" id="mp-later" title="">🧐</button>
             </div>
-            <section id="mp-later-panel" class="later-panel" hidden role="dialog" aria-modal="true" aria-label="${tx.mpLaterListLabel}">
-                <div class="later-panel-header"><strong id="mp-later-heading">${tx.mpLaterListLabel}</strong><button id="mp-later-close" type="button" aria-label="${tx.onboardingClose}">×</button></div>
-                <div id="mp-later-items"></div>
-            </section>
             <div class="toast" id="mp-toast"></div>
             <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
         `;
@@ -6346,98 +6889,12 @@
         doc.getElementById('mp-hate')?.addEventListener('click', function () { run('hate'); });
         doc.getElementById('mp-later')?.addEventListener('click', function () { run('later'); });
         const listButton = doc.getElementById('mp-later-list');
-        const listPanel = doc.getElementById('mp-later-panel');
-        const closeList = function () {
-            listPanel.hidden = true;
-            listButton.setAttribute('aria-expanded', 'false');
-            listButton.focus();
-        };
         listButton.addEventListener('click', function () {
-            listPanel.hidden = false;
-            listButton.setAttribute('aria-expanded', 'true');
-            renderMiniLaterList(doc);
-            doc.getElementById('mp-later-close').focus();
-        });
-        doc.getElementById('mp-later-close').addEventListener('click', closeList);
-        listPanel.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') { event.preventDefault(); closeList(); }
-            if (event.key !== 'Tab') return;
-            const controls = Array.from(listPanel.querySelectorAll('button:not(:disabled), a[href]'));
-            const first = controls[0], last = controls[controls.length - 1];
-            if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
-            else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
-        });
-    }
-
-    function renderMiniLaterList(doc) {
-        const items = doc.getElementById('mp-later-items');
-        if (!items) return;
-        const tx = getI18nTexts();
-        const records = Object.keys(laterState.map).map(function (id) { return laterState.map[id]; }).sort(function (a, b) {
-            const oldest = function (record) {
-                const time = record.addedAt == null || record.addedAt === '' ? NaN : new Date(record.addedAt).getTime();
-                return Number.isFinite(time) ? time : Infinity;
-            };
-            const aTime = oldest(a), bTime = oldest(b);
-            if (aTime !== bTime) return aTime < bTime ? -1 : 1;
-            const aName = String(a.name || '').toLowerCase(), bName = String(b.name || '').toLowerCase();
-            if (aName !== bName) return aName < bName ? -1 : 1;
-            return String(a.artistId).localeCompare(String(b.artistId));
-        });
-        const signature = JSON.stringify([state.preferredLanguage, records.map(function (r) { return [r.artistId, r.name, r.permalink, r.addedAt]; })]);
-        if (items.dataset.signature === signature) return;
-        items.dataset.signature = signature;
-        const scrollTop = items.scrollTop;
-        items.textContent = '';
-        records.forEach(function (record, index) {
-            const row = doc.createElement('div');
-            row.className = 'later-item';
-            const link = doc.createElement(record.permalink ? 'a' : 'span');
-            link.className = 'later-item-name';
-            link.textContent = record.name || String(record.artistId);
-            if (record.permalink) {
-                link.href = 'https://soundcloud.com/' + encodeURIComponent(record.permalink) + '/tracks';
-                link.target = '_blank';
-                link.rel = 'noopener noreferrer';
-            }
-            row.appendChild(link);
-            const savedTime = record.addedAt == null || record.addedAt === '' ? NaN : new Date(record.addedAt).getTime();
-            const date = doc.createElement('time');
-            date.textContent = '—';
-            if (Number.isFinite(savedTime)) {
-                date.dateTime = new Date(savedTime).toISOString();
-                date.textContent = new Date(savedTime).toLocaleDateString(FreshDigI18n.resolveLanguage(state.preferredLanguage));
-            }
-            row.appendChild(date);
-            const remove = doc.createElement('button');
-            remove.type = 'button';
-            remove.className = 'later-remove';
-            remove.textContent = '×';
-            remove.title = tx.listLaterDelete;
-            remove.setAttribute('aria-label', tx.listLaterDelete + ': ' + (record.name || record.artistId));
-            remove.addEventListener('click', async function () {
-                if (remove.disabled) return;
-                remove.disabled = true;
-                const result = await laterOp({ op: 'remove', artistId: String(record.artistId) });
-                if (!result.ok) { remove.disabled = false; mpToast(tt('m_laterFail')); return; }
-                delete laterState.map[String(record.artistId)];
-                updateLaterButton();
-                try { scheduleQueuePrune(); } catch (e) {}
-                renderMiniLaterList(doc);
-                const buttons = items.querySelectorAll('.later-remove');
-                (buttons[Math.min(index, buttons.length - 1)] || doc.getElementById('mp-later-close')).focus();
+            laterOp({ op: 'openList' }).then(function (result) {
+                if (!result.ok) mpToast(tt('m_laterOpenFail'));
             });
-            row.appendChild(remove);
-            items.appendChild(row);
         });
-        if (!records.length) {
-            const empty = doc.createElement('p'); empty.textContent = tx.listEmpty; items.appendChild(empty);
-        }
-        items.scrollTop = scrollTop;
-        doc.getElementById('mp-later-heading').textContent = tx.mpLaterListLabel;
-        doc.getElementById('mp-later-close').setAttribute('aria-label', tx.onboardingClose);
     }
-
     // ---- R4: 複数タブ。音を出しているタブの「今の曲」を BroadcastChannel で流し、ミニプレイヤーはそれを写す ----
     const fdRemote = { now: null, active: false, seq: 0, pending: {} };
 
@@ -6885,8 +7342,6 @@
         }
         const listButton = doc.getElementById('mp-later-list');
         if (listButton) listButton.textContent = getI18nTexts().mpLaterListLabel;
-        const listPanel = doc.getElementById('mp-later-panel');
-        if (listPanel && !listPanel.hidden) renderMiniLaterList(doc);
 
         // シークバーの同期
         if (!isSeekingInMiniPlayer) {

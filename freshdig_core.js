@@ -91,6 +91,9 @@
 
     // 5. 自分で Likes ページ等を開いて再生している時 / 作者のページから再生している時は除外しない
     const keepKnown = !!(ctx.inLibrary || ctx.onArtistPage);
+    if (!keepKnown && ctx.heardSkipEnabled && id && ctx.heardTrackIds && ctx.heardTrackIds.has(id)) {
+      return { reason: 'skipReasonHeard', key: String(id) };
+    }
     if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
       return { reason: 'skipReasonLiked', key: String(id) };
     }

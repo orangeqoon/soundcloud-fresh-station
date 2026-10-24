@@ -57,6 +57,9 @@ test('station_hook.js loads without throwing and answers GET_DIAG_LOG', async ()
   assert.match(reply.result.text, /FreshDig diag log/);
   assert.ok(Array.isArray(reply.result.entries), 'entries should be an array');
   assert.ok(reply.result.stats && typeof reply.result.stats.totalNoPlays === 'number', 'stats.totalNoPlays should exist');
+  assert.strictEqual(reply.result.runtimeVersion, require('../manifest.json').version);
+  assert.strictEqual(reply.result.playback.hasMedia, false);
+  assert.strictEqual(typeof reply.result.playback.wanted, 'boolean');
 });
 
 test('icons/flags contains all required SVG files for F1', () => {

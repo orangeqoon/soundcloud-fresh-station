@@ -1,4 +1,4 @@
-// .user.js を作る: UserScript ヘッダー + i18n.js + freshdig_core.js + station_hook.js
+// .user.js を作る: UserScript ヘッダー + i18n.js + freshdig_core.js + list_backup.js + station_hook.js
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +17,6 @@ const header = [
   '// ==/UserScript==',
   ''
 ].join('\n');
-const body = ['i18n.js', 'freshdig_core.js', 'station_hook.js'].map(read).join('\n');
+const body = ['i18n.js', 'freshdig_core.js', 'list_backup.js', 'station_hook.js'].map(read).join('\n');
 fs.writeFileSync(path.join(root, 'soundcloud_fresh_station.user.js'), header + '\n' + body);
 console.log('built soundcloud_fresh_station.user.js v' + manifest.version);

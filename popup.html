@@ -428,7 +428,7 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.2.4</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.4.0</span>
     </div>
     <div class="header-right">
       <div class="lang-flags" id="lang-flags" title="Language / 言語">
@@ -507,7 +507,7 @@
 
   <!-- Dig Config（閉じた状態） -->
   <details class="card" id="advanced-details">
-    <summary id="label-advanced">⚙ Dig Config</summary>
+    <summary id="label-advanced">⚙ Dig設定</summary>
     <div style="margin-top:8px;">
       <div id="fresh-box">
         <div id="fresh-title" style="font-size:12px; color:#ddd; margin-bottom:4px;"></div>
@@ -517,6 +517,11 @@
         <label class="fresh-row"><input type="checkbox" id="fresh-age-on"><span id="fresh-age-pre"></span><input type="number" min="0" id="fresh-age-n" class="fresh-n"><span id="fresh-age-post"></span></label>
         <div id="fresh-hint" class="sync-msg" style="margin-top:4px;"></div>
       </div>
+      <label class="fresh-row" style="margin-top:8px; font-weight:700;">
+        <input type="checkbox" id="heard-skip-on">
+        <span id="heard-skip-label"></span>
+      </label>
+      <div id="heard-skip-hint" class="sync-msg" style="margin-top:4px;"></div>
     </div>
   </details>
 
@@ -538,23 +543,18 @@
     </select>
   </div>
 
-  <!-- NoPlay プレイリスト連携 (エクスポート & インポート) -->
-  <div class="card sync-card">
-    <div class="card-label" style="color: #ff8a80; font-weight: bold;">
-      <span id="label-dislike-section">⏭️ 不再生プレイリスト連携</span>
-    </div>
+  <div class="card">
     <div class="sync-btn-group">
-      <button id="btn-export-dislikes" class="sync-btn">📤 SCへ書き出し</button>
-      <button id="btn-import-dislikes" class="sync-btn">📥 SCから読み込み</button>
+      <button id="btn-export-lists" class="sync-btn" type="button">📤 リスト書き出し</button>
+      <button id="btn-import-lists" class="sync-btn" type="button">📥 読み込み</button>
     </div>
-    <div id="dislike-sync-msg" class="sync-msg"></div>
   </div>
 
   <button id="btn-open-guide" class="guide-link" type="button">使い方 / Guide</button>
 
   <!-- 診断レポート保存（ポップアップ最下部） -->
   <div style="margin-top:8px;">
-    <button id="btn-download-report" class="sync-btn" style="width:100%; font-size:11px;">📥 診断レポート保存 (JSON)</button>
+    <button id="btn-download-report" class="sync-btn" style="width:100%; font-size:11px;">📥 不具合レポート保存 (JSON)</button>
     <div id="log-hint" class="sync-msg" style="margin-top:4px;"></div>
   </div>
 

@@ -3,7 +3,7 @@
     'use strict';
 
     // MAIN world から chrome.storage.local へ書き込みを許可するキー（それ以外は無視）
-    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled', 'autoMiniPlayer', 'preferredLanguage', 'freshFilter'];
+    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled', 'autoMiniPlayer', 'preferredLanguage', 'freshFilter', 'heardSkipEnabled'];
 
     // MAIN world へ渡す（読み出し）キー。書き込みを許すのは SYNCABLE_KEYS だけ
     const READ_KEYS = SYNCABLE_KEYS.concat(['laterArtists']);
@@ -81,16 +81,36 @@
 
         // 後で聴く作者の追加・削除（実際の保存は background.js の 1 か所）
         if (event.data.type === 'SC_FRESH_STATION_LATER_OP') {
-            const op = event.data.op === 'remove' ? 'LATER_REMOVE' : 'LATER_ADD';
+            const opName = event.data.op;
+            const op = opName === 'remove' ? 'LATER_REMOVE'
+                : opName === 'add' ? 'LATER_ADD'
+                : opName === 'openList' ? 'OPEN_LATER_WINDOW'
+                : null;
             const reqId = event.data.reqId;
             const reply = function (result) {
                 window.postMessage({ type: 'SC_FRESH_STATION_LATER_RESULT', reqId: reqId, result: result }, window.location.origin);
             };
+            if (!op) {
+                reply({ ok: false, reason: 'unknown' });
+                return;
+            }
             try {
-                chrome.runtime.sendMessage({ action: op, item: event.data.item, artistId: event.data.artistId }, function (res) {
-                    if (chrome.runtime.lastError) { reply({ ok: false, reason: 'error' }); return; }
-                    reply(res || { ok: false, reason: 'error' });
+                let replied = false;
+                const replyOnce = function (result) {
+                    if (replied) return;
+                    replied = true;
+                    reply(result);
+                };
+                const request = { action: op };
+                if (op === 'LATER_ADD') request.item = event.data.item;
+                if (op === 'LATER_REMOVE') request.artistId = event.data.artistId;
+                const maybePromise = chrome.runtime.sendMessage(request, function (res) {
+                    if (chrome.runtime.lastError) { replyOnce({ ok: false, reason: 'error' }); return; }
+                    replyOnce(res || { ok: false, reason: 'error' });
                 });
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    maybePromise.then(function (res) { replyOnce(res || { ok: false, reason: 'error' }); }, function () { replyOnce({ ok: false, reason: 'error' }); });
+                }
             } catch (e) { reply({ ok: false, reason: 'error' }); }
         }
 
