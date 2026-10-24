@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig para SoundCloud - Descubre artistas nuevos",
+    "description": "Nombre de la extensión"
+  },
+  "extensionDesc": {
+    "message": "Organiza el descubrimiento en SoundCloud con el modo Dig, artistas para escuchar después, exclusiones y un mini reproductor independiente.",
+    "description": "Descripción de la extensión"
+  },
+  "actionTitle": {
+    "message": "Configuración de FreshDig para SoundCloud",
+    "description": "Título del icono de la extensión"
+  }
+}

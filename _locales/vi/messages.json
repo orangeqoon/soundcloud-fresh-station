@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig cho SoundCloud - Khám phá nghệ sĩ mới",
+    "description": "Tên tiện ích"
+  },
+  "extensionDesc": {
+    "message": "Sắp xếp việc khám phá SoundCloud bằng Dig mode, danh sách nghệ sĩ để nghe sau, bỏ qua mục đã loại trừ và mini player riêng.",
+    "description": "Mô tả tiện ích"
+  },
+  "actionTitle": {
+    "message": "Cài đặt FreshDig cho SoundCloud",
+    "description": "Tiêu đề biểu tượng tiện ích"
+  }
+}

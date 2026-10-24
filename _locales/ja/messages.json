@@ -4,7 +4,7 @@
     "description": "Extension title"
   },
   "extensionDesc": {
-    "message": "知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー",
+    "message": "SoundCloudのDigモードでいいね・フォロー・除外をスキップ。作者保存と別ウィンドウのミニプレイヤーに対応",
     "description": "Extension description"
   },
   "actionTitle": {

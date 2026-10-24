@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.4.0
+// @version      2.5.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -1149,14 +1149,150 @@
     }
   };
 
+  // Vietnamese uses the complete English dictionary as a fallback for newer or
+  // less common messages, while the primary popup, player and onboarding text
+  // is translated here. This keeps the locale usable as the feature set grows.
+  translations.vi = Object.assign({}, translations.en, {
+    appName: 'FreshDig',
+    notConnected: 'Chưa kết nối SoundCloud',
+    notLoggedIn: '⚠️ Chưa đăng nhập SoundCloud',
+    notLoggedInDesc: 'Đăng nhập SoundCloud để bỏ qua bài đã thích/nghệ sĩ theo dõi và thêm playlist',
+    connecting: '🔄 Đang kết nối tài khoản...',
+    connectingDesc: 'Nếu không kết nối được, hãy bấm [🔄 Đồng bộ] hoặc tải lại SoundCloud',
+    connectedReady: 'Đã kết nối tài khoản · Sẵn sàng',
+    connectedSyncing: 'Đã kết nối tài khoản · Đang đồng bộ',
+    reloadRequired: '⚠️ Hãy tải lại tab SoundCloud',
+    reloadRequiredDesc: 'Sau khi cập nhật tiện ích, cần tải lại tab SoundCloud đang mở',
+    openSCTab: 'Hãy mở một tab SoundCloud',
+    loadingSC: 'Đang tải SoundCloud...',
+    btnMiniPlayer: '📻 Mini player',
+    btnStation: '📡 Bắt đầu station',
+    btnStationTitle: 'Bắt đầu station từ bài hiện tại',
+    autoMpLabel: 'Tự mở mini player khi chuyển sang tab khác (trong phạm vi trình duyệt cho phép)',
+    autoMpTitle: 'Tự hiển thị mini player khi đổi tab (cần quyền trình duyệt)',
+    autoMpNotSupported: 'Trình duyệt này không hỗ trợ PiP tự động (cài đặt vẫn được lưu)',
+    autoMpPermissionNote: 'Cần quyền trình duyệt và phát âm thanh. Trình duyệt quyết định hành vi khi đổi tab.',
+    volControl: '🔊 Điều khiển âm lượng',
+    volMute: 'Bật/tắt tiếng',
+    volSliderTitle: 'Âm lượng',
+    discoveryMode: '⛏️ Dig mode',
+    discoveryOnDesc: 'Tự bỏ qua bài không phát, bài đã thích và nghệ sĩ đang theo dõi',
+    discoveryOffDesc: 'TẮT: Phát bình thường',
+    discoveryStatusOn: 'BẬT',
+    discoveryStatusOff: 'TẮT',
+    targetPlaylist: '➕ Playlist thêm nhanh',
+    btnSync: '🔄 Đồng bộ',
+    btnSyncing: '⏳ Đang đồng bộ...',
+    noPlaylistFound: '(Không tìm thấy playlist)',
+    trackCountSuffix: ' bài',
+    skipToastPrefix: 'Đã bỏ qua',
+    skipReasonDisliked: 'Bài bị loại trừ',
+    skipReasonHated: 'Nghệ sĩ bị loại trừ',
+    skipReasonGenre: 'Thể loại bị loại trừ',
+    skipReasonOwn: 'Bài của bạn',
+    skipReasonLiked: 'Đã thích',
+    skipReasonFollowing: 'Nghệ sĩ đang theo dõi',
+    skipReasonHeard: 'Đã nghe một lần',
+    heardSkipLabel: 'Bỏ qua bài đã nghe một lần',
+    heardSkipHint: 'Bài đã phát thực tế 10 giây sẽ bị bỏ qua trong Dig mode. Mặc định TẮT.',
+    robotBanner: 'SoundCloud đang hiển thị bước xác minh bot. Hãy hoàn tất trên trang.',
+    robotShort: 'Đang xác minh bot',
+    advancedSettings: '⚙ Dig Settings',
+    btnCopyLog: '📋 Sao chép nhật ký lỗi',
+    btnDownloadReport: '📥 Lưu báo cáo lỗi (JSON)',
+    btnExportLists: '📤 Xuất danh sách',
+    btnImportLists: '📥 Nhập',
+    m_laterOpenFail: '⚠️ Không thể mở danh sách nghệ sĩ để nghe sau',
+    reportSaved: '✅ Đã lưu báo cáo',
+    reportFailed: '⚠️ Không thể lưu báo cáo',
+    logCopied: 'Đã sao chép. Hãy gửi cùng mô tả lúc phát bị dừng.',
+    listsTitle: '📚 Danh sách',
+    tabHated: '🤬 Nghệ sĩ bị loại trừ',
+    tabLater: '🧐 Nghệ sĩ để nghe sau',
+    tabNoPlay: '⏭️ Danh sách không phát',
+    listSearch: 'Tìm kiếm',
+    listMore: 'Hiển thị thêm',
+    listUnban: 'Xóa ✕',
+    listLaterDelete: '✕ Xóa',
+    listEmpty: '(Chưa có mục nào)',
+    listNeedTab: 'Mở tab SoundCloud để xem danh sách này',
+    listFrom: 'Nguồn',
+    pickerTitle: '➕ Chọn playlist để thêm nhanh',
+    pickerCancel: 'Hủy',
+    onboardingDialogLabel: 'Hướng dẫn FreshDig',
+    onboardingTitle: 'FreshDig hoạt động như thế nào',
+    onboardingStep1Title: 'Mở mini player',
+    onboardingStep1Body: 'Tính năng chính của FreshDig. Mở từ biểu tượng tiện ích hoặc nút 📻 trên SoundCloud.',
+    onboardingStep2Title: 'Dig mode BẬT',
+    onboardingStep2Body: 'Khi BẬT, bài không phát, bài đã thích và bài của nghệ sĩ đang theo dõi sẽ được bỏ qua.',
+    onboardingStep3Title: '🧐 Nghệ sĩ để nghe sau',
+    onboardingStep3Body: 'Lưu nghệ sĩ bằng nút 🧐. Mở danh sách từ biểu tượng tiện ích rồi chọn nghệ sĩ để mở trang các bài hát.',
+    onboardingOpenLauncher: '📻 Mở nút trên trang',
+    onboardingLauncherHint: 'Bấm 📻 trong bộ điều khiển player trên SoundCloud.',
+    onboardingNext: 'Tiếp theo',
+    onboardingBack: 'Quay lại',
+    onboardingDone: 'Bắt đầu với FreshDig',
+    onboardingSkip: 'Bỏ qua hướng dẫn',
+    onboardingClose: 'Đóng',
+    onboardingProgress: '{n} / 3',
+    onboardingGuideButton: 'Xem hướng dẫn',
+    m_laterAdded: '🧐 Đã lưu “{name}” vào danh sách nghệ sĩ để nghe sau',
+    m_laterRemoved: '🧐 Đã xóa “{name}” khỏi danh sách nghệ sĩ để nghe sau',
+    m_laterAddTip: '🧐 Nghe sau (lưu nghệ sĩ này)',
+    m_laterRemoveTip: '🧐 Đã lưu (bấm để xóa)',
+    mpTitle: 'FreshDig - Mini player Dig',
+    mpPromptOpen: '📻 Bấm để mở mini player',
+    m_discOn: '⛏️ Dig mode BẬT (bài quen thuộc sẽ bị bỏ qua)',
+    m_discOff: '⏸ Dig mode TẮT (phát SoundCloud bình thường)'
+  });
+
+  translations.es = Object.assign({}, translations.en, {
+    appName: 'FreshDig',
+    notConnected: 'SoundCloud no conectado', notLoggedIn: '⚠️ No has iniciado sesión en SoundCloud',
+    notLoggedInDesc: 'Inicia sesión para omitir Me gusta/seguidos y añadir canciones a playlists',
+    connecting: '🔄 Conectando la cuenta...', connectingDesc: 'Si no conecta, pulsa [🔄 Sincronizar] o recarga SoundCloud',
+    connectedReady: 'Cuenta conectada · Listo', connectedSyncing: 'Cuenta conectada · Sincronizando',
+    reloadRequired: '⚠️ Recarga la pestaña de SoundCloud', reloadRequiredDesc: 'Después de actualizar la extensión, recarga la pestaña de SoundCloud abierta',
+    openSCTab: 'Abre una pestaña de SoundCloud', loadingSC: 'Cargando SoundCloud...',
+    btnMiniPlayer: '📻 Mini reproductor', btnStation: '📡 Iniciar estación', btnStationTitle: 'Iniciar una estación desde la canción actual',
+    autoMpLabel: 'Mostrar automáticamente el mini reproductor al abrir otra pestaña (según los permisos del navegador)',
+    autoMpTitle: 'Mostrar automáticamente el mini reproductor al cambiar de pestaña (requiere permiso)',
+    autoMpNotSupported: 'Este navegador no admite PiP automático (la configuración se conserva)',
+    autoMpPermissionNote: 'Requiere permiso del navegador y reproducción con sonido. El navegador decide qué ocurre al cambiar de pestaña.',
+    volControl: '🔊 Control de volumen', volMute: 'Activar/desactivar silencio', volSliderTitle: 'Volumen',
+    discoveryMode: '⛏️ Modo Dig', discoveryOnDesc: 'Omite automáticamente canciones no reproducibles, con Me gusta y de artistas seguidos',
+    discoveryOffDesc: 'DESACTIVADO: Reproducción normal', discoveryStatusOn: 'ACTIVADO', discoveryStatusOff: 'DESACTIVADO',
+    targetPlaylist: '➕ Playlist para añadir con un clic', btnSync: '🔄 Sincronizar', btnSyncing: '⏳ Sincronizando...', noPlaylistFound: '(No se encontraron playlists)',
+    trackCountSuffix: ' canciones', skipToastPrefix: 'Omitida', skipReasonDisliked: 'Canción excluida', skipReasonHated: 'Artista excluido',
+    skipReasonGenre: 'Género excluido', skipReasonOwn: 'Tu propia canción', skipReasonLiked: 'Ya tiene Me gusta', skipReasonFollowing: 'Artista seguido', skipReasonHeard: 'Escuchada una vez',
+    heardSkipLabel: 'Omitir canciones escuchadas una vez', heardSkipHint: 'Las canciones reproducidas durante 10 segundos se omiten en el modo Dig. DESACTIVADO de forma predeterminada.',
+    robotBanner: 'SoundCloud muestra una verificación de bot. Complétala en la página.', robotShort: 'Verificación de bot', advancedSettings: '⚙ Configuración de Dig',
+    btnCopyLog: '📋 Copiar registro de errores', btnDownloadReport: '📥 Guardar informe de error (JSON)', btnExportLists: '📤 Exportar listas', btnImportLists: '📥 Importar',
+    m_laterOpenFail: '⚠️ No se pudo abrir la lista de artistas para escuchar después', reportSaved: '✅ Informe guardado', reportFailed: '⚠️ No se pudo guardar el informe',
+    logCopied: 'Copiado. Envíalo junto con lo ocurrido cuando se detuvo la reproducción.', listsTitle: '📚 Listas', tabHated: '🤬 Artistas excluidos', tabLater: '🧐 Artistas para escuchar después',
+    tabNoPlay: '⏭️ Lista de no reproducir', listSearch: 'Buscar', listMore: 'Mostrar más', listUnban: 'Eliminar ✕', listLaterDelete: '✕ Eliminar', listEmpty: '(Todavía no hay elementos)',
+    listNeedTab: 'Abre una pestaña de SoundCloud para ver esta lista', listFrom: 'Origen', pickerTitle: '➕ Elige una playlist para añadir con un clic', pickerCancel: 'Cancelar',
+    onboardingDialogLabel: 'Guía de FreshDig', onboardingTitle: 'Cómo funciona FreshDig', onboardingStep1Title: 'Abre el mini reproductor',
+    onboardingStep1Body: 'La función principal de FreshDig. Ábrelo desde el icono de la extensión o el botón 📻 de SoundCloud.', onboardingStep2Title: 'Modo Dig ACTIVADO',
+    onboardingStep2Body: 'Cuando está ACTIVADO, se omiten canciones no reproducibles, con Me gusta y de artistas que sigues.', onboardingStep3Title: '🧐 Artistas para escuchar después',
+    onboardingStep3Body: 'Guarda un artista con el botón 🧐. Abre la lista desde el icono de la extensión y elige un artista para abrir su página de canciones.',
+    onboardingOpenLauncher: '📻 Mostrar el botón en la página', onboardingLauncherHint: 'Pulsa 📻 en los controles del reproductor de SoundCloud.', onboardingNext: 'Siguiente', onboardingBack: 'Atrás',
+    onboardingDone: 'Empezar a usar FreshDig', onboardingSkip: 'Omitir guía', onboardingClose: 'Cerrar', onboardingProgress: '{n} / 3', onboardingGuideButton: 'Ver guía',
+    m_laterAdded: '🧐 “{name}” se guardó en artistas para escuchar después', m_laterRemoved: '🧐 “{name}” se eliminó de artistas para escuchar después',
+    m_laterAddTip: '🧐 Escuchar después (guardar este artista)', m_laterRemoveTip: '🧐 Guardado (pulsa para eliminar)', mpTitle: 'FreshDig - Mini reproductor Dig',
+    mpPromptOpen: '📻 Pulsa para abrir el mini reproductor', m_discOn: '⛏️ Modo Dig ACTIVADO (se omiten canciones conocidas)', m_discOff: '⏸ Modo Dig DESACTIVADO (reproducción normal de SoundCloud)'
+  });
+
   function resolveLanguage(langPref) {
-    if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru') return langPref;
+    if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru' || langPref === 'vi' || langPref === 'es') return langPref;
     // auto detect from browser/navigator
     try {
       const navLang = ((typeof navigator !== 'undefined' && (navigator.language || navigator.userLanguage)) || 'en').toLowerCase();
       if (navLang.startsWith('ja')) return 'ja';
       if (navLang.startsWith('de')) return 'de';
       if (navLang.startsWith('ru')) return 'ru';
+      if (navLang.startsWith('vi')) return 'vi';
+      if (navLang.startsWith('es')) return 'es';
       return 'en';
     } catch (e) {
       return 'en';
@@ -1174,6 +1310,8 @@
     getTexts: getTexts
   };
 });
+
+
 
 // FreshDig の純粋な判定処理（DOM・通信・状態を触らない）。Node からもテストできる。
 (function (root, factory) {
@@ -1826,8 +1964,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.4.0)');
-    const RUNTIME_VERSION = '2.4.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.5.0)');
+    const RUNTIME_VERSION = '2.5.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -7365,3 +7503,4 @@
     registerExtraMediaSessionHandlers();
 
 })();
+

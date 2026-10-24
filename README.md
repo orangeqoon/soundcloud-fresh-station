@@ -1,85 +1,54 @@
-# FreshDig for SoundCloud (Edge / Chrome Extension)
+# FreshDig for SoundCloud
 
-[![Edge Add-ons](https://img.shields.io/badge/Microsoft%20Edge-Add--ons-0078D7?logo=microsoftedge&logoColor=white)](https://microsoftedge.microsoft.com/addons)
-[![Version](https://img.shields.io/badge/version-1.4.0-orange.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+FreshDigは、SoundCloudのステーション再生を整理するEdge / Chrome拡張機能です。いいね済み、フォロー中、または自分で除外した曲や作者をDigモードでスキップし、気になった作者をその場で保存できます。
 
-**知っている曲は、もう流さない。まだ出会ったことのない新しいアーティストだけを無限にディグする、SoundCloud専用の発掘アシスタント。**
+## 解決する問題
 
-*Never hear the same track twice. Meet your next favorite artist with FreshDig for SoundCloud.*
+ステーションを聴いていると、知っている曲や避けたい作者が繰り返し混ざることがあります。FreshDigは、SoundCloud上の曲情報とFreshDigのローカル設定を使って、次に進める曲を選びます。
 
----
+## 主な機能
 
-## 🎧 コンセプト: なぜ FreshDig なのか？
+- **Digモード**：いいね済み、フォロー中、除外済みの曲や作者、ジャンルを検知してスキップ
+- **一度でも聴いた曲を飛ばす**：Dig設定でオンにした場合だけ、実際に10秒再生した曲を記録して次回からスキップ（初期状態はオフ）
+- **Dislike / Hate**：曲単位または作者単位で除外
+- **後で聴く人リスト**：作者を保存し、拡張機能のアイコンから作者のトラックページを開く
+- **ミニプレイヤー**：別ウィンドウで再生、次へ、音量、プレイリスト追加、Like、Repost、Follow、除外を操作
+- **リストのバックアップ**：後で聴く人・不再生の曲・作者除外・ジャンル除外の4リストをMarkdownで書き出し、JSONから復元
+- **不具合レポート**：再生停止などを調べるためのローカル診断レポートを保存
 
-SoundCloudのステーション機能は素晴らしいですが、使っているとこんな悩みにぶつかります：
-> 「気づけば過去にいいねした曲ばかり流れてくる…」  
-> 「すでにフォローしている有名アーティストの曲がループして、新しい才能に出会えない…」
+## 「一度でも聴いた曲を飛ばす」の記録方法
 
-**FreshDig** は、あなたのライク履歴やフォロー中アーティストを自動判定し、**「あなたがまだ知らない新しいアーティストの曲だけ」** を抽出してエンドレスに流し続ける**発掘（Dig）特化型拡張機能**です。
+この設定は初期状態ではオフです。オンにすると、再生位置が実際に10秒進んだ曲だけを曲ID単位で記録します。シークや一時停止だけでは記録しません。記録はページ側のIndexedDBに保存し、利用できない場合はlocalStorageへフォールバックします。作者のトラックページを直接開いているときは、そのページの再生を優先してDigのスキップ判定を適用しません。
 
-作業中、ゲーム中、ブラウジング中に、手元で次々と新しいアーティストを発掘できます。
+## データとプライバシー
 
----
+FreshDigの設定、リスト、聞いた曲の記録はブラウザ内に保存されます。FreshDig独自の分析サーバーや広告用の外部送信は行いません。Like、Follow、Repost、プレイリスト追加などの操作では、SoundCloudアカウントを操作するためSoundCloudとの通信が発生します。
 
-## ✨ 主な機能 (Features)
+## インストール
 
-### 1. 🔍 完全未試聴フィルター（Pure Discovery Engine）
-- 過去に「いいね（Like）」した曲や、フォロー中のアーティストの曲は1秒で自動スキップ。
-- あなたにとって **「100%初めて出会うアーティスト」** だけが流れる専用ステーションに生まれ変わります。
-- **マージン付き安全スキップ**: 曲が始まってから1.2秒の安定マージンを待って判定・スキップするため、誤爆やループなしにスムーズに未知曲だけが流れます。
+1. `edge://extensions` または `chrome://extensions` を開く
+2. 開発者モードを有効にする
+3. 「展開して読み込む」で拡張機能フォルダーを選ぶ
 
-### 2. ⚡ 秒速の選別（Dislike & Hate フィルター）
-- **`[ 👎 ]` Dislike**: 「この曲だけ」を二度と流さないよう除外して即座にスキップ。
-- **`[ 🚫 ]` Hate**: 「この作者の曲すべて」をブラックリストに入れて即座にスキップ。
-- 好みに合わない曲・作者を一瞬で切り捨て、理想の新しい才能に出会う確率を極限まで高めます。
+Tampermonkeyでは、リポジトリの `soundcloud_fresh_station.user.js` を読み込めます。
 
-### 3. 💎 出会った瞬間にワンクリック保存
-聴いていて「このアーティストいいな！」と思ったら、その場ですぐに収穫：
-- **`[ ➕ ]`**: 事前設定したお気に入りプレイリストに一発追加（右クリックで追加先変更）。
-- **`[ ❤️ ]`**: いいね（Like）。
-- **`[ 🔁 ]`**: リポスト（Repost）。
-- **`[ 👤＋ ]`**: アーティストをその場で即フォロー。
+## ライセンス
 
-### 4. 🪟 浮遊ミニプレイヤー (Picture-in-Picture)
-- **常に最前面（Always on Top）**: 仕事やゲーム、ブラウジングをしていても、画面の右下に小さなプレイヤーが常駐。
-- アートワークや作者名を確認しながら、**「➕」「❤️」「🔁」「👤フォロー」「👎」** が手元で直感的に操作できます。
-
-### 5. 🎵 Windows タスクバー連携 (Media Session API)
-- Windowsタスクバー上のEdgeアイコンにマウスを乗せるだけで、**高解像度アルバムジャケット・曲名・アーティスト名** と共に「前へ・再生・次へ」のウィジェットが出現。
-- キーボードのメディアキーやWindowsの音量バーとも連動します。
-
----
-
-## 🚀 インストール手順 (Installation)
-
-### Microsoft Edge / Google Chrome
-1. 本リポジトリの最新ZIPパッケージ、またはクローンしたフォルダを用意します。
-2. ブラウザで `edge://extensions` または `chrome://extensions` を開きます。
-3. **「開発者モード」** を ON にします。
-4. **「展開して読み込む」**（Load unpacked）をクリックし、本フォルダを選択します。
-
-### Tampermonkey をご利用の場合
-- `soundcloud_fresh_station.user.js` をTampermonkeyにインポートすることで、同様の機能を利用できます。
-
----
-
-## 🔒 プライバシーと安全性 (Privacy & Security)
-- 全ての設定、除外リスト、再生履歴は**ユーザーのブラウザ内（ローカル）にのみ安全に保存**されます。
-- 個人情報や閲覧履歴を外部サーバーへ送信・収集することは一切ありません。
-
----
-
-## English Overview
-
-**FreshDig for SoundCloud** is the ultimate music discovery engine designed exclusively for digging unplayed tracks from new and underground artists.
-
-### Key Highlights:
-- **Pure Discovery**: Automatically skips previously liked tracks, followed artists and disliked tracks/artists/genres the moment a track changes (before it starts playing). Toggle it ON/OFF from the popup, the 🔍 button in the player bar, or the mini player.
-- **Smart Dislike & Hate**: 1-click blacklist for unwanted tracks (`👎`) or entire artists (`🚫`).
-- **1-Click Acquisition**: Instantly add tracks to playlists (`➕`), Like (`❤️`), Repost (`🔁`), or Follow (`👤+`).
-- **Floating Mini Player (PiP)**: Keep an always-on-top compact player in your screen corner to dig artists while working or gaming.
-- **Windows Taskbar Integration**: Control playback and view artwork directly from Windows taskbar thumbnail toolbars.
-
-## License
 MIT License
+
+## Giới thiệu bằng tiếng Việt
+
+FreshDig là tiện ích Edge / Chrome giúp sắp xếp việc phát station trên SoundCloud. Dig mode tự bỏ qua bài hát đã thích, nghệ sĩ đang theo dõi và các mục bạn đã loại trừ, đồng thời cho phép lưu nghệ sĩ để nghe sau.
+
+### Tính năng chính
+
+- Dig mode bỏ qua bài hát, nghệ sĩ và thể loại đã loại trừ
+- Tùy chọn bỏ qua bài đã nghe một lần: mặc định tắt; khi bật, ghi nhận sau 10 giây phát thực tế
+- Dislike cho một bài hát và Hate cho toàn bộ nghệ sĩ
+- Danh sách nghệ sĩ để nghe sau, mở từ biểu tượng tiện ích
+- Mini player riêng để phát, chuyển bài, chỉnh âm lượng, Like, Repost, Follow và thêm playlist
+- Xuất bốn danh sách sang Markdown và nhập bản sao lưu JSON
+- Lưu báo cáo chẩn đoán cục bộ khi cần kiểm tra lỗi phát
+
+Cài đặt, danh sách và lịch sử bài đã nghe được lưu trong trình duyệt. FreshDig không sử dụng máy chủ phân tích riêng. Các thao tác tài khoản như Like, Follow, Repost và thêm playlist vẫn được gửi tới SoundCloud.
+
