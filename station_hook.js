@@ -2,8 +2,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.5.0)');
-    const RUNTIME_VERSION = '2.5.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.12.0)');
+    const RUNTIME_VERSION = '2.12.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -18,8 +18,11 @@
     const AUTO_MINI_PLAYER_KEY = 'sc_fresh_station_auto_miniplayer';
     const PREFERRED_LANGUAGE_KEY = 'sc_fresh_station_preferred_language';
     const HEARD_SKIP_ENABLED_KEY = 'sc_fresh_station_heard_skip_enabled';
+    const DIG_SKIP_RULES_KEY = 'sc_fresh_station_dig_skip_rules';
     const HEARD_TRACKS_FALLBACK_KEY = 'sc_fresh_station_heard_tracks_v1';
     const HEARD_THRESHOLD_SEC = 10;
+    const PLAYBACK_RELOAD_GUARD_KEY = 'sc_fresh_station_playback_reload_guard_v1';
+    const MINI_PLAYER_RESTORE_KEY = 'sc_fresh_station_miniplayer_restore_v1';
 
     // 画面に出す文字を辞書(i18n.js)から取る。{name} などは vars で差し込む
     function tt(key, vars) {
@@ -125,6 +128,7 @@
         playbackMode: normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY)), // 'DISCOVERY'（'FOLLOWING_NEW' は現在無効）
         discoveryEnabled: readDiscoveryEnabled(), // 発掘モード（自動スキップ・ステーション絞り込み）の ON/OFF
         heardSkipEnabled: readHeardSkipEnabled(),
+        digSkipRules: FreshDigCore.normalizeDigSkipRules(null),
         autoMiniPlayer: (function () { try { return localStorage.getItem(AUTO_MINI_PLAYER_KEY) !== 'false'; } catch (e) { return true; } })(), // 別タブへ切替時にミニプレイヤーを自動表示
         preferredLanguage: (function () { try { return localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) { return 'auto'; } })(), // 表示言語: auto / ja / en
         dislikedTracks: {},
@@ -152,6 +156,7 @@
             state.playbackMode = normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY));
             state.discoveryEnabled = readDiscoveryEnabled();
             state.heardSkipEnabled = readHeardSkipEnabled();
+            try { state.digSkipRules = FreshDigCore.normalizeDigSkipRules(JSON.parse(localStorage.getItem(DIG_SKIP_RULES_KEY) || 'null')); } catch (e) { state.digSkipRules = FreshDigCore.normalizeDigSkipRules(null); }
             try { state.preferredLanguage = localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) {}
 
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
@@ -638,7 +643,8 @@
         recoveries: 0,
         lastRecoveryAt: 0,
         recoveryInFlight: false,
-        suppressPauseUntil: 0
+        suppressPauseUntil: 0,
+        pageReloadInFlight: false
     };
 
     function notePausedMedia(media) {
@@ -685,6 +691,22 @@
             playbackIntent.recoveries = 0;
             playbackIntent.lastRecoveryAt = 0;
         }
+    }, true);
+    // The page's own play button can become visually active while the media
+    // clock remains frozen after a long-idle tab. Probe native clicks too, so
+    // recovery also works when the user starts playback outside the mini player.
+    document.addEventListener('click', function (ev) {
+        let button = null;
+        try { button = ev.target && ev.target.closest ? ev.target.closest('.playControls__play') : null; } catch (e) {}
+        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight) return;
+        playbackIntent.wanted = true;
+        const media = getActiveMedia(true);
+        const initialPosition = readPlaybackPosition(media);
+        setTimeout(async function () {
+            if (!playbackIntent.wanted || playbackIntent.recoveryInFlight) return;
+            const result = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
+            if (!result.success && !result.reloading) playbackIntent.wanted = false;
+        }, 180);
     }, true);
     document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
 
@@ -776,6 +798,11 @@
                 try { localStorage.setItem(HEARD_SKIP_ENABLED_KEY, String(state.heardSkipEnabled)); } catch (e) {}
                 marginGuard.hasChecked = false;
             }
+            if (d && d.digSkipRules) {
+                state.digSkipRules = FreshDigCore.normalizeDigSkipRules(d.digSkipRules);
+                try { localStorage.setItem(DIG_SKIP_RULES_KEY, JSON.stringify(state.digSkipRules)); } catch (e) {}
+                marginGuard.hasChecked = false;
+            }
             return;
         }
 
@@ -851,6 +878,13 @@
                     marginGuard.hasChecked = false;
                     soundChangeState.decidedPath = '';
                     ack({ success: true, heardSkipEnabled: state.heardSkipEnabled });
+                } else if (action === 'SET_DIG_SKIP_RULES') {
+                    state.digSkipRules = FreshDigCore.normalizeDigSkipRules(event.data.rules);
+                    try { localStorage.setItem(DIG_SKIP_RULES_KEY, JSON.stringify(state.digSkipRules)); } catch (e) {}
+                    marginGuard.hasChecked = false;
+                    soundChangeState.decidedPath = '';
+                    try { scheduleQueuePrune(); } catch (e) {}
+                    ack({ success: true, digSkipRules: state.digSkipRules });
                 } else if (action === 'EXPORT_DISLIKES') {
                     ack(await exportDislikesToPlaylist());
                 } else if (action === 'IMPORT_DISLIKES') {
@@ -882,6 +916,7 @@
                         playbackMode: state.playbackMode,
                         discoveryEnabled: state.discoveryEnabled,
                         heardSkipEnabled: state.heardSkipEnabled,
+                        digSkipRules: state.digSkipRules,
                         autoMiniPlayer: state.autoMiniPlayer,
                         autoPipSupported: getAutoPipDiagnostics().autoPipSupported,
                         autoPipStatus: getAutoPipDiagnostics().autoPipStatus,
@@ -1558,6 +1593,7 @@
             followingUserIds: state.followingUserIds,
             heardSkipEnabled: state.heardSkipEnabled,
             heardTrackIds: state.heardTrackIds,
+            digSkipRules: state.digSkipRules,
             inLibrary: isExplicitLibraryPage(),
             onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
         });
@@ -1583,6 +1619,7 @@
                     followingUserIds: state.followingUserIds,
                     heardSkipEnabled: state.heardSkipEnabled,
                     heardTrackIds: state.heardTrackIds,
+                    digSkipRules: state.digSkipRules,
                     inLibrary: isExplicitLibraryPage(),
                     onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
                 });
@@ -3364,6 +3401,85 @@
         });
     }
 
+    // A media element can report "playing" while its position is frozen after
+    // a long-idle tab. Verify that the seek position actually advances before
+    // reporting a successful play command.
+    function readPlaybackPosition(media) {
+        if (media && Number.isFinite(media.currentTime)) return Number(media.currentTime);
+        const pos = getPlaybackPositionSeconds();
+        return pos && Number.isFinite(pos.position) ? Number(pos.position) : null;
+    }
+
+    function waitForPlaybackProgress(media, initialPosition, timeoutMs) {
+        const timeout = timeoutMs || 1000;
+        const started = Date.now();
+        const baseline = Number.isFinite(initialPosition) ? initialPosition : readPlaybackPosition(media);
+        return new Promise(function (resolve) {
+            const check = function () {
+                const now = readPlaybackPosition(media);
+                if (Number.isFinite(now) && Number.isFinite(baseline) && now > baseline + 0.15) {
+                    resolve(true);
+                    return;
+                }
+                if (Date.now() - started >= timeout) {
+                    resolve(false);
+                    return;
+                }
+                setTimeout(check, 100);
+            };
+            check();
+        });
+    }
+
+    function requestPlaybackPageReload(reason) {
+        if (playbackIntent.pageReloadInFlight || !window.location || typeof window.location.reload !== 'function') return false;
+        const trackKey = playbackTrackKey() || 'unknown';
+        const now = Date.now();
+        let previous = null;
+        try { previous = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null'); } catch (e) {}
+        // A reload can itself take a moment to restore the player. Do not loop
+        // on the same frozen track if the refreshed page reports no progress.
+        if (previous && previous.trackKey === trackKey && now - Number(previous.at || 0) < 60000) {
+            dlog('playback-page-reload-suppressed', { reason: reason, trackKey: trackKey });
+            return false;
+        }
+        try {
+            sessionStorage.setItem(PLAYBACK_RELOAD_GUARD_KEY, JSON.stringify({ trackKey: trackKey, at: now }));
+            // A page reload destroys Document PiP/window.open ownership. Remember
+            // that the player was open so the new page can reopen it once loaded.
+            if (miniPlayerWindow && !miniPlayerWindow.closed) {
+                sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify({ at: now, reason: reason || 'playback-reload' }));
+                dlog('miniplayer-restore-armed', { reason: reason || 'playback-reload', trackKey: trackKey });
+            }
+        } catch (e) {}
+        playbackIntent.pageReloadInFlight = true;
+        dlog('playback-page-reload-requested', { reason: reason, trackKey: trackKey });
+        setTimeout(function () {
+            try { window.location.reload(); } catch (e) { playbackIntent.pageReloadInFlight = false; dlog('playback-page-reload-failed', errorName(e)); }
+        }, 120);
+        return true;
+    }
+
+    async function verifyAndRecoverExplicitPlay(media, initialPosition) {
+        if (await waitForPlaybackProgress(media, initialPosition, 1000)) return { success: true, verified: true };
+        dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
+
+        // First retry the native page control once. This handles a stale media
+        // element without immediately discarding the SoundCloud page state.
+        const button = document.querySelector('.playControls__play:not(.playing)');
+        if (button) {
+            try { button.click(); } catch (e) {}
+            if (await waitForPlaybackProgress(getActiveMedia(true) || media, readPlaybackPosition(media), 900)) {
+                dlog('playback-progress-recovered', { method: 'native-button' });
+                return { success: true, verified: true, recovered: true };
+            }
+        }
+        if (requestPlaybackPageReload('explicit-play-no-progress')) {
+            return { success: false, reloading: true, verified: false };
+        }
+        return { success: false, verified: false, stalled: true };
+    }
+
     // HTMLMediaElement.play() can reject or remain pending when the browser's
     // autoplay/permission state is unresolved. Never leave a remote command or
     // recovery attempt waiting forever, and never fall back to a second toggle.
@@ -4444,6 +4560,27 @@
         }
     }
 
+    function restoreMiniPlayerAfterReload() {
+        let marker = null;
+        try { marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null'); } catch (e) {}
+        if (!marker || !marker.at || Date.now() - Number(marker.at) > 60000) return;
+        try { sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY); } catch (e) {}
+        // Wait for SoundCloud's player and document body to settle after reload.
+        setTimeout(function () {
+            if (miniPlayerWindow && !miniPlayerWindow.closed) return;
+            openMiniPlayer({ auto: true, reason: 'after-playback-reload' }).then(function (result) {
+                if (!result || result.success !== false) return;
+                dlog('miniplayer-restore-failed', { error: result.error || 'OpenFailed' });
+                // Browsers may require a transient user activation for PiP. The
+                // existing in-page launcher is the safe fallback in that case.
+                showMiniPlayerLaunchPrompt();
+            }).catch(function (err) {
+                dlog('miniplayer-restore-failed', { error: errorName(err) });
+                showMiniPlayerLaunchPrompt();
+            });
+        }, 900);
+    }
+
     let isSeekingInMiniPlayer = false;
 
     // ミニプレイヤー（Document PiP の小窓）ではブラウザ標準の title の吹き出しが出ないため、自前で出す。
@@ -4646,7 +4783,8 @@
                     opacity: 1;
                 }
                 .btn-follow svg { width: 21px; height: 21px; pointer-events: none; }
-                .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; padding: 0 6px; font-size: 12px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
+                .badge-row .btn-later { flex: 0 0 34px; width: 34px; min-width: 34px; height: 30px; font-size: 19px; border-color: #ff5500; color: #ff9a55; opacity: 1; }
+                .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; height: 30px; padding: 0 10px; font-size: 13px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
                 button:focus-visible, a:focus-visible { outline: 2px solid #ffb36b; outline-offset: 1px; }
                 .btn-follow:hover {
                     background: #333;
@@ -4944,7 +5082,7 @@
                     <div class="badge-row">
                         <button class="status-badge" id="mp-status" type="button">${tx.mpStatusWaiting}</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9 6 21h12L12 9Zm-3 6h6M7 21l5-6 5 6M12 4v5M8 3a6 6 0 0 0 0 8M16 3a6 6 0 0 1 0 8M5 1a9 9 0 0 0 0 12M19 1a9 9 0 0 1 0 12"/></svg></button>
-                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
+                        <button class="btn-later" id="mp-later" title="">🧐</button>
                         <button class="btn-later-list" id="mp-later-list" type="button">${tx.mpLaterListLabel}</button>
                         <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                     </div>
@@ -4983,7 +5121,7 @@
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
-                <button class="btn-later" id="mp-later" title="">🧐</button>
+                <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
             </div>
             <div class="toast" id="mp-toast"></div>
             <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
@@ -5333,6 +5471,7 @@
         }
 
         playbackIntent.wanted = true;
+        const initialPosition = readPlaybackPosition(media);
         let invoked = false;
         try {
             if (media && typeof media.play === 'function' && !media.ended) {
@@ -5364,7 +5503,16 @@
             playbackIntent.wanted = false;
             return fail(tt('m_commErr'));
         }
-        return { success: true, playing: true, verified: true };
+        const verified = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
+        if (!verified.success) {
+            if (verified.reloading) {
+                if (toast) toast(tt('reloadRequired'));
+                return { success: false, playing: false, verified: false, reloading: true, message: tt('reloadRequired') };
+            }
+            playbackIntent.wanted = false;
+            return fail(tt('m_commErr'));
+        }
+        return { success: true, playing: true, verified: true, recovered: !!verified.recovered };
     }
 
     // ミニプレイヤーの操作の中身。(args, toast, doc) を受ける。doc はこのタブのミニプレイヤー（別タブから呼ばれたときは null）
@@ -5539,6 +5687,10 @@
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
     registerAutoMiniPlayerHandler();
     registerExtraMediaSessionHandlers();
+    restoreMiniPlayerAfterReload();
 
 })();
+
+
+
 

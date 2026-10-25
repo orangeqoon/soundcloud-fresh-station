@@ -3,7 +3,7 @@
     'use strict';
 
     // MAIN world から chrome.storage.local へ書き込みを許可するキー（それ以外は無視）
-    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled', 'autoMiniPlayer', 'preferredLanguage', 'freshFilter', 'heardSkipEnabled'];
+    const SYNCABLE_KEYS = ['targetPlaylistId', 'playbackMode', 'discoveryEnabled', 'autoMiniPlayer', 'preferredLanguage', 'freshFilter', 'heardSkipEnabled', 'digSkipRules'];
 
     // MAIN world へ渡す（読み出し）キー。書き込みを許すのは SYNCABLE_KEYS だけ
     const READ_KEYS = SYNCABLE_KEYS.concat(['laterArtists']);

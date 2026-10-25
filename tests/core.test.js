@@ -42,6 +42,25 @@ test('liked / following; library and artist page keep known tracks', () => {
   assert.strictEqual(core.getSkipReasonKey({ id: 3, artistId: 8 }, { ...c, onArtistPage: true }), 'skipReasonHated');
 });
 
+test('Dig skip rules can disable each of the five basic conditions', () => {
+  const c = base();
+  c.dislikedTracks[11] = true;
+  c.dislikedArtists[22] = true;
+  c.laterArtists = { '33': { name: 'Later' } };
+  c.likedTrackIds.add(44);
+  c.followingUserIds.add(55);
+  assert.strictEqual(core.getSkipReasonKey({ id: 11, artistId: 10 }, c), 'skipReasonDisliked');
+  assert.strictEqual(core.getSkipReasonKey({ id: 12, artistId: 22 }, c), 'skipReasonHated');
+  assert.strictEqual(core.getSkipReasonKey({ id: 13, artistId: 33 }, c), 'skipReasonLater');
+  assert.strictEqual(core.getSkipReasonKey({ id: 44, artistId: 10 }, c), 'skipReasonLiked');
+  assert.strictEqual(core.getSkipReasonKey({ id: 15, artistId: 55 }, c), 'skipReasonFollowing');
+  assert.strictEqual(core.getSkipReasonKey({ id: 11, artistId: 10 }, { ...c, digSkipRules: { noplayTracks: false } }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 12, artistId: 22 }, { ...c, digSkipRules: { hatedArtists: false } }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 13, artistId: 33 }, { ...c, digSkipRules: { laterArtists: false } }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 44, artistId: 10 }, { ...c, digSkipRules: { likedTracks: false } }), null);
+  assert.strictEqual(core.getSkipReasonKey({ id: 15, artistId: 55 }, { ...c, digSkipRules: { followingArtists: false } }), null);
+});
+
 test('heard track mode skips known tracks but keeps intentional library/artist pages', () => {
   const c = { ...base(), heardSkipEnabled: true, heardTrackIds: new Set([7]) };
   assert.strictEqual(core.getSkipReasonKey({ id: 7, artistId: 2 }, c), 'skipReasonHeard');
@@ -133,14 +152,18 @@ test('artist page path', () => {
   assert.ok(!core.isArtistPagePath('/'));
 });
 
-test('i18n: ja, en, de and ru have the same keys, and skip reasons exist', () => {
+test('i18n: all supported languages have the same keys, and skip reasons exist', () => {
   const ja = Object.keys(i18n.translations.ja).sort();
   const en = Object.keys(i18n.translations.en).sort();
   const de = Object.keys(i18n.translations.de).sort();
   const ru = Object.keys(i18n.translations.ru).sort();
+  const vi = Object.keys(i18n.translations.vi).sort();
+  const es = Object.keys(i18n.translations.es).sort();
   assert.deepStrictEqual(ja, en);
   assert.deepStrictEqual(ja, de);
   assert.deepStrictEqual(ja, ru);
+  assert.deepStrictEqual(ja, vi);
+  assert.deepStrictEqual(ja, es);
   for (const k of ['skipReasonDisliked', 'skipReasonHated', 'skipReasonGenre', 'skipReasonOwn', 'skipReasonLiked', 'skipReasonFollowing']) {
     assert.ok(ja.includes(k), k);
   }
@@ -165,23 +188,27 @@ test('i18n: keys used in code exist in the dictionary', () => {
   }
 });
 
-test('i18n: {placeholders} match across all languages (ja, en, de, ru)', () => {
+test('i18n: {placeholders} match across all supported languages', () => {
   const ph = (v) => (String(v).match(/\{\w+\}/g) || []).sort().join(',');
   for (const k of Object.keys(i18n.translations.ja)) {
     const expected = ph(i18n.translations.ja[k]);
     assert.strictEqual(ph(i18n.translations.en[k]), expected, 'en placeholders differ: ' + k);
     assert.strictEqual(ph(i18n.translations.de[k]), expected, 'de placeholders differ: ' + k);
     assert.strictEqual(ph(i18n.translations.ru[k]), expected, 'ru placeholders differ: ' + k);
+    assert.strictEqual(ph(i18n.translations.vi[k]), expected, 'vi placeholders differ: ' + k);
+    assert.strictEqual(ph(i18n.translations.es[k]), expected, 'es placeholders differ: ' + k);
   }
 });
 
-test('i18n: resolveLanguage resolves ja, en, de, ru properly', () => {
+test('i18n: resolveLanguage resolves all supported languages properly', () => {
   assert.strictEqual(i18n.resolveLanguage('ja'), 'ja');
   assert.strictEqual(i18n.resolveLanguage('en'), 'en');
   assert.strictEqual(i18n.resolveLanguage('de'), 'de');
   assert.strictEqual(i18n.resolveLanguage('ru'), 'ru');
+  assert.strictEqual(i18n.resolveLanguage('vi'), 'vi');
+  assert.strictEqual(i18n.resolveLanguage('es'), 'es');
   const autoResolved = i18n.resolveLanguage('auto');
-  assert.ok(['ja', 'en', 'de', 'ru'].includes(autoResolved));
+  assert.ok(['ja', 'en', 'de', 'ru', 'vi', 'es'].includes(autoResolved));
 });
 
 test('rate limiter: min gap and per-minute cap', () => {

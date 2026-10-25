@@ -100,6 +100,12 @@ function makeMedia(options) {
   return media;
 }
 
+// Real media advances currentTime while playing; playback verification relies on it.
+function advanceWhilePlaying(media) {
+  const timer = setInterval(() => { if (!media.paused) media.currentTime += 0.05; }, 20);
+  return () => clearInterval(timer);
+}
+
 function makeBroadcastChannelHub(messages) {
   const channels = [];
   return class SharedBroadcastChannel {
@@ -533,6 +539,7 @@ test('detached media registered through prototype play remains controllable', as
     duration: 100
   });
   detached.pause = () => { detached.paused = true; };
+  const stopClock = advanceWhilePlaying(detached);
   env.hooks.state.currentTrack = { id: 63, href: '/artist/detached', title: 'Detached' };
   await env.win.HTMLMediaElement.prototype.play.call(detached);
   assert.strictEqual(detached.paused, false);
@@ -545,6 +552,7 @@ test('detached media registered through prototype play remains controllable', as
   assert.strictEqual(playResult.success, true);
   assert.strictEqual(playResult.verified, true);
   assert.strictEqual(detached.paused, false);
+  stopClock();
 });
 
 async function sendPopupAction(env, action, extra) {
@@ -907,6 +915,7 @@ test('remote play ACK waits for target tab playback and returns verified result'
       return playGate.then(() => { media.paused = false; });
     }
   });
+  const stopClock = advanceWhilePlaying(media);
   const target = makeEnv({ tabId: 'target', BroadcastChannel, media: [media] });
   const remote = makeEnv({ tabId: 'remote', BroadcastChannel });
   target.hooks.state.discoveryEnabled = true;
@@ -925,5 +934,6 @@ test('remote play ACK waits for target tab playback and returns verified result'
   assert.strictEqual(result.verified, true);
   assert.strictEqual(result.playing, true);
   assert.strictEqual(playCalls, 1, 'remote play must not retry or double-toggle');
+  stopClock();
 });
 

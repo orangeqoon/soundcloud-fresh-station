@@ -428,7 +428,7 @@
 <body>
   <div class="header">
     <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.5.0</span>
+      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.12.0</span>
     </div>
     <div class="header-right">
       <div class="lang-flags" id="lang-flags" title="Language / 言語">
@@ -447,6 +447,8 @@
         <button type="button" class="lang-flag-btn" data-lang="ru" title="Русский">
           <img src="icons/flags/ru.svg" alt="RU">
         </button>
+        <button type="button" class="lang-flag-btn" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">🇻🇳</button>
+        <button type="button" class="lang-flag-btn" data-lang="es" title="Español" aria-label="Español">🇪🇸</button>
       </div>
       <div class="badge" id="conn-badge">SoundCloud未接続</div>
     </div>
@@ -517,6 +519,15 @@
         <label class="fresh-row"><input type="checkbox" id="fresh-age-on"><span id="fresh-age-pre"></span><input type="number" min="0" id="fresh-age-n" class="fresh-n"><span id="fresh-age-post"></span></label>
         <div id="fresh-hint" class="sync-msg" style="margin-top:4px;"></div>
       </div>
+      <div id="dig-rules-box" style="margin-top:10px; border-top:1px solid #333; padding-top:8px;">
+        <div id="dig-rules-title" style="font-size:12px; color:#ff9a55; font-weight:700; margin-bottom:4px;"></div>
+        <label class="fresh-row"><input type="checkbox" id="dig-rule-following"><span id="dig-rule-following-label"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="dig-rule-hated"><span id="dig-rule-hated-label"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="dig-rule-later"><span id="dig-rule-later-label"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="dig-rule-liked"><span id="dig-rule-liked-label"></span></label>
+        <label class="fresh-row"><input type="checkbox" id="dig-rule-noplay"><span id="dig-rule-noplay-label"></span></label>
+        <div id="dig-rules-hint" class="sync-msg" style="margin-top:4px;"></div>
+      </div>
       <label class="fresh-row" style="margin-top:8px; font-weight:700;">
         <input type="checkbox" id="heard-skip-on">
         <span id="heard-skip-label"></span>
@@ -563,4 +574,7 @@
   <script src="popup.js"></script>
 </body>
 </html>
+
+
+
 

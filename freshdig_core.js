@@ -25,6 +25,23 @@
     return Object.hasOwn ? Object.hasOwn(obj, key) : Object.prototype.hasOwnProperty.call(obj, key);
   }
 
+  const DIG_SKIP_RULE_DEFAULTS = Object.freeze({
+    followingArtists: true,
+    hatedArtists: true,
+    laterArtists: true,
+    likedTracks: true,
+    noplayTracks: true
+  });
+
+  function normalizeDigSkipRules(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const out = {};
+    Object.keys(DIG_SKIP_RULE_DEFAULTS).forEach(function (key) {
+      out[key] = value[key] === undefined ? DIG_SKIP_RULE_DEFAULTS[key] : value[key] === true;
+    });
+    return out;
+  }
+
   // 曲の除外判定の詳細。当たった理由とキーを返す。
   function getSkipReasonDetails(info, ctx) {
     if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
@@ -39,12 +56,13 @@
     const dTracks = ctx.dislikedTracks || {};
     const dArtists = ctx.dislikedArtists || {};
     const dGenres = ctx.dislikedGenres || {};
+    const rules = normalizeDigSkipRules(ctx.digSkipRules);
 
     // 1. 曲自体の除外判定
-    if (id && hasOwn(dTracks, id)) {
+    if (rules.noplayTracks && id && hasOwn(dTracks, id)) {
       return { reason: 'skipReasonDisliked', key: String(id) };
     }
-    if (title) {
+    if (rules.noplayTracks && title) {
       const tKey = 'title_' + encodeURIComponent(title);
       const hitKey = hasOwn(dTracks, tKey) ? tKey : (hasOwn(dTracks, title) ? title : null);
       if (hitKey) {
@@ -58,10 +76,10 @@
     }
 
     // 2. 作者の除外判定
-    if (artistId && hasOwn(dArtists, artistId)) {
+    if (rules.hatedArtists && artistId && hasOwn(dArtists, artistId)) {
       return { reason: 'skipReasonHated', key: String(artistId) };
     }
-    if (artist) {
+    if (rules.hatedArtists && artist) {
       const aKey = 'artist_' + encodeURIComponent(artist);
       const hitKey = hasOwn(dArtists, aKey) ? aKey : (hasOwn(dArtists, artist) ? artist : null);
       if (hitKey) {
@@ -85,7 +103,7 @@
     }
 
     // 後で聴く作者は Dig 中には流さない。実際に聴くときは Dig を OFF にする。
-    if (artistId && hasOwn(ctx.laterArtists, artistId)) {
+    if (rules.laterArtists && artistId && hasOwn(ctx.laterArtists, artistId)) {
       return { reason: 'skipReasonLater', key: String(artistId) };
     }
 
@@ -94,10 +112,10 @@
     if (!keepKnown && ctx.heardSkipEnabled && id && ctx.heardTrackIds && ctx.heardTrackIds.has(id)) {
       return { reason: 'skipReasonHeard', key: String(id) };
     }
-    if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
+    if (rules.likedTracks && !keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
       return { reason: 'skipReasonLiked', key: String(id) };
     }
-    if (!ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
+    if (rules.followingArtists && !ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
       return { reason: 'skipReasonFollowing', key: String(artistId) };
     }
 
@@ -263,6 +281,7 @@
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,
     getSkipReasonDetails: getSkipReasonDetails,
+    normalizeDigSkipRules: normalizeDigSkipRules,
     getFreshSkipReasonKey: getFreshSkipReasonKey,
     normalizeFreshFilter: normalizeFreshFilter,
     pruneAuthorStats: pruneAuthorStats,

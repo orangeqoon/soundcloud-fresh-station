@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.5.0
+// @version      2.12.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -1240,7 +1240,13 @@
     m_laterRemoved: '🧐 Đã xóa “{name}” khỏi danh sách nghệ sĩ để nghe sau',
     m_laterAddTip: '🧐 Nghe sau (lưu nghệ sĩ này)',
     m_laterRemoveTip: '🧐 Đã lưu (bấm để xóa)',
-    mpTitle: 'FreshDig - Mini player Dig',
+    barMiniPlayerTitle: '📻 Mở mini player FreshDig',
+    barStationTitle: '📡 Bắt đầu station từ bài này',
+    barDislikeTitle: '⏭️ Không phát: bỏ qua bài này từ bây giờ',
+    barHateTitle: '🤬 Loại trừ nghệ sĩ và bỏ qua',
+    mpTitle: 'FreshDig - Mini player Dig', mpFollowBtnTitle: 'Theo dõi nghệ sĩ', mpStationBtnTitle: 'Bắt đầu station từ bài này',
+    mpPrevTitle: 'Bài trước', mpPlayTitle: 'Phát / tạm dừng', mpNextTitle: 'Bài tiếp theo', mpLikeTitle: 'Thích (Like)', mpRepostTitle: 'Đăng lại (Repost)',
+    mpAddPlTitle: 'Thêm vào playlist', mpDislikeTitle: '⏭️ Không phát: bỏ qua bài này', mpHateTitle: 'Loại trừ nghệ sĩ và bỏ qua',
     mpPromptOpen: '📻 Bấm để mở mini player',
     m_discOn: '⛏️ Dig mode BẬT (bài quen thuộc sẽ bị bỏ qua)',
     m_discOff: '⏸ Dig mode TẮT (phát SoundCloud bình thường)'
@@ -1279,9 +1285,54 @@
     onboardingOpenLauncher: '📻 Mostrar el botón en la página', onboardingLauncherHint: 'Pulsa 📻 en los controles del reproductor de SoundCloud.', onboardingNext: 'Siguiente', onboardingBack: 'Atrás',
     onboardingDone: 'Empezar a usar FreshDig', onboardingSkip: 'Omitir guía', onboardingClose: 'Cerrar', onboardingProgress: '{n} / 3', onboardingGuideButton: 'Ver guía',
     m_laterAdded: '🧐 “{name}” se guardó en artistas para escuchar después', m_laterRemoved: '🧐 “{name}” se eliminó de artistas para escuchar después',
-    m_laterAddTip: '🧐 Escuchar después (guardar este artista)', m_laterRemoveTip: '🧐 Guardado (pulsa para eliminar)', mpTitle: 'FreshDig - Mini reproductor Dig',
+    m_laterAddTip: '🧐 Escuchar después (guardar este artista)', m_laterRemoveTip: '🧐 Guardado (pulsa para eliminar)',
+    barMiniPlayerTitle: '📻 Abrir mini reproductor FreshDig', barStationTitle: '📡 Iniciar estación desde esta canción',
+    barDislikeTitle: '⏭️ No reproducir: omitir esta canción desde ahora', barHateTitle: '🤬 Excluir artista y omitir',
+    mpTitle: 'FreshDig - Mini reproductor Dig', mpFollowBtnTitle: 'Seguir al artista', mpStationBtnTitle: 'Iniciar estación desde esta canción',
+    mpPrevTitle: 'Canción anterior', mpPlayTitle: 'Reproducir / pausar', mpNextTitle: 'Siguiente canción', mpLikeTitle: 'Me gusta (Like)', mpRepostTitle: 'Repost',
+    mpAddPlTitle: 'Añadir a playlist', mpDislikeTitle: '⏭️ No reproducir: omitir esta canción', mpHateTitle: 'Excluir artista y omitir',
     mpPromptOpen: '📻 Pulsa para abrir el mini reproductor', m_discOn: '⛏️ Modo Dig ACTIVADO (se omiten canciones conocidas)', m_discOff: '⏸ Modo Dig DESACTIVADO (reproducción normal de SoundCloud)'
   });
+
+  // Fill every remaining runtime message for Vietnamese and Spanish so the
+  // UI never silently displays English in those locales.
+  Object.assign(translations.vi, {
+    autoMpStatusRegistered:'Đã sẵn sàng',autoMpStatusUnsupported:'Không được hỗ trợ (giữ cài đặt)',autoMpStatusUnknown:'Đang kiểm tra',autoMpLastError:'Trình duyệt không đăng ký được PiP tự động',playlistSyncing:'Đang đồng bộ… Hãy nhấn [🔄 Đồng bộ]',
+    skipReasonManyFollowers:'Nghệ sĩ có nhiều người theo dõi',skipReasonManyTracks:'Nghệ sĩ có nhiều bài hát',skipReasonManyPlays:'Bài hát có nhiều lượt phát',skipReasonOldTrack:'Bài hát cũ',logCopyFailed:'Không thể sao chép',logHint:'Nhấn ngay sau khi âm thanh dừng rồi dán nội dung',
+    dislikeSection:'⏭️ Đồng bộ NoPlay với playlist SC',btnExportDislikes:'📤 Xuất sang SC',btnExportingDislikes:'⏳ Đang xuất…',btnImportDislikes:'📥 Nhập từ SC',btnImportingDislikes:'⏳ Đang nhập…',exportingMsg:'Đang tạo hoặc cập nhật playlist trên SoundCloud…',importingMsg:'Đang lấy bài NoPlay từ playlist SoundCloud…',commErrorMsg:'Không thể liên lạc với SoundCloud. Hãy tải lại trang.',
+    statLikes:'Bỏ qua lượt thích',statFollow:'Bỏ qua lượt theo dõi',statDislike:'NoPlay',langLabel:'🌐 Ngôn ngữ',barDiscoveryOffTitle:'⛏️ Bật chế độ Dig',barDiscoveryOnTitle:'⛏️ Tắt chế độ Dig',barFollowingModeTitle:'👥 Chỉ người theo dõi (nhấn để Dig)',
+    mpLoadingTrack:'Đang tải bài hát…',mpStatusWaiting:'Đang chờ',mpStatusDigging:'Đang đào',mpFollowBtn:'👤 Theo dõi',mpStationBtn:'📡 Station',mpLaterListLabel:'🧐 Danh sách nghe sau',mpDigListening:'⏸ Đang nghe nghệ sĩ',mpToastDislike:'⏭️ Đã thêm vào NoPlay và bỏ qua',mpToastHate:'🤬 Đã loại nghệ sĩ và bỏ qua',mpToastAddedPl:'➕ Đã thêm vào playlist',mpToastRemovedPl:'➖ Đã xóa khỏi playlist',mpToastLiked:'❤️ Đã thích bài hát',mpToastUnliked:'🤍 Đã bỏ thích bài hát',mpToastReposted:'🔁 Đã đăng lại bài hát',mpToastUnreposted:'↩️ Đã bỏ đăng lại',mpToastFollowed:'👤 Đã theo dõi nghệ sĩ',mpToastUnfollowed:'👤 Đã bỏ theo dõi nghệ sĩ',mpStatusToggleOff:'Tắt chế độ Dig',mpStatusToggleOn:'Bật chế độ Dig',
+    m_streakStop:'⚠️ Nhiều bài đã biết liên tiếp — phát bài này như bình thường',m_savedTo:'Đích',m_plBtnNoTarget:'➕ Thêm vào playlist bằng một chạm (nhấn để chọn đích)',m_plBtnIn:'✔ Đã có trong “{name}” (nhấn để xóa / nhấp phải để đổi đích)',m_plBtnOut:'➕ Thêm vào “{name}” (nhấn lại để xóa / nhấp phải để đổi đích)',m_plFetching:'🔄 Đang lấy playlist…',m_plNoLogin:'⚠️ Chưa đăng nhập SoundCloud — không thể lấy playlist',m_plNone:'⚠️ Chưa có playlist. Hãy tạo một playlist trên SoundCloud trước',m_plTargetSet:'📋 Đã chọn “{name}” làm đích!',m_noTrackInfo:'⚠️ Không lấy được thông tin bài hiện tại',m_loginToken:'⚠️ Hãy đăng nhập SoundCloud (không tìm thấy mã xác thực)',m_pickTarget:'📋 Hãy chọn playlist',m_plAborted:'⚠️ Đã hủy thêm vào playlist',m_plDefaultName:'playlist',m_plTargetMissing:'⚠️ Không tìm thấy playlist đích. Hãy chọn lại',m_plNoTargetAbort:'⚠️ Đã hủy vì chưa chọn playlist',m_authFail:'❌ Xác thực tài khoản thất bại ({s}). Hãy tải lại SoundCloud hoặc đăng nhập lại',m_plFull:'⚠️ “{name}” đã đạt giới hạn 500 bài',m_plRemoved:'➖ Đã xóa “{track}” khỏi “{name}”',m_plAdded:'✅ Đã thêm “{track}” vào “{name}” (nhấn lại để xóa)',m_plUpdateFail:'❌ Không thể cập nhật playlist ({s})',m_error:'❌ Lỗi: {msg}',m_errorOcc:'Đã xảy ra lỗi: {msg}',
+    m_exLogin:'Chưa đăng nhập SoundCloud nên không thể xuất. Hãy đăng nhập rồi thử lại.',m_exNone:'Không có bài NoPlay để xuất (chỉ xuất được bài có ID).',m_connectFail:'Không thể kết nối tài khoản SoundCloud. Hãy tải lại trang.',m_exPlFail:'Không thể lấy playlist NoPlay (HTTP {s})',m_exUpdated:'Đã xuất vào playlist “{name}” (tổng {n} bài{cap})',m_exCap:', giới hạn 500 bài',m_exUpdateFail:'Không thể cập nhật bản xuất (HTTP {s})',m_exCreated:'Đã tạo playlist riêng tư “{name}” và xuất {n} bài!',m_exCreateFail:'Không thể tạo playlist (HTTP {s})',m_imLogin:'Chưa đăng nhập SoundCloud nên không thể nhập. Hãy đăng nhập rồi thử lại.',m_imNotFound:'Không tìm thấy playlist “{name}”. Hãy xuất trước.',m_imFail:'Không thể lấy playlist (HTTP {s})',m_imEmpty:'Playlist “{name}” không có bài hát.',m_imDone:'Đã kiểm tra {n} bài trong “{name}” và thêm {c} bài mới vào NoPlay!',m_exMultiDone:'Đã xuất {n} bài qua {c} playlist, gồm “{name}”!',m_imMultiDone:'Đã kiểm tra {n} bài qua {c} playlist NoPlay và thêm {added} bài mới!',
+    m_volRestored:'🔊 Đã khôi phục âm lượng ({n}%)',m_muted:'🔇 Đã tắt tiếng',m_unmute:'Bật tiếng',m_toDiscovery:'⛏️ Đã chuyển sang chế độ Dig (nghệ sĩ chưa biết)',m_toFollowing:'👥 Đã chuyển sang chỉ theo dõi (chỉ bài mới)',m_stOff:'⏸ Tắt Dig',m_stOn:'⛏️ Bật Dig',m_stFollow:'👥 Chỉ theo dõi',m_stationStarted:'📡 Đã khởi động station!',m_stationStartedMsg:'Đã khởi động station',m_stationLoading:'📡 Đang tải station…',m_stationPlaying:'📡 Station đang phát!',m_stationNoTrack:'⚠️ Không lấy được thông tin bài hiện tại',m_stationNoTrackMsg:'Không lấy được thông tin bài',
+    m_repostHead:'🔁 Đăng lại',m_repostPh:'Bình luận về bài hát (không bắt buộc, tối đa {n} ký tự)',m_send:'Gửi',m_reposting:'🔁 Đang đăng lại…',m_repostFail:'⚠️ Đăng lại thất bại ({s})',m_repostCapFail:'⚠️ Đã đăng lại nhưng bình luận thất bại ({s})',m_repostedCap:'🔁 Đã đăng lại và gửi bình luận!',m_reposted:'🔁 Đã đăng lại!',m_commErr:'⚠️ Đã xảy ra lỗi liên lạc',m_tabNoReply:'⚠️ Tab đang phát không phản hồi',m_actionPending:'Đã nhận thao tác và có thể vẫn đang xử lý. Kiểm tra kết quả trên SoundCloud.',m_volumeUnavailable:'Không xác nhận được thay đổi âm lượng. Hãy dùng điều khiển âm lượng SoundCloud.',m_noLikeBtn:'⚠️ Không tìm thấy nút thích',m_trackLoading:'⚠️ Đang lấy thông tin bài hát…',m_loginPlease:'⚠️ Hãy đăng nhập SoundCloud',m_unreposting:'🔁 Đang bỏ đăng lại…',m_unrepostFail:'⚠️ Không thể bỏ đăng lại ({s})',m_artistDefault:'nghệ sĩ',m_artistLoading:'⚠️ Đang kiểm tra ID nghệ sĩ…',m_unfollowing:'👤 Đang bỏ theo dõi…',m_following:'👤 Đang theo dõi…',m_unfollowed:'👤 Đã bỏ theo dõi {name}',m_followed:'👤 Đã theo dõi {name}!',m_followFail:'⚠️ Theo dõi thất bại ({s})',m_notPlaying:'Không phát',m_repostedTip:'Đã đăng lại (nhấn để bỏ)',m_repostTip:'Đăng lại',m_repostUnverified:'⚠️ Không thể xác minh đăng lại trên SoundCloud',m_followingLbl:'👤✓ Đang theo dõi',m_untitled:'(không có tên)',m_hateOff:'🤬 Đã bỏ “{name}” khỏi danh sách loại trừ',m_hateOnTip:'🤬 Đã loại trừ (nhấn để bỏ)',m_laterLimit:'⚠️ Danh sách nghe sau chứa tối đa 500 nghệ sĩ',m_laterFail:'⚠️ Không thể lưu danh sách nghe sau',m_profileTag:'🤬 Bị FreshDig loại trừ',m_profileUnban:'Bỏ loại trừ',
+    freshTitle:'✨ Bỏ qua theo độ mới (chế độ Dig)',freshFollowersPre:'Bỏ qua nghệ sĩ có hơn',freshFollowersPost:'người theo dõi',freshTracksPre:'Bỏ qua nghệ sĩ có hơn',freshTracksPost:'bài hát',freshPlaysPre:'Bỏ qua bài được phát hơn',freshPlaysPost:'lần',freshAgePre:'Bỏ qua bài cũ hơn',freshAgePost:'ngày',freshHint:'Không bỏ qua khi không biết số liệu. Số liệu nghệ sĩ được lưu 7 ngày.',ratePromptTitle:'🌟 Bạn có tìm thấy nhạc mới với FreshDig không?',ratePromptDesc:'Nếu tiện ích giúp bạn khám phá nhạc SoundCloud, hãy đánh giá hoặc viết nhận xét trên Chrome Web Store! Điều đó khích lệ nghệ sĩ mới và các bản cập nhật.',btnRateNow:'⭐ Viết đánh giá',btnRateLater:'Để sau',btnRateDismiss:'Bỏ qua',onboardingProgress:'{n} / 3'
+  });
+  Object.assign(translations.es, {
+    autoMpStatusRegistered:'Listo',autoMpStatusUnsupported:'No compatible (se conserva la configuración)',autoMpStatusUnknown:'Comprobando',autoMpLastError:'El navegador no pudo registrar el PiP automático',playlistSyncing:'Sincronizando… Pulsa [🔄 Sincronizar]',
+    skipReasonManyFollowers:'Artista con muchos seguidores',skipReasonManyTracks:'Artista con muchas pistas',skipReasonManyPlays:'Pista con muchas reproducciones',skipReasonOldTrack:'Pista antigua',logCopyFailed:'No se pudo copiar',logHint:'Pulsa justo después de que se detenga el sonido y pega el contenido',
+    dislikeSection:'⏭️ Sincronizar NoPlay con la playlist de SC',btnExportDislikes:'📤 Exportar a SC',btnExportingDislikes:'⏳ Exportando…',btnImportDislikes:'📥 Importar de SC',btnImportingDislikes:'⏳ Importando…',exportingMsg:'Creando o actualizando la playlist en SoundCloud…',importingMsg:'Obteniendo pistas NoPlay de la playlist de SoundCloud…',commErrorMsg:'No se pudo comunicar con SoundCloud. Recarga la página.',
+    statLikes:'Omitir Me gusta',statFollow:'Omitir seguidos',statDislike:'NoPlay',langLabel:'🌐 Idioma',barDiscoveryOffTitle:'⛏️ Activar modo Dig',barDiscoveryOnTitle:'⛏️ Desactivar modo Dig',barFollowingModeTitle:'👥 Solo seguidos (pulsa para Dig)',
+    mpLoadingTrack:'Cargando pista…',mpStatusWaiting:'En espera',mpStatusDigging:'Excavando',mpFollowBtn:'👤 Seguir',mpStationBtn:'📡 Station',mpLaterListLabel:'🧐 Lista para escuchar después',mpDigListening:'⏸ Escuchando al artista',mpToastDislike:'⏭️ Añadida a NoPlay y omitida',mpToastHate:'🤬 Artista excluido y omitido',mpToastAddedPl:'➕ Añadida a la playlist',mpToastRemovedPl:'➖ Eliminada de la playlist',mpToastLiked:'❤️ Pista marcada con Me gusta',mpToastUnliked:'🤍 Me gusta eliminado',mpToastReposted:'🔁 Pista republicada',mpToastUnreposted:'↩️ Republicación eliminada',mpToastFollowed:'👤 Artista seguido',mpToastUnfollowed:'👤 Artista dejado de seguir',mpStatusToggleOff:'Desactivar modo Dig',mpStatusToggleOn:'Activar modo Dig',
+    m_streakStop:'⚠️ Varias pistas conocidas seguidas: esta se reproduce sin filtrar',m_savedTo:'Destino',m_plBtnNoTarget:'➕ Añadir a una playlist con un clic (pulsa para elegir destino)',m_plBtnIn:'✔ Ya está en “{name}” (pulsa para quitar / clic derecho para cambiar destino)',m_plBtnOut:'➕ Añadir a “{name}” (pulsa otra vez para quitar / clic derecho para cambiar destino)',m_plFetching:'🔄 Obteniendo playlists…',m_plNoLogin:'⚠️ No has iniciado sesión en SoundCloud; no se pueden obtener playlists',m_plNone:'⚠️ No hay playlists. Crea una en SoundCloud primero',m_plTargetSet:'📋 Destino establecido: “{name}”',m_noTrackInfo:'⚠️ No se pudo obtener la pista actual',m_loginToken:'⚠️ Inicia sesión en SoundCloud (no se encontró el token)',m_pickTarget:'📋 Elige una playlist',m_plAborted:'⚠️ Añadido a la playlist cancelado',m_plDefaultName:'la playlist',m_plTargetMissing:'⚠️ No se encontró la playlist de destino. Elígela de nuevo',m_plNoTargetAbort:'⚠️ Cancelado porque no se eligió playlist',m_authFail:'❌ Falló la autenticación ({s}). Recarga SoundCloud o inicia sesión de nuevo',m_plFull:'⚠️ “{name}” alcanzó el límite de 500 pistas',m_plRemoved:'➖ Se quitó “{track}” de “{name}”',m_plAdded:'✅ Se añadió “{track}” a “{name}” (pulsa otra vez para quitar)',m_plUpdateFail:'❌ No se pudo actualizar la playlist ({s})',m_error:'❌ Error: {msg}',m_errorOcc:'Se produjo un error: {msg}',
+    m_exLogin:'No has iniciado sesión en SoundCloud; no se puede exportar. Inicia sesión e inténtalo de nuevo.',m_exNone:'No hay pistas NoPlay para exportar (solo se exportan pistas con ID conocido).',m_connectFail:'No se pudo conectar con la cuenta de SoundCloud. Recarga la página.',m_exPlFail:'No se pudo obtener la playlist NoPlay (HTTP {s})',m_exUpdated:'Exportadas a “{name}” ({n} pistas en total{cap})',m_exCap:', límite de 500 pistas',m_exUpdateFail:'No se pudo actualizar la exportación (HTTP {s})',m_exCreated:'Se creó la playlist privada “{name}” y se exportaron {n} pistas',m_exCreateFail:'No se pudo crear la playlist (HTTP {s})',m_imLogin:'No has iniciado sesión en SoundCloud; no se puede importar. Inicia sesión e inténtalo de nuevo.',m_imNotFound:'No se encontró la playlist “{name}”. Exporta primero.',m_imFail:'No se pudo obtener la playlist (HTTP {s})',m_imEmpty:'La playlist “{name}” no tiene pistas.',m_imDone:'Se comprobaron {n} pistas de “{name}” y se añadieron {c} nuevas a NoPlay',m_exMultiDone:'Se exportaron {n} pistas en {c} playlists, incluida “{name}”',m_imMultiDone:'Se comprobaron {n} pistas en {c} playlists NoPlay y se añadieron {added} nuevas',
+    m_volRestored:'🔊 Volumen restaurado ({n}%)',m_muted:'🔇 Silenciado',m_unmute:'Activar sonido',m_toDiscovery:'⛏️ Cambiado al modo Dig (artistas desconocidos)',m_toFollowing:'👥 Cambiado al modo Solo seguidos (solo pistas nuevas)',m_stOff:'⏸ Dig desactivado',m_stOn:'⛏️ Dig activado',m_stFollow:'👥 Solo seguidos',m_stationStarted:'📡 ¡Station iniciada!',m_stationStartedMsg:'Station iniciada',m_stationLoading:'📡 Cargando station…',m_stationPlaying:'📡 ¡La station está reproduciendo!',m_stationNoTrack:'⚠️ No se pudo obtener la pista actual',m_stationNoTrackMsg:'No se pudo obtener la pista',
+    m_repostHead:'🔁 Republicar',m_repostPh:'Comentario de la pista (opcional, hasta {n} caracteres)',m_send:'Enviar',m_reposting:'🔁 Republicando…',m_repostFail:'⚠️ Falló la republicación ({s})',m_repostCapFail:'⚠️ Republicada, pero falló el comentario ({s})',m_repostedCap:'🔁 ¡Republicada y comentario publicado!',m_reposted:'🔁 ¡Republicada!',m_commErr:'⚠️ Se produjo un error de comunicación',m_tabNoReply:'⚠️ La pestaña que reproduce no responde',m_actionPending:'La acción se recibió y puede seguir procesándose. Comprueba el resultado en SoundCloud.',m_volumeUnavailable:'No se pudo confirmar el volumen. Usa el control de volumen de SoundCloud.',m_noLikeBtn:'⚠️ No se encontró el botón Me gusta',m_trackLoading:'⚠️ Obteniendo información de la pista…',m_loginPlease:'⚠️ Inicia sesión en SoundCloud',m_unreposting:'🔁 Quitando la republicación…',m_unrepostFail:'⚠️ No se pudo quitar la republicación ({s})',m_artistDefault:'el artista',m_artistLoading:'⚠️ Comprobando el ID del artista…',m_unfollowing:'👤 Dejando de seguir…',m_following:'👤 Siguiendo…',m_unfollowed:'👤 Dejaste de seguir a {name}',m_followed:'👤 ¡Sigues a {name}!',m_followFail:'⚠️ Falló el seguimiento ({s})',m_notPlaying:'No se está reproduciendo',m_repostedTip:'Republicada (pulsa para quitar)',m_repostTip:'Republicar',m_repostUnverified:'⚠️ No se pudo verificar la republicación en SoundCloud',m_followingLbl:'👤✓ Siguiendo',m_untitled:'(sin título)',m_hateOff:'🤬 “{name}” eliminado de las exclusiones',m_hateOnTip:'🤬 Excluido (pulsa para quitar)',m_laterLimit:'⚠️ La lista para después admite hasta 500 artistas',m_laterFail:'⚠️ No se pudo guardar la lista para después',m_profileTag:'🤬 Excluido por FreshDig',m_profileUnban:'Quitar exclusión',
+    freshTitle:'✨ Omitir por antigüedad (modo Dig)',freshFollowersPre:'Omitir artistas con más de',freshFollowersPost:'seguidores',freshTracksPre:'Omitir artistas con más de',freshTracksPost:'pistas',freshPlaysPre:'Omitir pistas reproducidas más de',freshPlaysPost:'veces',freshAgePre:'Omitir pistas de más de',freshAgePost:'días',freshHint:'No se omite nada cuando se desconoce el número. Los datos del artista se conservan 7 días.',ratePromptTitle:'🌟 ¿Has descubierto música nueva con FreshDig?',ratePromptDesc:'Si esta extensión te ayuda a descubrir música en SoundCloud, deja una valoración o reseña en Chrome Web Store. Ayuda a mejorar FreshDig y anima a nuevos artistas.',btnRateNow:'⭐ Escribir reseña',btnRateLater:'Más tarde',btnRateDismiss:'Descartar',onboardingProgress:'{n} / 3'
+  });
+  Object.assign(translations.de, {
+    advancedSettings:'⚙ Dig-Einstellungen',statLikes:'Likes überspringen',statFollow:'Gefolgte überspringen',statDislike:'NoPlay',mpStationBtn:'📡 Station',mpRepostTitle:'Repost',m_repostHead:'🔁 Repost',m_repostTip:'Repost',onboardingProgress:'{n} / 3'
+  });
+  Object.assign(translations.ru, { advancedSettings:'⚙ Настройки Dig', onboardingProgress:'{n} / 3' });
+  const digRuleLabels = {
+    ja: { digRulesTitle: 'Digモードで飛ばす条件', digRulesHint: '選択した条件だけをDig ON中にスキップします。初期状態はすべてONです。', digRuleFollowing: 'フォロー中の作者', digRuleHated: 'BANした作者', digRuleLater: '後で聴く人リストの作者', digRuleLiked: 'Like済みの曲', digRuleNoplay: 'NoPlayに入っている曲' },
+    en: { digRulesTitle: 'Skip conditions in Dig mode', digRulesHint: 'Only selected conditions are skipped while Dig is ON. All are enabled by default.', digRuleFollowing: 'Followed artists', digRuleHated: 'Banned artists', digRuleLater: 'Artists in Saved artists', digRuleLiked: 'Liked tracks', digRuleNoplay: 'Tracks in NoPlay' },
+    de: { digRulesTitle: 'Überspringen im Dig-Modus', digRulesHint: 'Nur ausgewählte Bedingungen werden bei aktiviertem Dig übersprungen. Standardmäßig sind alle aktiv.', digRuleFollowing: 'Gefolgte Künstler', digRuleHated: 'Gesperrte Künstler', digRuleLater: 'Künstler in „Für später“', digRuleLiked: 'Titel mit „Gefällt mir“', digRuleNoplay: 'Titel in NoPlay' },
+    ru: { digRulesTitle: 'Пропускать в режиме Dig', digRulesHint: 'При включенном Dig пропускаются только выбранные условия. По умолчанию включены все.', digRuleFollowing: 'Авторы, на которых вы подписаны', digRuleHated: 'Заблокированные авторы', digRuleLater: 'Авторы в списке «На потом»', digRuleLiked: 'Понравившиеся треки', digRuleNoplay: 'Треки в NoPlay' },
+    vi: { digRulesTitle: 'Điều kiện bỏ qua trong Dig mode', digRulesHint: 'Chỉ các điều kiện đã chọn mới bị bỏ qua khi Dig BẬT. Mặc định bật tất cả.', digRuleFollowing: 'Nghệ sĩ đang theo dõi', digRuleHated: 'Nghệ sĩ bị cấm', digRuleLater: 'Nghệ sĩ trong danh sách nghe sau', digRuleLiked: 'Bài đã thích', digRuleNoplay: 'Bài trong NoPlay' },
+    es: { digRulesTitle: 'Condiciones que se omiten en el modo Dig', digRulesHint: 'Con Dig ACTIVADO solo se omiten las condiciones seleccionadas. Todas están activadas inicialmente.', digRuleFollowing: 'Artistas seguidos', digRuleHated: 'Artistas bloqueados', digRuleLater: 'Artistas para escuchar después', digRuleLiked: 'Canciones con Me gusta', digRuleNoplay: 'Canciones en NoPlay' }
+  };
+  Object.keys(digRuleLabels).forEach(function (lang) { Object.assign(translations[lang], digRuleLabels[lang]); });
 
   function resolveLanguage(langPref) {
     if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru' || langPref === 'vi' || langPref === 'es') return langPref;
@@ -1340,6 +1391,23 @@
     return Object.hasOwn ? Object.hasOwn(obj, key) : Object.prototype.hasOwnProperty.call(obj, key);
   }
 
+  const DIG_SKIP_RULE_DEFAULTS = Object.freeze({
+    followingArtists: true,
+    hatedArtists: true,
+    laterArtists: true,
+    likedTracks: true,
+    noplayTracks: true
+  });
+
+  function normalizeDigSkipRules(raw) {
+    const value = raw && typeof raw === 'object' ? raw : {};
+    const out = {};
+    Object.keys(DIG_SKIP_RULE_DEFAULTS).forEach(function (key) {
+      out[key] = value[key] === undefined ? DIG_SKIP_RULE_DEFAULTS[key] : value[key] === true;
+    });
+    return out;
+  }
+
   // 曲の除外判定の詳細。当たった理由とキーを返す。
   function getSkipReasonDetails(info, ctx) {
     if (!ctx || !ctx.discoveryEnabled || ctx.playbackMode !== 'DISCOVERY' || !info) return null;
@@ -1354,12 +1422,13 @@
     const dTracks = ctx.dislikedTracks || {};
     const dArtists = ctx.dislikedArtists || {};
     const dGenres = ctx.dislikedGenres || {};
+    const rules = normalizeDigSkipRules(ctx.digSkipRules);
 
     // 1. 曲自体の除外判定
-    if (id && hasOwn(dTracks, id)) {
+    if (rules.noplayTracks && id && hasOwn(dTracks, id)) {
       return { reason: 'skipReasonDisliked', key: String(id) };
     }
-    if (title) {
+    if (rules.noplayTracks && title) {
       const tKey = 'title_' + encodeURIComponent(title);
       const hitKey = hasOwn(dTracks, tKey) ? tKey : (hasOwn(dTracks, title) ? title : null);
       if (hitKey) {
@@ -1373,10 +1442,10 @@
     }
 
     // 2. 作者の除外判定
-    if (artistId && hasOwn(dArtists, artistId)) {
+    if (rules.hatedArtists && artistId && hasOwn(dArtists, artistId)) {
       return { reason: 'skipReasonHated', key: String(artistId) };
     }
-    if (artist) {
+    if (rules.hatedArtists && artist) {
       const aKey = 'artist_' + encodeURIComponent(artist);
       const hitKey = hasOwn(dArtists, aKey) ? aKey : (hasOwn(dArtists, artist) ? artist : null);
       if (hitKey) {
@@ -1400,7 +1469,7 @@
     }
 
     // 後で聴く作者は Dig 中には流さない。実際に聴くときは Dig を OFF にする。
-    if (artistId && hasOwn(ctx.laterArtists, artistId)) {
+    if (rules.laterArtists && artistId && hasOwn(ctx.laterArtists, artistId)) {
       return { reason: 'skipReasonLater', key: String(artistId) };
     }
 
@@ -1409,10 +1478,10 @@
     if (!keepKnown && ctx.heardSkipEnabled && id && ctx.heardTrackIds && ctx.heardTrackIds.has(id)) {
       return { reason: 'skipReasonHeard', key: String(id) };
     }
-    if (!keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
+    if (rules.likedTracks && !keepKnown && id && ctx.likedTrackIds && ctx.likedTrackIds.has(id)) {
       return { reason: 'skipReasonLiked', key: String(id) };
     }
-    if (!ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
+    if (rules.followingArtists && !ctx.onArtistPage && artistId && ctx.followingUserIds && ctx.followingUserIds.has(artistId)) {
       return { reason: 'skipReasonFollowing', key: String(artistId) };
     }
 
@@ -1578,6 +1647,7 @@
     isValidDislikeKey: isValidDislikeKey,
     getSkipReasonKey: getSkipReasonKey,
     getSkipReasonDetails: getSkipReasonDetails,
+    normalizeDigSkipRules: normalizeDigSkipRules,
     getFreshSkipReasonKey: getFreshSkipReasonKey,
     normalizeFreshFilter: normalizeFreshFilter,
     pruneAuthorStats: pruneAuthorStats,
@@ -1964,8 +2034,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.5.0)');
-    const RUNTIME_VERSION = '2.5.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.12.0)');
+    const RUNTIME_VERSION = '2.12.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -1980,8 +2050,11 @@
     const AUTO_MINI_PLAYER_KEY = 'sc_fresh_station_auto_miniplayer';
     const PREFERRED_LANGUAGE_KEY = 'sc_fresh_station_preferred_language';
     const HEARD_SKIP_ENABLED_KEY = 'sc_fresh_station_heard_skip_enabled';
+    const DIG_SKIP_RULES_KEY = 'sc_fresh_station_dig_skip_rules';
     const HEARD_TRACKS_FALLBACK_KEY = 'sc_fresh_station_heard_tracks_v1';
     const HEARD_THRESHOLD_SEC = 10;
+    const PLAYBACK_RELOAD_GUARD_KEY = 'sc_fresh_station_playback_reload_guard_v1';
+    const MINI_PLAYER_RESTORE_KEY = 'sc_fresh_station_miniplayer_restore_v1';
 
     // 画面に出す文字を辞書(i18n.js)から取る。{name} などは vars で差し込む
     function tt(key, vars) {
@@ -2087,6 +2160,7 @@
         playbackMode: normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY)), // 'DISCOVERY'（'FOLLOWING_NEW' は現在無効）
         discoveryEnabled: readDiscoveryEnabled(), // 発掘モード（自動スキップ・ステーション絞り込み）の ON/OFF
         heardSkipEnabled: readHeardSkipEnabled(),
+        digSkipRules: FreshDigCore.normalizeDigSkipRules(null),
         autoMiniPlayer: (function () { try { return localStorage.getItem(AUTO_MINI_PLAYER_KEY) !== 'false'; } catch (e) { return true; } })(), // 別タブへ切替時にミニプレイヤーを自動表示
         preferredLanguage: (function () { try { return localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) { return 'auto'; } })(), // 表示言語: auto / ja / en
         dislikedTracks: {},
@@ -2114,6 +2188,7 @@
             state.playbackMode = normalizePlaybackMode(localStorage.getItem(PLAYBACK_MODE_KEY));
             state.discoveryEnabled = readDiscoveryEnabled();
             state.heardSkipEnabled = readHeardSkipEnabled();
+            try { state.digSkipRules = FreshDigCore.normalizeDigSkipRules(JSON.parse(localStorage.getItem(DIG_SKIP_RULES_KEY) || 'null')); } catch (e) { state.digSkipRules = FreshDigCore.normalizeDigSkipRules(null); }
             try { state.preferredLanguage = localStorage.getItem(PREFERRED_LANGUAGE_KEY) || 'auto'; } catch (e) {}
 
             const cachedLikes = localStorage.getItem(CACHE_LIKES_KEY);
@@ -2600,7 +2675,8 @@
         recoveries: 0,
         lastRecoveryAt: 0,
         recoveryInFlight: false,
-        suppressPauseUntil: 0
+        suppressPauseUntil: 0,
+        pageReloadInFlight: false
     };
 
     function notePausedMedia(media) {
@@ -2647,6 +2723,22 @@
             playbackIntent.recoveries = 0;
             playbackIntent.lastRecoveryAt = 0;
         }
+    }, true);
+    // The page's own play button can become visually active while the media
+    // clock remains frozen after a long-idle tab. Probe native clicks too, so
+    // recovery also works when the user starts playback outside the mini player.
+    document.addEventListener('click', function (ev) {
+        let button = null;
+        try { button = ev.target && ev.target.closest ? ev.target.closest('.playControls__play') : null; } catch (e) {}
+        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight) return;
+        playbackIntent.wanted = true;
+        const media = getActiveMedia(true);
+        const initialPosition = readPlaybackPosition(media);
+        setTimeout(async function () {
+            if (!playbackIntent.wanted || playbackIntent.recoveryInFlight) return;
+            const result = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
+            if (!result.success && !result.reloading) playbackIntent.wanted = false;
+        }, 180);
     }, true);
     document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
 
@@ -2738,6 +2830,11 @@
                 try { localStorage.setItem(HEARD_SKIP_ENABLED_KEY, String(state.heardSkipEnabled)); } catch (e) {}
                 marginGuard.hasChecked = false;
             }
+            if (d && d.digSkipRules) {
+                state.digSkipRules = FreshDigCore.normalizeDigSkipRules(d.digSkipRules);
+                try { localStorage.setItem(DIG_SKIP_RULES_KEY, JSON.stringify(state.digSkipRules)); } catch (e) {}
+                marginGuard.hasChecked = false;
+            }
             return;
         }
 
@@ -2813,6 +2910,13 @@
                     marginGuard.hasChecked = false;
                     soundChangeState.decidedPath = '';
                     ack({ success: true, heardSkipEnabled: state.heardSkipEnabled });
+                } else if (action === 'SET_DIG_SKIP_RULES') {
+                    state.digSkipRules = FreshDigCore.normalizeDigSkipRules(event.data.rules);
+                    try { localStorage.setItem(DIG_SKIP_RULES_KEY, JSON.stringify(state.digSkipRules)); } catch (e) {}
+                    marginGuard.hasChecked = false;
+                    soundChangeState.decidedPath = '';
+                    try { scheduleQueuePrune(); } catch (e) {}
+                    ack({ success: true, digSkipRules: state.digSkipRules });
                 } else if (action === 'EXPORT_DISLIKES') {
                     ack(await exportDislikesToPlaylist());
                 } else if (action === 'IMPORT_DISLIKES') {
@@ -2844,6 +2948,7 @@
                         playbackMode: state.playbackMode,
                         discoveryEnabled: state.discoveryEnabled,
                         heardSkipEnabled: state.heardSkipEnabled,
+                        digSkipRules: state.digSkipRules,
                         autoMiniPlayer: state.autoMiniPlayer,
                         autoPipSupported: getAutoPipDiagnostics().autoPipSupported,
                         autoPipStatus: getAutoPipDiagnostics().autoPipStatus,
@@ -3520,6 +3625,7 @@
             followingUserIds: state.followingUserIds,
             heardSkipEnabled: state.heardSkipEnabled,
             heardTrackIds: state.heardTrackIds,
+            digSkipRules: state.digSkipRules,
             inLibrary: isExplicitLibraryPage(),
             onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
         });
@@ -3545,6 +3651,7 @@
                     followingUserIds: state.followingUserIds,
                     heardSkipEnabled: state.heardSkipEnabled,
                     heardTrackIds: state.heardTrackIds,
+                    digSkipRules: state.digSkipRules,
                     inLibrary: isExplicitLibraryPage(),
                     onArtistPage: isOnLaterArtistPage(info) || isOnFollowedArtistPage(info)
                 });
@@ -5326,6 +5433,85 @@
         });
     }
 
+    // A media element can report "playing" while its position is frozen after
+    // a long-idle tab. Verify that the seek position actually advances before
+    // reporting a successful play command.
+    function readPlaybackPosition(media) {
+        if (media && Number.isFinite(media.currentTime)) return Number(media.currentTime);
+        const pos = getPlaybackPositionSeconds();
+        return pos && Number.isFinite(pos.position) ? Number(pos.position) : null;
+    }
+
+    function waitForPlaybackProgress(media, initialPosition, timeoutMs) {
+        const timeout = timeoutMs || 1000;
+        const started = Date.now();
+        const baseline = Number.isFinite(initialPosition) ? initialPosition : readPlaybackPosition(media);
+        return new Promise(function (resolve) {
+            const check = function () {
+                const now = readPlaybackPosition(media);
+                if (Number.isFinite(now) && Number.isFinite(baseline) && now > baseline + 0.15) {
+                    resolve(true);
+                    return;
+                }
+                if (Date.now() - started >= timeout) {
+                    resolve(false);
+                    return;
+                }
+                setTimeout(check, 100);
+            };
+            check();
+        });
+    }
+
+    function requestPlaybackPageReload(reason) {
+        if (playbackIntent.pageReloadInFlight || !window.location || typeof window.location.reload !== 'function') return false;
+        const trackKey = playbackTrackKey() || 'unknown';
+        const now = Date.now();
+        let previous = null;
+        try { previous = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null'); } catch (e) {}
+        // A reload can itself take a moment to restore the player. Do not loop
+        // on the same frozen track if the refreshed page reports no progress.
+        if (previous && previous.trackKey === trackKey && now - Number(previous.at || 0) < 60000) {
+            dlog('playback-page-reload-suppressed', { reason: reason, trackKey: trackKey });
+            return false;
+        }
+        try {
+            sessionStorage.setItem(PLAYBACK_RELOAD_GUARD_KEY, JSON.stringify({ trackKey: trackKey, at: now }));
+            // A page reload destroys Document PiP/window.open ownership. Remember
+            // that the player was open so the new page can reopen it once loaded.
+            if (miniPlayerWindow && !miniPlayerWindow.closed) {
+                sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify({ at: now, reason: reason || 'playback-reload' }));
+                dlog('miniplayer-restore-armed', { reason: reason || 'playback-reload', trackKey: trackKey });
+            }
+        } catch (e) {}
+        playbackIntent.pageReloadInFlight = true;
+        dlog('playback-page-reload-requested', { reason: reason, trackKey: trackKey });
+        setTimeout(function () {
+            try { window.location.reload(); } catch (e) { playbackIntent.pageReloadInFlight = false; dlog('playback-page-reload-failed', errorName(e)); }
+        }, 120);
+        return true;
+    }
+
+    async function verifyAndRecoverExplicitPlay(media, initialPosition) {
+        if (await waitForPlaybackProgress(media, initialPosition, 1000)) return { success: true, verified: true };
+        dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
+
+        // First retry the native page control once. This handles a stale media
+        // element without immediately discarding the SoundCloud page state.
+        const button = document.querySelector('.playControls__play:not(.playing)');
+        if (button) {
+            try { button.click(); } catch (e) {}
+            if (await waitForPlaybackProgress(getActiveMedia(true) || media, readPlaybackPosition(media), 900)) {
+                dlog('playback-progress-recovered', { method: 'native-button' });
+                return { success: true, verified: true, recovered: true };
+            }
+        }
+        if (requestPlaybackPageReload('explicit-play-no-progress')) {
+            return { success: false, reloading: true, verified: false };
+        }
+        return { success: false, verified: false, stalled: true };
+    }
+
     // HTMLMediaElement.play() can reject or remain pending when the browser's
     // autoplay/permission state is unresolved. Never leave a remote command or
     // recovery attempt waiting forever, and never fall back to a second toggle.
@@ -6406,6 +6592,27 @@
         }
     }
 
+    function restoreMiniPlayerAfterReload() {
+        let marker = null;
+        try { marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null'); } catch (e) {}
+        if (!marker || !marker.at || Date.now() - Number(marker.at) > 60000) return;
+        try { sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY); } catch (e) {}
+        // Wait for SoundCloud's player and document body to settle after reload.
+        setTimeout(function () {
+            if (miniPlayerWindow && !miniPlayerWindow.closed) return;
+            openMiniPlayer({ auto: true, reason: 'after-playback-reload' }).then(function (result) {
+                if (!result || result.success !== false) return;
+                dlog('miniplayer-restore-failed', { error: result.error || 'OpenFailed' });
+                // Browsers may require a transient user activation for PiP. The
+                // existing in-page launcher is the safe fallback in that case.
+                showMiniPlayerLaunchPrompt();
+            }).catch(function (err) {
+                dlog('miniplayer-restore-failed', { error: errorName(err) });
+                showMiniPlayerLaunchPrompt();
+            });
+        }, 900);
+    }
+
     let isSeekingInMiniPlayer = false;
 
     // ミニプレイヤー（Document PiP の小窓）ではブラウザ標準の title の吹き出しが出ないため、自前で出す。
@@ -6608,7 +6815,8 @@
                     opacity: 1;
                 }
                 .btn-follow svg { width: 21px; height: 21px; pointer-events: none; }
-                .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; padding: 0 6px; font-size: 12px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
+                .badge-row .btn-later { flex: 0 0 34px; width: 34px; min-width: 34px; height: 30px; font-size: 19px; border-color: #ff5500; color: #ff9a55; opacity: 1; }
+                .badge-row .btn-later-list { width: auto; min-width: 0; flex: 1; height: 30px; padding: 0 10px; font-size: 13px; font-weight: 700; color: #ff9a55; border-color: #ff5500; opacity: 1; white-space: nowrap; text-overflow: ellipsis; }
                 button:focus-visible, a:focus-visible { outline: 2px solid #ffb36b; outline-offset: 1px; }
                 .btn-follow:hover {
                     background: #333;
@@ -6906,7 +7114,7 @@
                     <div class="badge-row">
                         <button class="status-badge" id="mp-status" type="button">${tx.mpStatusWaiting}</button>
                         <button class="btn-station" id="mp-station" title="${tx.mpStationBtnTitle}"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 9 6 21h12L12 9Zm-3 6h6M7 21l5-6 5 6M12 4v5M8 3a6 6 0 0 0 0 8M16 3a6 6 0 0 1 0 8M5 1a9 9 0 0 0 0 12M19 1a9 9 0 0 1 0 12"/></svg></button>
-                        <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
+                        <button class="btn-later" id="mp-later" title="">🧐</button>
                         <button class="btn-later-list" id="mp-later-list" type="button">${tx.mpLaterListLabel}</button>
                         <button class="btn-hate" id="mp-hate" title="${tx.mpHateTitle}">🤬</button>
                     </div>
@@ -6945,7 +7153,7 @@
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
-                <button class="btn-later" id="mp-later" title="">🧐</button>
+                <button class="btn-follow" id="mp-follow" title="${tx.mpFollowBtnTitle}" aria-label="${tx.mpFollowBtnTitle}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="7" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></svg></button>
             </div>
             <div class="toast" id="mp-toast"></div>
             <div id="mp-tip" style="position:fixed;z-index:50;display:none;max-width:calc(100vw - 12px);background:#000;color:#fff;border:1px solid #555;border-radius:4px;padding:3px 6px;font-size:10px;line-height:1.35;pointer-events:none;white-space:normal;"></div>
@@ -7295,6 +7503,7 @@
         }
 
         playbackIntent.wanted = true;
+        const initialPosition = readPlaybackPosition(media);
         let invoked = false;
         try {
             if (media && typeof media.play === 'function' && !media.ended) {
@@ -7326,7 +7535,16 @@
             playbackIntent.wanted = false;
             return fail(tt('m_commErr'));
         }
-        return { success: true, playing: true, verified: true };
+        const verified = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
+        if (!verified.success) {
+            if (verified.reloading) {
+                if (toast) toast(tt('reloadRequired'));
+                return { success: false, playing: false, verified: false, reloading: true, message: tt('reloadRequired') };
+            }
+            playbackIntent.wanted = false;
+            return fail(tt('m_commErr'));
+        }
+        return { success: true, playing: true, verified: true, recovered: !!verified.recovered };
     }
 
     // ミニプレイヤーの操作の中身。(args, toast, doc) を受ける。doc はこのタブのミニプレイヤー（別タブから呼ばれたときは null）
@@ -7501,6 +7719,10 @@
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
     registerAutoMiniPlayerHandler();
     registerExtraMediaSessionHandlers();
+    restoreMiniPlayerAfterReload();
 
 })();
+
+
+
 

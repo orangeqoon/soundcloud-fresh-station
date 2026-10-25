@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   ];
   let freshFilter = FreshDigCore.normalizeFreshFilter(null);
   let heardSkipEnabled = false;
+  let digSkipRules = FreshDigCore.normalizeDigSkipRules(null);
 
   function renderFresh() {
     document.getElementById('fresh-title').textContent = t.freshTitle;
@@ -323,6 +324,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (heardLabel) heardLabel.textContent = t.heardSkipLabel;
     const heardHint = document.getElementById('heard-skip-hint');
     if (heardHint) heardHint.textContent = t.heardSkipHint;
+    const ruleLabels = {
+      followingArtists: 'digRuleFollowing', hatedArtists: 'digRuleHated', laterArtists: 'digRuleLater', likedTracks: 'digRuleLiked', noplayTracks: 'digRuleNoplay'
+    };
+    const ruleIds = Object.keys(ruleLabels);
+    const title = document.getElementById('dig-rules-title');
+    if (title) title.textContent = t.digRulesTitle;
+    const hint = document.getElementById('dig-rules-hint');
+    if (hint) hint.textContent = t.digRulesHint;
+    ruleIds.forEach(function (key) {
+      const checkbox = document.getElementById('dig-rule-' + key.replace('followingArtists', 'following').replace('hatedArtists', 'hated').replace('laterArtists', 'later').replace('likedTracks', 'liked').replace('noplayTracks', 'noplay'));
+      const label = document.getElementById('dig-rule-' + key.replace('followingArtists', 'following').replace('hatedArtists', 'hated').replace('laterArtists', 'later').replace('likedTracks', 'liked').replace('noplayTracks', 'noplay') + '-label');
+      if (checkbox) checkbox.checked = !!digSkipRules[key];
+      if (label) label.textContent = t[ruleLabels[key]];
+    });
   }
 
   function saveFresh() {
@@ -347,12 +362,29 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (tab) chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'SET_HEARD_SKIP_ENABLED', enabled: heardSkipEnabled }, function () { void chrome.runtime.lastError; });
   });
   if (chrome.storage && chrome.storage.local) {
-    chrome.storage.local.get(['freshFilter', 'heardSkipEnabled'], function (st) {
+    chrome.storage.local.get(['freshFilter', 'heardSkipEnabled', 'digSkipRules'], function (st) {
       if (st && st.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(st.freshFilter);
       heardSkipEnabled = !!(st && st.heardSkipEnabled);
+      digSkipRules = FreshDigCore.normalizeDigSkipRules(st && st.digSkipRules);
       renderFresh();
     });
   }
+
+  function saveDigSkipRules() {
+    const ids = { followingArtists: 'following', hatedArtists: 'hated', laterArtists: 'later', likedTracks: 'liked', noplayTracks: 'noplay' };
+    const next = {};
+    Object.keys(ids).forEach(function (key) {
+      const el = document.getElementById('dig-rule-' + ids[key]);
+      next[key] = !!(el && el.checked);
+    });
+    digSkipRules = FreshDigCore.normalizeDigSkipRules(next);
+    if (chrome.storage && chrome.storage.local) chrome.storage.local.set({ digSkipRules: digSkipRules });
+    if (tab) chrome.tabs.sendMessage(tab.id, { target: 'SC_FRESH_STATION', action: 'SET_DIG_SKIP_RULES', rules: digSkipRules }, function () { void chrome.runtime.lastError; });
+  }
+  ['following', 'hated', 'later', 'liked', 'noplay'].forEach(function (name) {
+    const el = document.getElementById('dig-rule-' + name);
+    if (el) el.addEventListener('change', saveDigSkipRules);
+  });
 
   applyStaticTranslations();
 
@@ -574,6 +606,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     updateDiscoveryUI(data.discoveryEnabled !== false);
     heardSkipEnabled = !!data.heardSkipEnabled;
+    digSkipRules = FreshDigCore.normalizeDigSkipRules(data.digSkipRules);
     if (data.freshFilter) freshFilter = FreshDigCore.normalizeFreshFilter(data.freshFilter);
     renderFresh();
     renderLists();
