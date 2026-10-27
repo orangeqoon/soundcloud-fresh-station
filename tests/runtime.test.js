@@ -26,9 +26,11 @@ function instrumentHook() {
     'fdRemote', 'TAB_ID', 'getAutoPipDiagnostics', 'registerAutoMiniPlayerHandler', 'setAutoMiniPlayer', 'mpRemoteCall',
     'schedulePlaybackRecovery', 'playbackIntent', 'scTogglePlay', 'scInternals',
     'getDiagLogEntries', 'getPlaybackDiagnostic',
-    'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute'
+    'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute',
+    'requestPlaybackPageReload', 'restoreMiniPlayerAfterReload', 'verifyAndRecoverExplicitPlay',
+    'beginHeardSession', 'heardPlayback', 'heardTracker', 'heardCache', 'heardMisses', 'heardLookup', 'observeHeardPlayback'
   ];
-  return hookSource.slice(0, at) + '\nwindow.__runtimeHooks = {' + hooks.map((name) => name + ': ' + name).join(', ') + '};\n' + hookSource.slice(at);
+  return hookSource.slice(0, at) + '\nwindow.__setTestMiniPlayer = function(w) { miniPlayerWindow = w; };\nwindow.__runtimeHooks = {' + hooks.map((name) => name + ': ' + name).join(', ') + '};\n' + hookSource.slice(at);
 }
 
 function classList(initial) {
@@ -208,7 +210,12 @@ function makeEnv(options) {
   };
 
   const win = {
-    location: { origin: 'https://soundcloud.com', pathname: options.pathname || '/discover', href: 'https://soundcloud.com' + (options.pathname || '/discover') },
+    location: { origin: 'https://soundcloud.com', pathname: options.pathname || '/discover', href: 'https://soundcloud.com' + (options.pathname || '/discover'), reload: options.onReload || (() => {}) },
+    sessionStorage: {
+      getItem(key) { return (options.sessionStore || {})[key] || null; },
+      setItem(key, value) { if (options.sessionStore) options.sessionStore[key] = String(value); },
+      removeItem(key) { if (options.sessionStore) delete options.sessionStore[key]; }
+    },
     localStorage,
     navigator: { userAgent: 'runtime-test', language: 'en-US', locks: null, ...(mediaSession ? { mediaSession } : {}) },
     document,
@@ -562,6 +569,105 @@ async function sendPopupAction(env, action, extra) {
   for (const listener of env.windowListeners.message || []) await listener({ source, data });
   return env.posted.find(message => message.requestId === payload.requestId)?.result;
 }
+
+test('heard ID caches have fixed bounds and current-session records do not skip themselves', () => {
+  const env = makeEnv();
+  for (let id = 100; id < 2300; id++) {
+    env.hooks.heardCache(id, true);
+    env.hooks.heardCache(id + 3000, false);
+  }
+  assert.strictEqual(env.hooks.state.heardTrackIds.size, 2000);
+  assert.strictEqual(env.hooks.heardMisses.size, 2000);
+  assert.strictEqual(env.hooks.state.heardTrackIds.has(100), false);
+  env.hooks.state.discoveryEnabled = true;
+  env.hooks.state.heardSkipEnabled = true;
+  env.hooks.beginHeardSession(2299);
+  assert.strictEqual(env.hooks.getCoreSkipReason({ id: 2299, artistId: 9 }), 'skipReasonHeard');
+  env.hooks.heardPlayback.protected = true;
+  assert.strictEqual(env.hooks.getCoreSkipReason({ id: 2299, artistId: 9 }), null);
+  env.hooks.beginHeardSession(2300);
+  env.hooks.beginHeardSession(2299);
+  assert.strictEqual(env.hooks.getCoreSkipReason({ id: 2299, artistId: 9 }), 'skipReasonHeard', 'next session must consult history again');
+});
+
+test('a user pause or track skip during progress verification must not reload the page', async () => {
+  let reloads = 0;
+  const media = makeMedia({ paused: false });
+  const env = makeEnv({ media: [media], onReload: () => { reloads++; } });
+  env.hooks.state.currentTrack = { id: 90 };
+  env.hooks.playbackIntent.wanted = true;
+  const result = env.hooks.verifyAndRecoverExplicitPlay(media, 0);
+  env.hooks.playbackIntent.wanted = false;
+  assert.strictEqual((await result).cancelled, true);
+  await tick(150);
+  assert.strictEqual(reloads, 0);
+});
+
+test('playback reload waits for recovery window acknowledgement before navigation', async () => {
+  let reloads = 0;
+  const sessionStore = {};
+  const env = makeEnv({ sessionStore, onReload: () => { reloads++; } });
+  const source = vm.runInContext('window', env.context);
+  const restore = vm.runInContext('({type:"SC_FRESH_STATION_RESTORE_STORAGE",data:{heardHistoryAvailable:true}})', env.context);
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: restore });
+  env.win.__setTestMiniPlayer({ closed: false });
+  env.hooks.state.currentTrack = { id: 95 };
+  env.hooks.playbackIntent.wanted = true;
+  const request = env.hooks.requestPlaybackPageReload('test');
+  await tick(0);
+  const arm = env.posted.find(m => m.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER');
+  assert.ok(arm);
+  assert.strictEqual(reloads, 0);
+  const ack = vm.runInContext('JSON.parse(' + JSON.stringify(JSON.stringify({type:'SC_FRESH_STATION_ARM_RECOVERY_RESULT', requestId:arm.requestId, result:{ok:true}})) + ')', env.context);
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: ack });
+  assert.strictEqual(await request, true);
+  assert.strictEqual(JSON.parse(sessionStore.sc_fresh_station_miniplayer_restore_v1).wanted, true);
+  await tick(150);
+  assert.strictEqual(reloads, 1);
+});
+
+test('pausing during recovery-window setup cancels the pending reload', async () => {
+  let reloads = 0;
+  const sessionStore = {};
+  const env = makeEnv({ sessionStore, onReload: () => { reloads++; } });
+  const source = vm.runInContext('window', env.context);
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: {type:'SC_FRESH_STATION_RESTORE_STORAGE',data:{heardHistoryAvailable:true}} });
+  env.win.__setTestMiniPlayer({ closed: false });
+  env.hooks.state.currentTrack = { id: 96 };
+  env.hooks.playbackIntent.wanted = true;
+  const request = env.hooks.requestPlaybackPageReload('test');
+  const arm = env.posted.find(m => m.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER');
+  env.hooks.playbackIntent.wanted = false;
+  env.hooks.playbackIntent.pauseRevision = 1;
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: {type:'SC_FRESH_STATION_ARM_RECOVERY_RESULT',requestId:arm.requestId,result:{ok:true}} });
+  assert.strictEqual(await request, false);
+  await tick(150);
+  assert.strictEqual(reloads, 0);
+  assert.strictEqual(sessionStore.sc_fresh_station_miniplayer_restore_v1, undefined);
+});
+
+test('reload restoration uses the extension window and respects a new user pause', async () => {
+  let plays = 0;
+  let pipRequests = 0;
+  const sessionStore = {};
+  const media = makeMedia({ play: () => { plays++; return Promise.resolve(); } });
+  const env = makeEnv({ media: [media], sessionStore,
+    documentPictureInPicture: { requestWindow() { pipRequests++; throw Object.assign(new Error(), {name:'NotAllowedError'}); } } });
+  const source = vm.runInContext('window', env.context);
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: {type:'SC_FRESH_STATION_RESTORE_STORAGE',data:{heardHistoryAvailable:true}} });
+  env.hooks.state.currentTrack = { id: 97 };
+  sessionStore.sc_fresh_station_miniplayer_restore_v1 = JSON.stringify({ at:Date.now(), trackKey:'97', wanted:true });
+  env.hooks.restoreMiniPlayerAfterReload();
+  await tick(950);
+  const arm = env.posted.find(m => m.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER');
+  assert.ok(arm);
+  env.hooks.playbackIntent.pauseRevision = 1;
+  for (const fn of env.windowListeners.message || []) await fn({ source, data: {type:'SC_FRESH_STATION_ARM_RECOVERY_RESULT',requestId:arm.requestId,result:{ok:true}} });
+  await tick(0);
+  assert.strictEqual(pipRequests, 0, 'timer-based PiP must not require forbidden activation');
+  assert.strictEqual(plays, 0, 'user pause after reload wins over persisted intent');
+  assert.ok(env.win.document.getElementById('sc-fresh-station-mp-launch'));
+});
 
 test('four-list backup reads exclusions without network and additive import preserves existing records', async () => {
   const env = makeEnv();

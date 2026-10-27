@@ -1324,6 +1324,16 @@
   };
   Object.keys(digRuleLabels).forEach(function (lang) { Object.assign(translations[lang], digRuleLabels[lang]); });
 
+  const heardSaveLabels = {
+    ja: '⚠️ 既聴履歴を保存できません。拡張機能の履歴画面を確認してください。',
+    en: '⚠️ Heard history could not be saved. Check the extension history page.',
+    de: '⚠️ Der Hörverlauf konnte nicht gespeichert werden. Prüfe die Verlaufsseite der Erweiterung.',
+    ru: '⚠️ Не удалось сохранить историю прослушивания. Проверьте страницу истории расширения.',
+    vi: '⚠️ Không lưu được lịch sử nghe. Hãy kiểm tra trang lịch sử của tiện ích.',
+    es: '⚠️ No se pudo guardar el historial. Revisa la página de historial de la extensión.'
+  };
+  Object.keys(heardSaveLabels).forEach(function (lang) { translations[lang].heardSaveFailed = heardSaveLabels[lang]; });
+
   function resolveLanguage(langPref) {
     if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru' || langPref === 'vi' || langPref === 'es') return langPref;
     // auto detect from browser/navigator

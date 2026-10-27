@@ -2,6 +2,19 @@ document.addEventListener('DOMContentLoaded', async function () {
   let currentLang = 'auto';
   let t = FreshDigI18n.getTexts(currentLang);
   let cachedData = null;
+  const heardEntryTexts = {
+    ja: '🎧 既聴曲履歴 / バックアップ',
+    en: '🎧 Heard history / Backup',
+    de: '🎧 Verlauf gehörter Titel / Backup',
+    ru: '🎧 История прослушанных / Копия',
+    vi: '🎧 Lịch sử đã nghe / Sao lưu',
+    es: '🎧 Historial escuchadas / Copia'
+  };
+
+  function heardEntryText() {
+    const resolved = FreshDigI18n.resolveLanguage(currentLang);
+    return heardEntryTexts[resolved] || heardEntryTexts.en;
+  }
 
   // 言語の読み込み
   if (chrome.storage && chrome.storage.local) {
@@ -78,6 +91,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (btnReport) btnReport.textContent = t.btnDownloadReport;
     document.getElementById('btn-export-lists').textContent = t.btnExportLists;
     document.getElementById('btn-import-lists').textContent = t.btnImportLists;
+    const heardButton = document.getElementById('btn-open-heard');
+    if (heardButton) heardButton.textContent = heardEntryText();
     const btnCopyLog = document.getElementById('btn-copy-log');
     if (btnCopyLog) btnCopyLog.textContent = t.btnCopyLog;
 
@@ -396,6 +411,15 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     });
   });
+
+  const heardButton = document.getElementById('btn-open-heard');
+  if (heardButton) {
+    heardButton.addEventListener('click', function () {
+      chrome.tabs.create({ url: chrome.runtime.getURL('heard.html') }, function () {
+        if (!chrome.runtime.lastError) window.close();
+      });
+    });
+  }
 
   const guideButton = document.getElementById('btn-open-guide');
   if (guideButton) {

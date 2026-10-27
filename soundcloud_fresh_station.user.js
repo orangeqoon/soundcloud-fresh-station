@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.12.0
+// @version      2.13.0
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -1334,6 +1334,16 @@
   };
   Object.keys(digRuleLabels).forEach(function (lang) { Object.assign(translations[lang], digRuleLabels[lang]); });
 
+  const heardSaveLabels = {
+    ja: '⚠️ 既聴履歴を保存できません。拡張機能の履歴画面を確認してください。',
+    en: '⚠️ Heard history could not be saved. Check the extension history page.',
+    de: '⚠️ Der Hörverlauf konnte nicht gespeichert werden. Prüfe die Verlaufsseite der Erweiterung.',
+    ru: '⚠️ Не удалось сохранить историю прослушивания. Проверьте страницу истории расширения.',
+    vi: '⚠️ Không lưu được lịch sử nghe. Hãy kiểm tra trang lịch sử của tiện ích.',
+    es: '⚠️ No se pudo guardar el historial. Revisa la página de historial de la extensión.'
+  };
+  Object.keys(heardSaveLabels).forEach(function (lang) { translations[lang].heardSaveFailed = heardSaveLabels[lang]; });
+
   function resolveLanguage(langPref) {
     if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru' || langPref === 'vi' || langPref === 'es') return langPref;
     // auto detect from browser/navigator
@@ -1636,7 +1646,37 @@
     return now - last >= ttl || now < last;
   }
 
+  // A single playback session, measured with both media and monotonic clocks.
+  // A seek or an unbound source cannot manufacture listening time.
+  function createHeardTracker() {
+    let previous = null;
+    let elapsed = 0;
+    let source = null;
+    return {
+      reset: function () { previous = null; elapsed = 0; source = null; },
+      sample: function (s) {
+        if (source !== s.source) { previous = null; source = s.source; }
+        if (!s.playing || s.seeking || !s.bound || !Number.isFinite(s.position) || !Number.isFinite(s.wall)) {
+          previous = null;
+          return elapsed;
+        }
+        if (previous) {
+          const mediaDelta = s.position - previous.position;
+          const wallDelta = (s.wall - previous.wall) / 1000;
+          const rate = Number.isFinite(s.rate) && s.rate > 0 ? s.rate : 1;
+          if (wallDelta > 0 && mediaDelta > 0 && mediaDelta <= wallDelta * rate + 0.4) {
+            elapsed += Math.min(wallDelta, mediaDelta / rate);
+          }
+        }
+        previous = { position: s.position, wall: s.wall };
+        return elapsed;
+      },
+      elapsed: function () { return elapsed; }
+    };
+  }
+
   return {
+    createHeardTracker: createHeardTracker,
     planQueueAhead: planQueueAhead,
     createRateLimiter: createRateLimiter,
     createBackoff: createBackoff,
@@ -2034,8 +2074,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.12.0)');
-    const RUNTIME_VERSION = '2.12.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.13.0)');
+    const RUNTIME_VERSION = '2.13.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -2676,7 +2716,8 @@
         lastRecoveryAt: 0,
         recoveryInFlight: false,
         suppressPauseUntil: 0,
-        pageReloadInFlight: false
+        pageReloadInFlight: false,
+        recoveryPlayerSeenAt: 0
     };
 
     function notePausedMedia(media) {
@@ -2737,7 +2778,7 @@
         setTimeout(async function () {
             if (!playbackIntent.wanted || playbackIntent.recoveryInFlight) return;
             const result = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
-            if (!result.success && !result.reloading) playbackIntent.wanted = false;
+            if (!result.success && !result.reloading && !result.cancelled) playbackIntent.wanted = false;
         }, 180);
     }, true);
     document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
@@ -2796,8 +2837,25 @@
         // 同一ウィンドウ（content_bridge / 自分自身）以外（iframe等）からのメッセージは無視
         if (event.source !== window || !event.data) return;
 
+        if (event.data.type === 'SC_FRESH_STATION_HEARD_RESULT') {
+            const pending = heardRequests.get(event.data.requestId);
+            if (pending) { clearTimeout(pending.timer); heardRequests.delete(event.data.requestId); pending.resolve(event.data.result); }
+            return;
+        }
+        if (event.data.type === 'SC_FRESH_STATION_HEARD_CHANGED') {
+            heardMisses.clear();
+            state.heardTrackIds.clear();
+            if (state.currentTrack) queueHeardLookup(state.currentTrack);
+            return;
+        }
+
         if (event.data.type === 'SC_FRESH_STATION_RESTORE_STORAGE') {
             const d = event.data.data;
+            if (d && d.heardHistoryAvailable && !heardExtensionAvailable) {
+                heardExtensionAvailable = true;
+                heardMisses.clear(); state.heardTrackIds.clear();
+                migrateHeardHistory();
+            }
             if (d && d.targetPlaylistId) {
                 state.targetPlaylistId = String(d.targetPlaylistId);
                 localStorage.setItem(TARGET_PLAYLIST_KEY, state.targetPlaylistId);
@@ -2926,6 +2984,16 @@
                 } else if (action === 'TOGGLE_MINI_PLAYER') {
                     toggleMiniPlayer();
                     ack();
+                } else if (action === 'RECOVERY_SNAPSHOT') {
+                    playbackIntent.recoveryPlayerSeenAt = Date.now();
+                    ack({ success: true, data: localSnapshot(), language: state.preferredLanguage, discoveryEnabled: state.discoveryEnabled });
+                } else if (action === 'RECOVERY_ACTION') {
+                    const name = event.data.name;
+                    const allowed = ['play', 'prev', 'next', 'seek', 'vol', 'mute', 'like', 'repost', 'follow', 'station', 'addPl', 'dislike', 'hate', 'later'];
+                    if (name === 'dig') { toggleDiscoveryEnabled(); ack({ success: true }); }
+                    else if (name === 'openLater') ack(await laterOp({ op: 'openList' }));
+                    else if (allowed.indexOf(name) >= 0 && MP_ACTIONS[name]) ack(await MP_ACTIONS[name](event.data.args || {}, function () {}, null) || { success: true });
+                    else ack({ success: false, message: 'unsupported-action' });
                 } else if (action === 'SET_VOLUME') {
                     const applied = typeof event.data.volume === 'number' ? setSoundCloudVolume(event.data.volume) : null;
                     ack({ success: applied !== null, volume: getSoundCloudVolume() });
@@ -3538,78 +3606,230 @@
 
     // 既聴曲の正本。IndexedDBには曲IDと最小限の記録だけを保存し、判定用の直近IDだけをメモリに置く。
     let heardDbPromise = null;
-    const heardPlayback = { key: '', lastTime: null, accumulated: 0, marked: false };
+    let heardExtensionAvailable = false;
+    let heardRequestSeq = 0;
+    let heardEpoch = 0;
+    const heardRequests = new Map();
+    const heardMisses = new Map();
+    const heardLookups = new Map();
+    let heardLastWarning = 0;
+    let heardLookupRetryAt = 0;
+    const HEARD_CACHE_MAX = 2000;
+    const heardPlayback = { key: '', marked: false, pending: false, retryAt: 0, epoch: 0, protected: false };
+    const heardTracker = FreshDigCore.createHeardTracker();
+    function beginHeardSession(id) {
+        heardPlayback.key = String(toNumId(id) || '');
+        heardPlayback.marked = false; heardPlayback.pending = false;
+        heardPlayback.protected = false; heardPlayback.retryAt = 0;
+        heardPlayback.epoch = ++heardEpoch;
+        heardTracker.reset();
+    }
+    function heardCache(id, known) {
+        const cache = known ? state.heardTrackIds : heardMisses;
+        cache.delete(id);
+        if (known) { state.heardTrackIds.add(id); heardMisses.delete(id); }
+        else heardMisses.set(id, Date.now());
+        while (cache.size > HEARD_CACHE_MAX) cache.delete(cache.keys().next().value);
+    }
+    function heardRequest(op, data) {
+        if (heardRequests.size >= 64) return Promise.resolve({ ok: false, reason: 'busy' });
+        const requestId = 'heard-' + TAB_ID + '-' + (++heardRequestSeq);
+        return new Promise(function (resolve) {
+            const timer = setTimeout(function () { heardRequests.delete(requestId); resolve({ ok: false, reason: 'timeout' }); }, 5000);
+            heardRequests.set(requestId, { resolve: resolve, timer: timer });
+            window.postMessage(Object.assign({ type: 'SC_FRESH_STATION_HEARD_REQUEST', requestId: requestId, op: op }, data || {}), window.location.origin);
+        });
+    }
     function heardDb() {
         if (heardDbPromise) return heardDbPromise;
         if (typeof indexedDB === 'undefined' || !indexedDB.open) return Promise.resolve(null);
         heardDbPromise = new Promise(function (resolve) {
+            let settled = false;
+            const timer = setTimeout(function () { finish(null); }, 5000);
+            const finish = function (db) {
+                if (settled) { if (db) db.close(); return; }
+                settled = true; clearTimeout(timer); resolve(db);
+            };
             try {
                 const req = indexedDB.open('FreshDig', 1);
                 req.onupgradeneeded = function () { try { req.result.createObjectStore('heardTracks', { keyPath: 'id' }); } catch (e) {} };
-                req.onsuccess = function () { resolve(req.result); };
-                req.onerror = function () { resolve(null); };
-            } catch (e) { resolve(null); }
-        });
+                req.onsuccess = function () {
+                    const db = req.result;
+                    db.onversionchange = function () { db.close(); heardDbPromise = null; };
+                    finish(db);
+                };
+                req.onerror = function () { finish(null); };
+                req.onblocked = function () { finish(null); };
+            } catch (e) { finish(null); }
+        }).then(function (db) { if (!db) heardDbPromise = null; return db; });
         return heardDbPromise;
     }
     function heardFallbackRead() {
         try { const raw = JSON.parse(localStorage.getItem(HEARD_TRACKS_FALLBACK_KEY) || '{}'); return raw && typeof raw === 'object' ? raw : {}; } catch (e) { return {}; }
     }
-    function heardFallbackWrite(id, rec) {
-        try { const all = heardFallbackRead(); all[String(id)] = rec; localStorage.setItem(HEARD_TRACKS_FALLBACK_KEY, JSON.stringify(all)); } catch (e) {}
-    }
     function heardLookup(id) {
         id = toNumId(id);
         if (!id) return Promise.resolve(false);
         if (state.heardTrackIds.has(id)) return Promise.resolve(true);
-        return heardDb().then(function (db) {
-            if (!db) return !!heardFallbackRead()[String(id)];
+        if (Date.now() < heardLookupRetryAt) return Promise.resolve(null);
+        if (heardMisses.has(id) && Date.now() - heardMisses.get(id) < 10000) return Promise.resolve(false);
+        if (heardLookups.has(id)) return heardLookups.get(id);
+        if (heardLookups.size >= 64) return Promise.resolve(null);
+        const lookup = (heardExtensionAvailable ? heardRequest('lookup', { ids: [String(id)] }).then(function (r) {
+            return r && r.ok ? r.ids.some(function (v) { return String(v) === String(id); }) : null;
+        }) : heardDb().then(function (db) {
+            if (!db) return heardFallbackRead()[String(id)] ? true : null;
             return new Promise(function (resolve) {
                 try {
                     const req = db.transaction('heardTracks', 'readonly').objectStore('heardTracks').get(id);
                     req.onsuccess = function () { resolve(!!req.result); };
-                    req.onerror = function () { resolve(false); };
+                    req.onerror = function () { resolve(null); };
+                } catch (e) { resolve(null); }
+            });
+        })).then(function (known) {
+            if (known !== null) heardCache(id, known);
+            else { heardLookupRetryAt = Date.now() + 5000; dlog('heard-history-error', { operation: 'lookup' }); }
+            return known;
+        }).finally(function () { heardLookups.delete(id); });
+        heardLookups.set(id, lookup);
+        return lookup;
+    }
+    async function rememberHeardTrack(info) {
+        const id = toNumId(info && info.id);
+        if (!id) return false;
+        const rec = { id: id, heardAt: Date.now() };
+        let ok = false;
+        if (heardExtensionAvailable) {
+            const result = await heardRequest('put', { records: [rec] });
+            ok = !!(result && result.ok);
+        } else {
+            const db = await heardDb();
+            if (db) ok = await new Promise(function (resolve) {
+                try {
+                    let tx;
+                    try { tx = db.transaction('heardTracks', 'readwrite', { durability: 'strict' }); }
+                    catch (e) { tx = db.transaction('heardTracks', 'readwrite'); }
+                    tx.oncomplete = function () { resolve(true); };
+                    tx.onabort = tx.onerror = function () { resolve(false); };
+                    tx.objectStore('heardTracks').put(rec);
                 } catch (e) { resolve(false); }
             });
-        });
-    }
-    function rememberHeardTrack(info) {
-        const id = toNumId(info && info.id);
-        if (!id || state.heardTrackIds.has(id)) return;
-        state.heardTrackIds.add(id);
-        const rec = { id: id, heardAt: Date.now(), title: String((info && info.title) || '').slice(0, 200), artistId: toNumId(info && info.artistId) };
-        heardDb().then(function (db) {
-            if (!db) { heardFallbackWrite(id, rec); return; }
-            try { db.transaction('heardTracks', 'readwrite').objectStore('heardTracks').put(rec); } catch (e) { heardFallbackWrite(id, rec); }
-        });
+        }
+        if (!ok) {
+            dlog('heard-history-error', { operation: 'put', trackId: id });
+            if (Date.now() - heardLastWarning > 60000) { heardLastWarning = Date.now(); showGlobalToast(tt('heardSaveFailed')); }
+            return false;
+        }
+        heardCache(id, true);
         dlog('heard-track-recorded', { trackId: id, thresholdSec: HEARD_THRESHOLD_SEC });
+        fdBus.post('heard-changed');
+        return true;
     }
     function queueHeardLookup(info) {
         if (!state.heardSkipEnabled || !info || !toNumId(info.id)) return;
         const id = toNumId(info.id);
+        if (state.heardTrackIds.has(id) || (heardMisses.has(id) && Date.now() - heardMisses.get(id) < 10000)) return;
+        const epoch = heardPlayback.epoch;
         heardLookup(id).then(function (known) {
-            if (known) state.heardTrackIds.add(id);
-            if (state.currentTrack && toNumId(state.currentTrack.id) === id) {
+            if (known) scheduleQueuePrune();
+            if (known && epoch === heardPlayback.epoch && state.currentTrack && toNumId(state.currentTrack.id) === id && !heardPlayback.protected) {
                 marginGuard.hasChecked = false;
                 soundChangeState.decidedPath = '';
             }
         });
     }
-    function observeHeardPlayback() {
-        if (!state.heardSkipEnabled || !state.currentTrack || !toNumId(state.currentTrack.id)) return;
+    function observeHeardPlayback(endingMedia) {
+        if (!state.heardSkipEnabled || !state.currentTrack || !toNumId(state.currentTrack.id)) { heardTracker.reset(); return; }
         const key = String(toNumId(state.currentTrack.id));
-        if (heardPlayback.key !== key) { heardPlayback.key = key; heardPlayback.lastTime = null; heardPlayback.accumulated = 0; heardPlayback.marked = false; }
-        if (heardPlayback.marked || state.heardTrackIds.has(Number(key))) return;
-        const media = getActiveMedia(true);
-        const now = media && Number.isFinite(media.currentTime) ? Number(media.currentTime) : getPlaybackPositionMs() / 1000;
-        const playing = media ? (!media.paused && !media.ended) : now > 0;
-        if (!playing || !Number.isFinite(now) || now < 0) { heardPlayback.lastTime = now; return; }
-        if (heardPlayback.lastTime !== null) {
-            const delta = now - heardPlayback.lastTime;
-            if (delta >= 0 && delta <= 3) heardPlayback.accumulated += delta;
+        if (heardPlayback.key !== key) beginHeardSession(key);
+        if (heardPlayback.marked || heardPlayback.pending || Date.now() < heardPlayback.retryAt || state.heardTrackIds.has(Number(key))) return;
+        const media = endingMedia || getActiveMedia(true);
+        const sound = getScCurrentSound();
+        const soundId = sound && toNumId(sound.id !== undefined ? sound.id : sound.attributes && sound.attributes.id);
+        const bound = soundId ? String(soundId) === key : !!(media && media === lastPlayedMedia && lastPlayedMediaTrackKey === key);
+        const position = soundId && bound ? getPlaybackPositionMs() / 1000 : media && media.currentTime;
+        const wall = typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
+        const seconds = heardTracker.sample({ source: soundId ? sound : media, bound: bound,
+            position: position, wall: wall, playing: !!(media && !media.paused && !media.ended) || !!(endingMedia && endingMedia.ended),
+            seeking: !!(media && media.seeking), rate: media && media.playbackRate });
+        const duration = media && media.duration;
+        const shortEnded = endingMedia && bound && Number.isFinite(duration) && duration > 0 && duration < HEARD_THRESHOLD_SEC && seconds >= duration * 0.9;
+        if (seconds >= HEARD_THRESHOLD_SEC || shortEnded) {
+            const epoch = heardPlayback.epoch;
+            heardPlayback.pending = true;
+            // This session earned the history entry; keep it playing even if a
+            // write ACK or another tab's notification arrives before the next tick.
+            heardPlayback.protected = true;
+            rememberHeardTrack(state.currentTrack).then(function (ok) {
+                if (epoch !== heardPlayback.epoch) return;
+                heardPlayback.pending = false; heardPlayback.marked = ok;
+                if (!ok) heardPlayback.retryAt = Date.now() + 5000;
+            });
         }
-        heardPlayback.lastTime = now;
-        if (heardPlayback.accumulated >= HEARD_THRESHOLD_SEC) { heardPlayback.marked = true; rememberHeardTrack(state.currentTrack); }
+    }
+
+    fdBus.on('heard-changed', function () {
+        heardMisses.clear(); state.heardTrackIds.clear();
+        if (state.currentTrack) queueHeardLookup(state.currentTrack);
+    });
+
+    let heardMigrationRunning = false;
+    async function migrateHeardHistory() {
+        if (heardMigrationRunning || !heardExtensionAvailable) return;
+        try { if (localStorage.getItem('sc_fresh_station_heard_migrated_v2') === 'true') return; } catch (e) {}
+        heardMigrationRunning = true;
+        try {
+            const db = await heardDb();
+            if (!db) throw new Error('legacy-storage-unavailable');
+            let after = null;
+            if (db) {
+                while (true) {
+                    const page = await new Promise(function (resolve, reject) {
+                        try {
+                            const rows = [];
+                            const tx = db.transaction('heardTracks', 'readonly');
+                            const range = after === null ? null : IDBKeyRange.lowerBound(after, true);
+                            const req = tx.objectStore('heardTracks').openCursor(range);
+                            req.onerror = function () { reject(new Error('legacy-read')); };
+                            req.onsuccess = function () {
+                                const cursor = req.result;
+                                if (!cursor || rows.length >= 100) { resolve(rows); return; }
+                                rows.push({ key: cursor.key, record: cursor.value }); cursor.continue();
+                            };
+                        } catch (e) { reject(e); }
+                    });
+                    if (!page.length) break;
+                    const records = page.map(function (r) { return { id: r.record.id, heardAt: r.record.heardAt }; }).filter(function (r) { return Number.isSafeInteger(Number(r.id)) && Number(r.id) > 0 && Number.isFinite(r.heardAt) && r.heardAt > 0; });
+                    if (records.length) {
+                        const result = await heardRequest('put', { records: records });
+                        if (!result || !result.ok) throw new Error('migration-write');
+                    }
+                    after = page[page.length - 1].key;
+                }
+            }
+            // Preserve all legacy data. A new read copies at most 100 records
+            // per request; an interrupted migration is safe to run again.
+            const legacy = heardFallbackRead();
+            let batch = [];
+            for (const id in legacy) {
+                if (!Object.prototype.hasOwnProperty.call(legacy, id)) continue;
+                const rec = legacy[id];
+                if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0 || !rec || !Number.isFinite(rec.heardAt) || rec.heardAt <= 0) continue;
+                batch.push({ id: Number(id), heardAt: rec.heardAt });
+                if (batch.length === 100) {
+                    const result = await heardRequest('put', { records: batch });
+                    if (!result || !result.ok) throw new Error('migration-write');
+                    batch = [];
+                }
+            }
+            if (batch.length) {
+                const result = await heardRequest('put', { records: batch });
+                if (!result || !result.ok) throw new Error('migration-write');
+            }
+            localStorage.setItem('sc_fresh_station_heard_migrated_v2', 'true');
+            dlog('heard-history-migrated');
+        } catch (e) { dlog('heard-history-error', { operation: 'migration', error: errorName(e) }); }
+        finally { heardMigrationRunning = false; }
     }
 
     function getCoreSkipReason(info) {
@@ -3623,7 +3843,7 @@
             laterArtists: laterState.map,
             likedTrackIds: state.likedTrackIds,
             followingUserIds: state.followingUserIds,
-            heardSkipEnabled: state.heardSkipEnabled,
+            heardSkipEnabled: state.heardSkipEnabled && !(heardPlayback.protected && String(info && info.id) === heardPlayback.key),
             heardTrackIds: state.heardTrackIds,
             digSkipRules: state.digSkipRules,
             inLibrary: isExplicitLibraryPage(),
@@ -3649,7 +3869,7 @@
                     laterArtists: laterState.map,
                     likedTrackIds: state.likedTrackIds,
                     followingUserIds: state.followingUserIds,
-                    heardSkipEnabled: state.heardSkipEnabled,
+                    heardSkipEnabled: state.heardSkipEnabled && !(heardPlayback.protected && String(info && info.id) === heardPlayback.key),
                     heardTrackIds: state.heardTrackIds,
                     digSkipRules: state.digSkipRules,
                     inLibrary: isExplicitLibraryPage(),
@@ -3800,6 +4020,7 @@
         if (!pm || typeof pm.removeItem !== 'function') return 0;
         const qi = readScQueue(pm);
         if (!qi) return 0;
+        qi.infos.slice(qi.curPos + 1, qi.curPos + 1 + QUEUE_LOOKAHEAD).forEach(queueHeardLookup);
         const plan = FreshDigCore.planQueueAhead(qi.infos, qi.curPos, getSkipReason, QUEUE_LOOKAHEAD);
         let removed = 0;
         const removedTracks = [];
@@ -3977,6 +4198,8 @@
         if (!sound) return;
         const info = soundToTrackInfo(sound);
         if (!info.id || (info.kind && info.kind !== 'track')) return;
+
+        beginHeardSession(info.id);
 
         state.currentTrack = {
             id: info.id,
@@ -5376,8 +5599,13 @@
         lastPlayedMediaTrackKey = playbackTrackKey();
         if (!media || trackedMediaEvents.has(media) || typeof media.addEventListener !== 'function') return;
         trackedMediaEvents.add(media);
-        ['play', 'pause', 'waiting', 'stalled', 'error', 'ended'].forEach(function (type) {
+        ['play', 'pause', 'waiting', 'stalled', 'error', 'ended', 'timeupdate', 'seeking', 'seeked'].forEach(function (type) {
             media.addEventListener(type, function () {
+                if (lastPlayedMedia === media) {
+                    if (type === 'seeking' || type === 'seeked') heardTracker.sample({ source: media, bound: false });
+                    else observeHeardPlayback(type === 'ended' ? media : undefined);
+                }
+                if (type === 'timeupdate' || type === 'seeking' || type === 'seeked') return;
                 // Connected media is already observed by the document capture listener.
                 if (isConnectedMedia(media) || lastPlayedMedia !== media) return;
                 dlog('audio-' + type, getPlaybackDiagnostic(media));
@@ -5463,9 +5691,11 @@
         });
     }
 
-    function requestPlaybackPageReload(reason) {
+    async function requestPlaybackPageReload(reason) {
         if (playbackIntent.pageReloadInFlight || !window.location || typeof window.location.reload !== 'function') return false;
         const trackKey = playbackTrackKey() || 'unknown';
+        const pauseRevision = playbackIntent.pauseRevision || 0;
+        const wanted = playbackIntent.wanted;
         const now = Date.now();
         let previous = null;
         try { previous = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null'); } catch (e) {}
@@ -5475,38 +5705,66 @@
             dlog('playback-page-reload-suppressed', { reason: reason, trackKey: trackKey });
             return false;
         }
+        const restorePlayer = !!(miniPlayerWindow && !miniPlayerWindow.closed) || now - playbackIntent.recoveryPlayerSeenAt < 5000;
         try {
             sessionStorage.setItem(PLAYBACK_RELOAD_GUARD_KEY, JSON.stringify({ trackKey: trackKey, at: now }));
             // A page reload destroys Document PiP/window.open ownership. Remember
             // that the player was open so the new page can reopen it once loaded.
-            if (miniPlayerWindow && !miniPlayerWindow.closed) {
-                sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify({ at: now, reason: reason || 'playback-reload' }));
+            if (restorePlayer) {
+                sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify({ at: now, reason: reason || 'playback-reload', trackKey: trackKey, wanted: playbackIntent.wanted }));
                 dlog('miniplayer-restore-armed', { reason: reason || 'playback-reload', trackKey: trackKey });
             }
         } catch (e) {}
         playbackIntent.pageReloadInFlight = true;
+        const cancelObsoleteReload = function () {
+            if ((playbackTrackKey() || 'unknown') === trackKey && (playbackIntent.pauseRevision || 0) === pauseRevision && playbackIntent.wanted === wanted) return false;
+            playbackIntent.pageReloadInFlight = false;
+            try {
+                sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY);
+                const guard = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null');
+                if (guard && guard.at === now) sessionStorage.removeItem(PLAYBACK_RELOAD_GUARD_KEY);
+            } catch (e) {}
+            dlog('playback-page-reload-cancelled', { trackKey: trackKey });
+            return true;
+        };
+        if (restorePlayer) {
+            const prepared = await prepareRecoveryWindow();
+            try {
+                const marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null');
+                if (marker && marker.at === now) { marker.recoveryWindowReady = prepared; sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify(marker)); }
+            } catch (e) {}
+            dlog('miniplayer-recovery-window', { ready: prepared });
+        }
+        if (cancelObsoleteReload()) return false;
         dlog('playback-page-reload-requested', { reason: reason, trackKey: trackKey });
         setTimeout(function () {
+            if (cancelObsoleteReload()) return;
             try { window.location.reload(); } catch (e) { playbackIntent.pageReloadInFlight = false; dlog('playback-page-reload-failed', errorName(e)); }
         }, 120);
         return true;
     }
 
     async function verifyAndRecoverExplicitPlay(media, initialPosition) {
+        const key = playbackTrackKey();
+        const revision = playbackIntent.pauseRevision || 0;
+        const obsolete = function () { return !playbackIntent.wanted || playbackTrackKey() !== key || (playbackIntent.pauseRevision || 0) !== revision || !!skipPacing.pendingPause; };
         if (await waitForPlaybackProgress(media, initialPosition, 1000)) return { success: true, verified: true };
+        if (obsolete()) return { success: false, verified: false, cancelled: true };
         dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
 
         // First retry the native page control once. This handles a stale media
         // element without immediately discarding the SoundCloud page state.
         const button = document.querySelector('.playControls__play:not(.playing)');
         if (button) {
+            const retryBaseline = readPlaybackPosition(getActiveMedia(true) || media);
             try { button.click(); } catch (e) {}
-            if (await waitForPlaybackProgress(getActiveMedia(true) || media, readPlaybackPosition(media), 900)) {
+            if (await waitForPlaybackProgress(getActiveMedia(true) || media, retryBaseline, 900)) {
                 dlog('playback-progress-recovered', { method: 'native-button' });
                 return { success: true, verified: true, recovered: true };
             }
         }
-        if (requestPlaybackPageReload('explicit-play-no-progress')) {
+        if (obsolete()) return { success: false, verified: false, cancelled: true };
+        if (await requestPlaybackPageReload('explicit-play-no-progress')) {
             return { success: false, reloading: true, verified: false };
         }
         return { success: false, verified: false, stalled: true };
@@ -6525,7 +6783,7 @@
 
     // ページ内のクリックが無いと PiP / ポップアップは開けない（拡張機能ポップアップからの操作は「ページのクリック」扱いにならない）
     // → ページ上に「ミニプレイヤーを開く」ボタンを出して、それを押してもらう
-    function showMiniPlayerLaunchPrompt() {
+    function showMiniPlayerLaunchPrompt(persistent) {
         const old = document.getElementById('sc-fresh-station-mp-launch');
         if (old) old.remove();
         const btn = document.createElement('button');
@@ -6538,7 +6796,7 @@
             openMiniPlayer();
         });
         document.body.appendChild(btn);
-        setTimeout(function () { if (btn.isConnected) btn.remove(); }, 12000);
+        if (!persistent) setTimeout(function () { if (btn.isConnected) btn.remove(); }, 12000);
     }
 
     async function openMiniPlayer(options) {
@@ -6592,25 +6850,60 @@
         }
     }
 
+    function prepareRecoveryWindow() {
+        if (!heardExtensionAvailable) return Promise.resolve(false);
+        return new Promise(function (resolve) {
+            const requestId = 'restore-' + TAB_ID + '-' + Date.now();
+            let timer;
+            const finish = function (ok) {
+                clearTimeout(timer); window.removeEventListener('message', receive); resolve(ok);
+            };
+            const receive = function (event) {
+                if (event.source !== window || !event.data || event.data.type !== 'SC_FRESH_STATION_ARM_RECOVERY_RESULT' || event.data.requestId !== requestId) return;
+                finish(!!(event.data.result && event.data.result.ok));
+            };
+            window.addEventListener('message', receive);
+            timer = setTimeout(function () { finish(false); }, 4000);
+            window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER', requestId: requestId }, window.location.origin);
+        });
+    }
+
     function restoreMiniPlayerAfterReload() {
+        const initialPauseRevision = playbackIntent.pauseRevision || 0;
         let marker = null;
         try { marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null'); } catch (e) {}
         if (!marker || !marker.at || Date.now() - Number(marker.at) > 60000) return;
-        try { sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY); } catch (e) {}
         // Wait for SoundCloud's player and document body to settle after reload.
-        setTimeout(function () {
+        const restore = async function () {
+            if (!document.body) { setTimeout(restore, 250); return; }
+            if (!heardExtensionAvailable && Date.now() - Number(marker.at) < 10000) { setTimeout(restore, 500); return; }
             if (miniPlayerWindow && !miniPlayerWindow.closed) return;
-            openMiniPlayer({ auto: true, reason: 'after-playback-reload' }).then(function (result) {
-                if (!result || result.success !== false) return;
-                dlog('miniplayer-restore-failed', { error: result.error || 'OpenFailed' });
-                // Browsers may require a transient user activation for PiP. The
-                // existing in-page launcher is the safe fallback in that case.
-                showMiniPlayerLaunchPrompt();
-            }).catch(function (err) {
-                dlog('miniplayer-restore-failed', { error: errorName(err) });
-                showMiniPlayerLaunchPrompt();
-            });
-        }, 900);
+            // Do not spend transient activation on a timer-based PiP request:
+            // Chrome rejects it. Use the extension-owned window, then leave a
+            // persistent, real-click launcher for the user's preferred PiP.
+            // A prepared extension window survives navigation. Do not recreate
+            // it if the user deliberately closed it while the tab reloaded.
+            const ready = marker.recoveryWindowReady || await prepareRecoveryWindow();
+            dlog('miniplayer-restored', { recoveryWindow: ready });
+            showMiniPlayerLaunchPrompt(true);
+            try { sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY); } catch (e) {}
+            // One bounded resume attempt for this track only. Never toggle an
+            // already-playing track or reload again from this restore path.
+            const until = Date.now() + 15000;
+            const resume = async function () {
+                if (!marker.wanted || Date.now() > until) return;
+                if ((playbackIntent.pauseRevision || 0) !== initialPauseRevision || skipPacing.pendingPause) return;
+                if (!state.currentTrack || !getActiveMedia(true)) { setTimeout(resume, 500); return; }
+                if (playbackTrackKey() !== marker.trackKey || isLocalPlaying()) return;
+                playbackIntent.wanted = true;
+                const media = getActiveMedia(true);
+                const result = await invokeMediaPlay(media, 1500, false);
+                dlog('playback-reload-resume', { success: result.success, pending: !!result.pending });
+            };
+            resume();
+        };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(restore, 900); }, { once: true });
+        else setTimeout(restore, 900);
     }
 
     let isSeekingInMiniPlayer = false;
@@ -7537,6 +7830,7 @@
         }
         const verified = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
         if (!verified.success) {
+            if (verified.cancelled) return { success: false, verified: false, cancelled: true };
             if (verified.reloading) {
                 if (toast) toast(tt('reloadRequired'));
                 return { success: false, playing: false, verified: false, reloading: true, message: tt('reloadRequired') };

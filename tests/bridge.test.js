@@ -70,3 +70,28 @@ test('Later bridge maps openList exactly and rejects unknown operations', () => 
   assert.equal(posted[0].result.ok, false);
   assert.equal(posted[0].result.reason, 'unknown');
 });
+
+test('page history bridge cannot export or delete history, and recovery ARM returns its ACK', () => {
+  let listener;
+  const calls = [];
+  const posted = [];
+  const window = { location: { origin:'https://soundcloud.com' },
+    addEventListener(type, fn) { if (type === 'message') listener = fn; },
+    postMessage(message) { posted.push(message); } };
+  const chrome = {
+    runtime: {lastError:null,onMessage:{addListener(){}},sendMessage(request, cb) { calls.push(request); cb({ok:true}); }},
+    storage: {local:{get(keys, cb){cb({});},set(){}},onChanged:{addListener(){}}}
+  };
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../content_bridge.js'),'utf8'), {
+    window,chrome,console:{log(){}},setTimeout(){},clearTimeout(){},Map
+  });
+  calls.length = 0; posted.length = 0;
+  for (const op of ['clear','deleteAll','page','stats']) {
+    listener({source:window,data:{type:'SC_FRESH_STATION_HEARD_REQUEST',requestId:'test',op}});
+  }
+  assert.equal(calls.length, 0, 'destructive/history-export operations are extension-UI-only');
+  listener({source:window,data:{type:'SC_FRESH_STATION_ARM_RECOVERY_PLAYER',requestId:'arm1'}});
+  assert.equal(calls[0].action,'ARM_RECOVERY_PLAYER');
+  assert.equal(posted.at(-1).type,'SC_FRESH_STATION_ARM_RECOVERY_RESULT');
+  assert.equal(posted.at(-1).result.ok,true);
+});

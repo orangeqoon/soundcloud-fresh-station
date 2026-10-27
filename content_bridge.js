@@ -18,9 +18,10 @@
         if (!chrome.storage || !chrome.storage.local) return;
         chrome.storage.local.get(READ_KEYS, function (items) {
             if (chrome.runtime.lastError || !items) return;
+            const data = Object.assign({}, items, { heardHistoryAvailable: true });
             window.postMessage({
                 type: 'SC_FRESH_STATION_RESTORE_STORAGE',
-                data: items
+                data: data
             }, window.location.origin);
         });
     }
@@ -53,6 +54,22 @@
     window.addEventListener('message', function (event) {
         // 同一ウィンドウ（MAIN world）以外（iframe等）からのメッセージは受け付けない
         if (event.source !== window || !event.data) return;
+
+        if (event.data.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER') {
+            const requestId = event.data.requestId;
+            if (typeof requestId !== 'string' || requestId.length > 120) return;
+            try {
+                chrome.runtime.sendMessage({ action: 'ARM_RECOVERY_PLAYER' }, function (result) {
+                    const error = chrome.runtime.lastError;
+                    window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_RESULT', requestId: requestId,
+                        result: error ? { ok: false, reason: 'unavailable' } : result }, window.location.origin);
+                });
+            } catch (e) {
+                window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_RESULT', requestId: requestId,
+                    result: { ok: false, reason: 'unavailable' } }, window.location.origin);
+            }
+            return;
+        }
 
         // Request storage from MAIN world
         if (event.data.type === 'SC_FRESH_STATION_REQUEST_STORAGE') {
@@ -114,6 +131,58 @@
             } catch (e) { reply({ ok: false, reason: 'error' }); }
         }
 
+        // MAIN-world heard-history requests are handled by the extension
+        // service worker, never by SoundCloud's page-origin storage.
+        if (event.data.type === 'SC_FRESH_STATION_HEARD_REQUEST') {
+            const requestIdValue = event.data.requestId;
+            const requestId = (typeof requestIdValue === 'string' || typeof requestIdValue === 'number')
+                ? String(requestIdValue).slice(0, 120) : '';
+            const reply = function (result) {
+                window.postMessage({
+                    type: 'SC_FRESH_STATION_HEARD_RESULT',
+                    requestId: requestId,
+                    result: result || { ok: false, reason: 'error' }
+                }, window.location.origin);
+            };
+            if (typeof requestId !== 'string' || requestId.length > 120 || ['lookup', 'put'].indexOf(event.data.op) < 0) {
+                reply({ ok: false, reason: 'invalid-request' });
+                return;
+            }
+            const request = {
+                action: 'HEARD_HISTORY',
+                requestId: requestId,
+                op: event.data.op,
+                ids: event.data.ids,
+                records: event.data.records,
+                cursor: event.data.cursor,
+                limit: event.data.limit
+            };
+            let replied = false;
+            const replyOnce = function (value) {
+                if (replied) return;
+                replied = true;
+                const result = value && value.result !== undefined ? value.result : value;
+                if (result && result.ok && (request.op === 'put' || request.op === 'clear' || request.op === 'deleteAll')) {
+                    window.postMessage({ type: 'SC_FRESH_STATION_HEARD_CHANGED' }, window.location.origin);
+                }
+                reply(result || { ok: false, reason: 'error' });
+            };
+            try {
+                const maybePromise = chrome.runtime.sendMessage(request, function (response) {
+                    if (chrome.runtime.lastError) {
+                        replyOnce({ ok: false, reason: 'error' });
+                        return;
+                    }
+                    replyOnce(response);
+                });
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    maybePromise.then(replyOnce, function () { replyOnce({ ok: false, reason: 'error' }); });
+                }
+            } catch (e) {
+                replyOnce({ ok: false, reason: 'error' });
+            }
+        }
+
         // Response from MAIN world for a relayed popup action (matched by requestId)
         if (event.data.type === 'SC_FRESH_STATION_DATA_RESPONSE' || event.data.type === 'SC_FRESH_STATION_ACTION_RESULT') {
             const pending = pendingResponses.get(event.data.requestId);
@@ -138,6 +207,7 @@
                 if (changes[key]) settings[key] = changes[key].newValue;
             });
             if (Object.keys(settings).length) {
+                settings.heardHistoryAvailable = true;
                 window.postMessage({ type: 'SC_FRESH_STATION_RESTORE_STORAGE', data: settings }, window.location.origin);
             }
         });
@@ -145,6 +215,10 @@
 
     // 3. Relay messages from popup / background to window (MAIN world)
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+        if (request && request.action === 'HEARD_HISTORY_CHANGED') {
+            window.postMessage({ type: 'SC_FRESH_STATION_HEARD_CHANGED' }, window.location.origin);
+            return;
+        }
         if (!request || request.target !== 'SC_FRESH_STATION') return;
 
         const requestId = 'req_' + Date.now() + '_' + (++requestSeq);

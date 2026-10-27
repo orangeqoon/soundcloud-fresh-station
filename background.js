@@ -8,7 +8,14 @@
         try { importScripts('list_backup.js'); } catch (e) {
             console.warn('[SC-FreshStation] Later list module unavailable:', e);
         }
+        try { importScripts('heard_history.js'); } catch (e) {
+            console.warn('[SC-FreshStation] Heard history module unavailable:', e);
+        }
+        try { importScripts('recovery_window.js'); } catch (e) {
+            console.warn('[SC-FreshStation] Recovery window module unavailable:', e);
+        }
     }
+    if (typeof FreshDigRecovery !== 'undefined') FreshDigRecovery.install(chrome);
 
     console.log('[SC-FreshStation] Background Service Worker initialized');
 
@@ -363,6 +370,58 @@
         return { ok: false, reason: 'unknown' };
     }
 
+    // Heard-track history has its own extension-origin IndexedDB store. Keep
+    // the module and database lazy so a service-worker startup without
+    // indexedDB still serves the existing token/list functionality.
+    let heardHistoryStore = null;
+    let heardHistoryChain = Promise.resolve();
+    let heardHistoryPending = 0;
+
+    function heardSenderAllowed(request, sender) {
+        try {
+            const source = new URL(sender && sender.url || '');
+            const ownPage = new URL(chrome.runtime.getURL('heard.html'));
+            if (source.protocol === ownPage.protocol && source.host === ownPage.host && source.pathname === ownPage.pathname) return true;
+            return source.protocol === 'https:' && source.hostname === 'soundcloud.com' &&
+                sender && sender.tab && ['lookup', 'put'].indexOf(request.op) >= 0;
+        } catch (e) { return false; }
+    }
+
+    function getHeardHistoryModule() {
+        try {
+            if (typeof FreshDigHeardHistory !== 'undefined' && FreshDigHeardHistory) return FreshDigHeardHistory;
+        } catch (e) {}
+        return null;
+    }
+
+    function getHeardHistoryStore() {
+        const api = getHeardHistoryModule();
+        if (!api || typeof api.createStore !== 'function') return null;
+        if (!heardHistoryStore) heardHistoryStore = api.createStore();
+        return heardHistoryStore;
+    }
+
+    async function doHeardHistory(req) {
+        const store = getHeardHistoryStore();
+        if (!store || typeof store.request !== 'function') return { ok: false, reason: 'unavailable' };
+        return store.request(req || {});
+    }
+
+    function broadcastHeardHistoryChanged() {
+        if (!chrome.tabs || typeof chrome.tabs.query !== 'function') return;
+        try {
+            chrome.tabs.query({ url: '*://*.soundcloud.com/*' }, function (tabs) {
+                (Array.isArray(tabs) ? tabs : []).forEach(function (tab) {
+                    if (!tab || !tab.id || typeof chrome.tabs.sendMessage !== 'function') return;
+                    try {
+                        const maybePromise = chrome.tabs.sendMessage(tab.id, { action: 'HEARD_HISTORY_CHANGED' });
+                        if (maybePromise && typeof maybePromise.catch === 'function') maybePromise.catch(function () {});
+                    } catch (e) {}
+                });
+            });
+        } catch (e) {}
+    }
+
     if (chrome.windows && chrome.windows.onRemoved && chrome.windows.onRemoved.addListener) {
         chrome.windows.onRemoved.addListener(function (windowId) {
             if (windowId === laterWindowId) laterWindowId = null;
@@ -371,6 +430,30 @@
 
     // 3. content_bridge や popup からの要求に応答
     chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+        if (request && request.action === 'HEARD_HISTORY') {
+            if (!heardSenderAllowed(request, sender) || heardHistoryPending >= 64) {
+                sendResponse({ requestId: request.requestId, result: { ok: false, reason: heardHistoryPending >= 64 ? 'busy' : 'forbidden' } });
+                return false;
+            }
+            heardHistoryPending++;
+            // Serialize operations so a page/export cannot race a put or clear
+            // and so every response reflects a transaction-complete result.
+            heardHistoryChain = heardHistoryChain.then(function () {
+                return doHeardHistory(request);
+            }).catch(function () {
+                return { ok: false, reason: 'error' };
+            });
+            heardHistoryChain.then(function (result) {
+                heardHistoryPending--;
+                if (result && result.ok && (request.op === 'put' || request.op === 'clear' || request.op === 'deleteAll')) {
+                    broadcastHeardHistoryChanged();
+                }
+                try {
+                    sendResponse({ requestId: request.requestId, result: result });
+                } catch (e) {}
+            });
+            return true;
+        }
         if (request && (request.action === 'LATER_ADD' || request.action === 'LATER_REMOVE' || request.action === 'LATER_IMPORT')) {
             laterChain = laterChain.then(function () { return doLater(request); }).catch(function (e) { return { ok: false, reason: 'error' }; });
             laterChain.then(function (res) { try { sendResponse(res); } catch (e) {} });

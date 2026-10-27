@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreshDig Heard History</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 420px;
+      max-width: 760px;
+      padding: 24px;
+      background: #181818;
+      color: #eaeaea;
+      font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    h1 { margin: 0; color: #ff5500; font-size: 22px; }
+    h2 { margin: 0 0 8px; font-size: 16px; color: #ff9a55; }
+    p { margin: 6px 0; color: #bbb; }
+    .language { min-width: 150px; }
+    select, button, input[type="file"] {
+      border: 1px solid #555;
+      border-radius: 5px;
+      background: #242424;
+      color: #eee;
+      font: inherit;
+    }
+    select { padding: 6px 8px; width: 100%; }
+    button { padding: 8px 12px; cursor: pointer; }
+    button:hover:not(:disabled), button:focus-visible { border-color: #ff5500; color: #ff9a55; }
+    button:disabled { cursor: wait; opacity: .55; }
+    .card { padding: 16px; margin-bottom: 14px; border: 1px solid #333; border-left: 3px solid #ff5500; border-radius: 7px; background: #202020; }
+    .local-note { padding: 10px 12px; margin-top: 10px; border: 1px solid #5c3b26; border-radius: 5px; background: #2a211c; color: #ffc18d; }
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .stat { padding: 10px; border-radius: 5px; background: #292929; }
+    .stat-label { display: block; color: #999; font-size: 12px; }
+    .stat-value { display: block; margin-top: 3px; color: #fff; font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .primary { border-color: #ff5500; color: #ff9a55; }
+    .danger { border-color: #8b4545; color: #ff9b9b; }
+    input[type="file"] { width: 100%; padding: 6px; margin-top: 8px; }
+    .hint { color: #999; font-size: 12px; }
+    #status { min-height: 24px; margin-top: 14px; color: #ffb36b; }
+    #status.error { color: #ff8d8d; }
+    @media (max-width: 560px) {
+      body { min-width: 0; padding: 14px; }
+      header { flex-direction: column; }
+      .language { width: 100%; }
+      .stats { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 data-i18n="title">🎧 Heard-track history</h1>
+      <p data-i18n="subtitle">Tracks you have actually heard are kept locally by FreshDig.</p>
+    </div>
+    <div class="language">
+      <label for="language" class="hint" data-i18n="languageLabel">Language</label>
+      <select id="language" aria-label="Language">
+        <option value="auto">Auto</option>
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+        <option value="de">Deutsch</option>
+        <option value="ru">Русский</option>
+        <option value="vi">Tiếng Việt</option>
+        <option value="es">Español</option>
+      </select>
+    </div>
+  </header>
+
+  <section class="card" aria-labelledby="stats-title">
+    <h2 id="stats-title" data-i18n="statsTitle">Local history</h2>
+    <div class="stats">
+      <div class="stat"><span class="stat-label" data-i18n="countLabel">Tracks</span><span id="count" class="stat-value">—</span></div>
+      <div class="stat"><span class="stat-label" data-i18n="oldestLabel">Oldest</span><span id="oldest" class="stat-value">—</span></div>
+      <div class="stat"><span class="stat-label" data-i18n="newestLabel">Newest</span><span id="newest" class="stat-value">—</span></div>
+    </div>
+    <div class="local-note" data-i18n="localOnly">Local only: this history stays in the extension and is never sent to SoundCloud or a cloud service.</div>
+  </section>
+
+  <section class="card" aria-labelledby="backup-title">
+    <h2 id="backup-title" data-i18n="backupTitle">Manual backup</h2>
+    <p data-i18n="backupDescription">Export a local JSON backup in bounded files, or add records from one or more backup files.</p>
+    <div class="actions">
+      <button id="export" class="primary" type="button" data-i18n="exportButton">📤 Export JSON backup</button>
+    </div>
+    <label for="import" class="hint" data-i18n="importLabel">Import JSON backup files (up to 5 MiB each)</label>
+    <input id="import" type="file" accept="application/json,.json" multiple>
+    <p class="hint" data-i18n="importHint">Import is additive: existing track IDs are kept unchanged.</p>
+  </section>
+
+  <section class="card" aria-labelledby="delete-title">
+    <h2 id="delete-title" data-i18n="deleteTitle">Delete local history</h2>
+    <p data-i18n="deleteDescription">Remove every heard-track record from this extension.</p>
+    <button id="delete" class="danger" type="button" data-i18n="deleteButton">🗑 Delete all history</button>
+  </section>
+
+  <div id="status" role="status" aria-live="polite"></div>
+
+  <script src="heard_history.js"></script>
+  <script src="heard.js"></script>
+</body>
+</html>

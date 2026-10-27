@@ -4,6 +4,34 @@ const assert = require('node:assert');
 const core = require('../freshdig_core.js');
 const i18n = require('../i18n.js');
 
+test('heard tracker measures delayed background samples without counting seeks or pauses', () => {
+  const tracker = core.createHeardTracker();
+  const source = {};
+  const sample = (position, wall, extra) => tracker.sample({ source, bound: true, playing: true, position, wall, ...extra });
+  sample(0, 0);
+  assert.strictEqual(sample(6, 6000), 6, 'a delayed background tick is real listening');
+  assert.strictEqual(sample(50, 6500), 6, 'seek jump is not listening');
+  sample(50, 7000, { seeking: true });
+  sample(51, 8000);
+  assert.strictEqual(sample(52, 9000), 7);
+  sample(52, 10000, { playing: false });
+  sample(52, 20000);
+  assert.strictEqual(sample(53, 21000), 8, 'paused time is not counted');
+  sample(54, 22000, { bound: false });
+  assert.strictEqual(tracker.elapsed(), 8, 'unknown media identity cannot record a track');
+  tracker.reset();
+  assert.strictEqual(tracker.elapsed(), 0);
+});
+
+test('heard tracker uses actual listening time at non-default playback speeds', () => {
+  const tracker = core.createHeardTracker();
+  const source = {};
+  tracker.sample({ source, bound: true, playing: true, position: 0, wall: 0, rate: 2 });
+  assert.strictEqual(tracker.sample({ source, bound: true, playing: true, position: 10, wall: 5000, rate: 2 }), 5);
+  tracker.sample({ source: {}, bound: true, playing: true, position: 90, wall: 6000 });
+  assert.strictEqual(tracker.elapsed(), 5, 'source replacement must establish a new baseline');
+});
+
 const base = () => ({
   discoveryEnabled: true, playbackMode: 'DISCOVERY',
   dislikedTracks: {}, dislikedArtists: {}, dislikedGenres: {},

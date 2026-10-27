@@ -270,7 +270,37 @@
     return now - last >= ttl || now < last;
   }
 
+  // A single playback session, measured with both media and monotonic clocks.
+  // A seek or an unbound source cannot manufacture listening time.
+  function createHeardTracker() {
+    let previous = null;
+    let elapsed = 0;
+    let source = null;
+    return {
+      reset: function () { previous = null; elapsed = 0; source = null; },
+      sample: function (s) {
+        if (source !== s.source) { previous = null; source = s.source; }
+        if (!s.playing || s.seeking || !s.bound || !Number.isFinite(s.position) || !Number.isFinite(s.wall)) {
+          previous = null;
+          return elapsed;
+        }
+        if (previous) {
+          const mediaDelta = s.position - previous.position;
+          const wallDelta = (s.wall - previous.wall) / 1000;
+          const rate = Number.isFinite(s.rate) && s.rate > 0 ? s.rate : 1;
+          if (wallDelta > 0 && mediaDelta > 0 && mediaDelta <= wallDelta * rate + 0.4) {
+            elapsed += Math.min(wallDelta, mediaDelta / rate);
+          }
+        }
+        previous = { position: s.position, wall: s.wall };
+        return elapsed;
+      },
+      elapsed: function () { return elapsed; }
+    };
+  }
+
   return {
+    createHeardTracker: createHeardTracker,
     planQueueAhead: planQueueAhead,
     createRateLimiter: createRateLimiter,
     createBackoff: createBackoff,
