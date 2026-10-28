@@ -1,10 +1,9 @@
 # Current status
 
-- Track: heard-history reliability and automatic recovery window.
-- Status: DONE (implementation and automated verification; live SoundCloud playback/reload and multi-file browser download acceptance remain manual checks).
-- Version: 2.13.0.
-- Scope: extension-owned durable IndexedDB, bounded caches, wall/media playback tracker, current-session protection, legacy migration, six-language history backup/import/delete UI, extension-owned recovery popup, pause/skip race protection, privacy documentation.
-- Verification: required core/later/smoke 37/37; extended runtime/bridge/list-backup/history/recovery 60/60; final targeted reload/history checks 5/5; real Chromium IndexedDB 223 assertions; UserScript build/syntax/version parity; staged hardcoded-path check 24 files/0 findings; parent layout check passes.
-- Review: scout identified PiP activation failure; independent critic's migration, reload cancellation, timestamp deduplication and slider findings addressed.
-- Limits: automatic recovery uses an ordinary extension popup (not always-on-top PiP); PiP needs a real user click. Cloud sync is deferred; cross-PC transfer uses JSON parts. History is shared within one browser profile, not account-scoped.
-- Publication: user requested GitHub push and Chrome/Edge submission on 2026-10-27; release execution in progress. See docs/release-2.13.0.md for phase boundaries.
+- Track: previous-track/return-to-original playback recovery.
+- Status: DONE (implementation and automated tests; live SoundCloud audible recovery remains a manual acceptance check).
+- Version: 2.14.0.
+- Scope: removed automatic page reload, replacement-window UI/module and startup restore; keep the existing mini player open. Stalled playback uses one previous/next cycle with progress verification, user-cancellation guards, Dig suspension and a 15-second cooldown.
+- Verification: 96 Node tests pass, including 37 required core/later/smoke tests and the new recovery success/failure/transport/cooldown/no-previous cases; syntax/diff checks and UserScript build pass.
+- History: v2.13.0 local history and manual backup remain available; cloud sync/account separation remain future work.
+- Publication: no commit, push or store submission for this change. v2.13.0 was pushed to GitHub and submitted to Edge; Chrome upload succeeded but its privacy-practices declaration blocked submission.

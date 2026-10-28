@@ -71,7 +71,7 @@ test('Later bridge maps openList exactly and rejects unknown operations', () => 
   assert.equal(posted[0].result.reason, 'unknown');
 });
 
-test('page history bridge cannot export or delete history, and recovery ARM returns its ACK', () => {
+test('page history bridge cannot export or delete history, and old recovery ARM is ignored', () => {
   let listener;
   const calls = [];
   const posted = [];
@@ -91,7 +91,5 @@ test('page history bridge cannot export or delete history, and recovery ARM retu
   }
   assert.equal(calls.length, 0, 'destructive/history-export operations are extension-UI-only');
   listener({source:window,data:{type:'SC_FRESH_STATION_ARM_RECOVERY_PLAYER',requestId:'arm1'}});
-  assert.equal(calls[0].action,'ARM_RECOVERY_PLAYER');
-  assert.equal(posted.at(-1).type,'SC_FRESH_STATION_ARM_RECOVERY_RESULT');
-  assert.equal(posted.at(-1).result.ok,true);
+  assert.equal(calls.length,0,'removed recovery-window requests cannot reach the background');
 });

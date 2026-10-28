@@ -11,11 +11,7 @@
         try { importScripts('heard_history.js'); } catch (e) {
             console.warn('[SC-FreshStation] Heard history module unavailable:', e);
         }
-        try { importScripts('recovery_window.js'); } catch (e) {
-            console.warn('[SC-FreshStation] Recovery window module unavailable:', e);
-        }
     }
-    if (typeof FreshDigRecovery !== 'undefined') FreshDigRecovery.install(chrome);
 
     console.log('[SC-FreshStation] Background Service Worker initialized');
 

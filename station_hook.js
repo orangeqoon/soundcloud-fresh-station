@@ -2,8 +2,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.13.0)');
-    const RUNTIME_VERSION = '2.13.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.14.0)');
+    const RUNTIME_VERSION = '2.14.0';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -21,8 +21,6 @@
     const DIG_SKIP_RULES_KEY = 'sc_fresh_station_dig_skip_rules';
     const HEARD_TRACKS_FALLBACK_KEY = 'sc_fresh_station_heard_tracks_v1';
     const HEARD_THRESHOLD_SEC = 10;
-    const PLAYBACK_RELOAD_GUARD_KEY = 'sc_fresh_station_playback_reload_guard_v1';
-    const MINI_PLAYER_RESTORE_KEY = 'sc_fresh_station_miniplayer_restore_v1';
 
     // 画面に出す文字を辞書(i18n.js)から取る。{name} などは vars で差し込む
     function tt(key, vars) {
@@ -644,12 +642,17 @@
         lastRecoveryAt: 0,
         recoveryInFlight: false,
         suppressPauseUntil: 0,
-        pageReloadInFlight: false,
-        recoveryPlayerSeenAt: 0
+        trackCycle: null,
+        lastTrackCycleAt: 0
     };
 
     function notePausedMedia(media) {
         if (media.ended) return;
+        const cycle = playbackIntent.trackCycle;
+        if (cycle && !cycle.cancelled && cycle.expectedPauseMedia === media && cycle.expectedPause) {
+            cycle.expectedPause = false;
+            return;
+        }
         const pending = skipPacing.pendingPause;
         if (pending && pending.expectedPause && pending.media === media) pending.expectedPause = false;
         else playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
@@ -697,16 +700,25 @@
     // clock remains frozen after a long-idle tab. Probe native clicks too, so
     // recovery also works when the user starts playback outside the mini player.
     document.addEventListener('click', function (ev) {
+        if (ev.isTrusted && playbackIntent.trackCycle) {
+            let transport = null;
+            try { transport = ev.target && ev.target.closest && ev.target.closest('.playControls__play, .playControls__prev, .playControls__next'); } catch (e) {}
+            if (transport) {
+                playbackIntent.trackCycle.cancelled = true;
+                playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
+                if (transport.classList.contains('playing')) playbackIntent.wanted = false;
+            }
+        }
         let button = null;
         try { button = ev.target && ev.target.closest ? ev.target.closest('.playControls__play') : null; } catch (e) {}
-        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight) return;
+        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight || playbackIntent.trackCycle) return;
         playbackIntent.wanted = true;
         const media = getActiveMedia(true);
         const initialPosition = readPlaybackPosition(media);
         setTimeout(async function () {
             if (!playbackIntent.wanted || playbackIntent.recoveryInFlight) return;
             const result = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
-            if (!result.success && !result.reloading && !result.cancelled) playbackIntent.wanted = false;
+            if (!result.success && !result.cancelled) playbackIntent.wanted = false;
         }, 180);
     }, true);
     document.addEventListener('visibilitychange', function () { dlog('tab-visibility', document.hidden ? 'hidden' : 'visible'); });
@@ -912,16 +924,6 @@
                 } else if (action === 'TOGGLE_MINI_PLAYER') {
                     toggleMiniPlayer();
                     ack();
-                } else if (action === 'RECOVERY_SNAPSHOT') {
-                    playbackIntent.recoveryPlayerSeenAt = Date.now();
-                    ack({ success: true, data: localSnapshot(), language: state.preferredLanguage, discoveryEnabled: state.discoveryEnabled });
-                } else if (action === 'RECOVERY_ACTION') {
-                    const name = event.data.name;
-                    const allowed = ['play', 'prev', 'next', 'seek', 'vol', 'mute', 'like', 'repost', 'follow', 'station', 'addPl', 'dislike', 'hate', 'later'];
-                    if (name === 'dig') { toggleDiscoveryEnabled(); ack({ success: true }); }
-                    else if (name === 'openLater') ack(await laterOp({ op: 'openList' }));
-                    else if (allowed.indexOf(name) >= 0 && MP_ACTIONS[name]) ack(await MP_ACTIONS[name](event.data.args || {}, function () {}, null) || { success: true });
-                    else ack({ success: false, message: 'unsupported-action' });
                 } else if (action === 'SET_VOLUME') {
                     const applied = typeof event.data.volume === 'number' ? setSoundCloudVolume(event.data.volume) : null;
                     ack({ success: applied !== null, volume: getSoundCloudVolume() });
@@ -1667,6 +1669,7 @@
         });
     }
     function observeHeardPlayback(endingMedia) {
+        if (playbackIntent.trackCycle) return;
         if (!state.heardSkipEnabled || !state.currentTrack || !toNumId(state.currentTrack.id)) { heardTracker.reset(); return; }
         const key = String(toNumId(state.currentTrack.id));
         if (heardPlayback.key !== key) beginHeardSession(key);
@@ -1943,6 +1946,7 @@
     }
 
     function pruneQueueAhead(source) {
+        if (playbackIntent.trackCycle) return 0;
         if (state.robotBlocked || !state.discoveryEnabled || state.playbackMode !== 'DISCOVERY' || !state.isUserDataLoaded) return 0;
         const pm = getScPlaybackManager();
         if (!pm || typeof pm.removeItem !== 'function') return 0;
@@ -2013,6 +2017,7 @@
     const SKIP_MIN_GAP_MS = 750;
     const skipPacing = { nextAt: 0, pendingPause: null };
     function doAutoSkip(reason, info) {
+        if (playbackIntent.trackCycle) return false;
         if (state.robotBlocked || shouldKeepTrackOnArtistPage(reason, info)) return false;
         const skipKey = String((info && info.id) || (info && info.href) || (info && info.title) || 'unknown');
         if (state.lastSkippedTrackKey === skipKey && Date.now() - marginGuard.lastSkipTime < 10000) return false;
@@ -3593,6 +3598,10 @@
     // a long-idle tab. Verify that the seek position actually advances before
     // reporting a successful play command.
     function readPlaybackPosition(media) {
+        const sound = getScCurrentSound();
+        if (sound) {
+            try { const position = Number(sound.currentTime()) / 1000; if (Number.isFinite(position)) return position; } catch (e) {}
+        }
         if (media && Number.isFinite(media.currentTime)) return Number(media.currentTime);
         const pos = getPlaybackPositionSeconds();
         return pos && Number.isFinite(pos.position) ? Number(pos.position) : null;
@@ -3619,83 +3628,118 @@
         });
     }
 
-    async function requestPlaybackPageReload(reason) {
-        if (playbackIntent.pageReloadInFlight || !window.location || typeof window.location.reload !== 'function') return false;
-        const trackKey = playbackTrackKey() || 'unknown';
-        const pauseRevision = playbackIntent.pauseRevision || 0;
-        const wanted = playbackIntent.wanted;
-        const now = Date.now();
-        let previous = null;
-        try { previous = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null'); } catch (e) {}
-        // A reload can itself take a moment to restore the player. Do not loop
-        // on the same frozen track if the refreshed page reports no progress.
-        if (previous && previous.trackKey === trackKey && now - Number(previous.at || 0) < 60000) {
-            dlog('playback-page-reload-suppressed', { reason: reason, trackKey: trackKey });
-            return false;
-        }
-        const restorePlayer = !!(miniPlayerWindow && !miniPlayerWindow.closed) || now - playbackIntent.recoveryPlayerSeenAt < 5000;
+    // Recovery never navigates the page or replaces the mini-player window.
+    // Switch to the previous queue item once, then return to the original item.
+    function cycleTrackKey() {
         try {
-            sessionStorage.setItem(PLAYBACK_RELOAD_GUARD_KEY, JSON.stringify({ trackKey: trackKey, at: now }));
-            // A page reload destroys Document PiP/window.open ownership. Remember
-            // that the player was open so the new page can reopen it once loaded.
-            if (restorePlayer) {
-                sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify({ at: now, reason: reason || 'playback-reload', trackKey: trackKey, wanted: playbackIntent.wanted }));
-                dlog('miniplayer-restore-armed', { reason: reason || 'playback-reload', trackKey: trackKey });
-            }
+            const pm = getScPlaybackManager();
+            const sound = pm && pm.getCurrentSound();
+            const id = toNumId(sound && (sound.id !== undefined ? sound.id : sound.attributes && sound.attributes.id));
+            if (id) return String(id);
         } catch (e) {}
-        playbackIntent.pageReloadInFlight = true;
-        const cancelObsoleteReload = function () {
-            if ((playbackTrackKey() || 'unknown') === trackKey && (playbackIntent.pauseRevision || 0) === pauseRevision && playbackIntent.wanted === wanted) return false;
-            playbackIntent.pageReloadInFlight = false;
-            try {
-                sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY);
-                const guard = JSON.parse(sessionStorage.getItem(PLAYBACK_RELOAD_GUARD_KEY) || 'null');
-                if (guard && guard.at === now) sessionStorage.removeItem(PLAYBACK_RELOAD_GUARD_KEY);
-            } catch (e) {}
-            dlog('playback-page-reload-cancelled', { trackKey: trackKey });
+        return playbackTrackKey();
+    }
+
+    function cancelTrackCycle() {
+        if (playbackIntent.trackCycle) playbackIntent.trackCycle.cancelled = true;
+    }
+
+    function recoverByTrackCycle() {
+        if (playbackIntent.trackCycle) return playbackIntent.trackCycle.promise || Promise.resolve({ success: false, cancelled: true });
+        if (!playbackIntent.wanted || state.robotBlocked || skipPacing.pendingPause) return Promise.resolve({ success: false, cancelled: true });
+        if (Date.now() - playbackIntent.lastTrackCycleAt < 15000) return Promise.resolve({ success: false, verified: false, reason: 'cooldown' });
+        const originalKey = cycleTrackKey();
+        if (!originalKey) return Promise.resolve({ success: false, verified: false, reason: 'no-track' });
+        const pm = getScPlaybackManager();
+        const queue = readScQueue(pm);
+        if (queue && queue.curPos === 0) return Promise.resolve({ success: false, verified: false, reason: 'no-previous-track' });
+        const direct = !!(queue && pm && typeof pm.setCurrentItem === 'function' && queue.infos[queue.curPos] &&
+            String(queue.infos[queue.curPos].id) === originalKey && queue.infos[queue.curPos - 1]);
+        const previousKey = direct ? String(queue.infos[queue.curPos - 1].id) : null;
+        const previousItem = direct ? queue.models[queue.curPos - 1] : null;
+        const originalItem = direct ? queue.models[queue.curPos] : null;
+        if (previousKey === originalKey) return Promise.resolve({ success: false, verified: false, reason: 'same-previous-track' });
+        const cycle = {
+            originalKey: originalKey, previousKey: previousKey,
+            revision: playbackIntent.pauseRevision || 0, cancelled: false,
+            expectedPauseMedia: null, expectedPause: false, promise: null
+        };
+        const invalid = function () {
+            return cycle.cancelled || !playbackIntent.wanted || state.robotBlocked || !!skipPacing.pendingPause ||
+                (playbackIntent.pauseRevision || 0) !== cycle.revision;
+        };
+        const waitForTrack = async function (expected, leaving) {
+            const until = Date.now() + 1500;
+            do {
+                if (invalid()) return false;
+                const key = cycleTrackKey();
+                if (expected ? key === expected : !!key && key !== leaving) return true;
+                if (expected && key && key !== leaving) { cycle.cancelled = true; return false; }
+                await sleepMs(50);
+            } while (Date.now() < until);
+            return false;
+        };
+        const step = function (direction) {
+            cycle.expectedPauseMedia = getActiveMedia(true);
+            cycle.expectedPause = true;
+            if (direct) {
+                // A direct queue item avoids the native "previous" button merely
+                // seeking to 0:00, and returns to the same item even with shuffle.
+                pm.setCurrentItem(direction === 'prev' ? previousItem : originalItem,
+                    { seek: 0, userInitiated: false });
+                return true;
+            }
+            const method = direction === 'prev' ? 'playPrev' : 'playNext';
+            if (pm && typeof pm[method] === 'function') { pm[method]({ userInitiated: false }); return true; }
+            const button = document.querySelector(direction === 'prev' ? '.playControls__prev' : '.playControls__next');
+            if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return false;
+            button.click();
             return true;
         };
-        if (restorePlayer) {
-            const prepared = await prepareRecoveryWindow();
+        playbackIntent.trackCycle = cycle;
+        playbackIntent.lastTrackCycleAt = Date.now();
+        cycle.promise = (async function () {
+            dlog('playback-track-cycle-start', { trackKey: originalKey });
             try {
-                const marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null');
-                if (marker && marker.at === now) { marker.recoveryWindowReady = prepared; sessionStorage.setItem(MINI_PLAYER_RESTORE_KEY, JSON.stringify(marker)); }
-            } catch (e) {}
-            dlog('miniplayer-recovery-window', { ready: prepared });
-        }
-        if (cancelObsoleteReload()) return false;
-        dlog('playback-page-reload-requested', { reason: reason, trackKey: trackKey });
-        setTimeout(function () {
-            if (cancelObsoleteReload()) return;
-            try { window.location.reload(); } catch (e) { playbackIntent.pageReloadInFlight = false; dlog('playback-page-reload-failed', errorName(e)); }
-        }, 120);
-        return true;
+                if (!step('prev')) return { success: false, verified: false, reason: 'no-previous-control' };
+                if (!(await waitForTrack(previousKey, originalKey))) {
+                    return { success: false, verified: false, cancelled: invalid(), reason: 'previous-not-changed' };
+                }
+                cycle.previousKey = cycleTrackKey();
+                // Let SoundCloud complete its own transition before returning.
+                await sleepMs(200);
+                if (invalid() || cycleTrackKey() !== cycle.previousKey) return { success: false, cancelled: true, verified: false };
+                if (!step('next')) return { success: false, verified: false, reason: 'no-next-control' };
+                if (!(await waitForTrack(originalKey, cycle.previousKey))) return { success: false, verified: false, cancelled: invalid(), reason: 'original-not-restored' };
+                const active = getActiveMedia(true);
+                const baseline = readPlaybackPosition(active);
+                if (active && active.paused && !active.ended && !invalid()) {
+                    const played = await invokeMediaPlay(active, 700, false);
+                    if (!played.success) return { success: false, verified: false, reason: 'play-failed' };
+                }
+                const progressed = await waitForPlaybackProgress(getActiveMedia(true), baseline, 1800);
+                if (invalid() || cycleTrackKey() !== originalKey) return { success: false, cancelled: true, verified: false };
+                return { success: progressed, verified: progressed, recovered: progressed, method: 'previous-next', reason: progressed ? '' : 'no-progress' };
+            } catch (e) {
+                dlog('playback-track-cycle-error', errorName(e));
+                return { success: false, verified: false, reason: errorName(e) };
+            } finally {
+                if (playbackIntent.trackCycle === cycle) playbackIntent.trackCycle = null;
+                dlog('playback-track-cycle-end', { trackKey: originalKey, cancelled: cycle.cancelled });
+            }
+        })();
+        return cycle.promise;
     }
 
     async function verifyAndRecoverExplicitPlay(media, initialPosition) {
         const key = playbackTrackKey();
         const revision = playbackIntent.pauseRevision || 0;
         const obsolete = function () { return !playbackIntent.wanted || playbackTrackKey() !== key || (playbackIntent.pauseRevision || 0) !== revision || !!skipPacing.pendingPause; };
-        if (await waitForPlaybackProgress(media, initialPosition, 1000)) return { success: true, verified: true };
+        const progressed = await waitForPlaybackProgress(media, initialPosition, 1000);
         if (obsolete()) return { success: false, verified: false, cancelled: true };
+        if (progressed) return { success: true, verified: true };
         dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
-
-        // First retry the native page control once. This handles a stale media
-        // element without immediately discarding the SoundCloud page state.
-        const button = document.querySelector('.playControls__play:not(.playing)');
-        if (button) {
-            const retryBaseline = readPlaybackPosition(getActiveMedia(true) || media);
-            try { button.click(); } catch (e) {}
-            if (await waitForPlaybackProgress(getActiveMedia(true) || media, retryBaseline, 900)) {
-                dlog('playback-progress-recovered', { method: 'native-button' });
-                return { success: true, verified: true, recovered: true };
-            }
-        }
-        if (obsolete()) return { success: false, verified: false, cancelled: true };
-        if (await requestPlaybackPageReload('explicit-play-no-progress')) {
-            return { success: false, reloading: true, verified: false };
-        }
-        return { success: false, verified: false, stalled: true };
+        return recoverByTrackCycle();
     }
 
     // HTMLMediaElement.play() can reject or remain pending when the browser's
@@ -3755,6 +3799,7 @@
     }
 
     function schedulePlaybackRecovery(media, reason) {
+        if (playbackIntent.trackCycle) return;
         const key = playbackTrackKey();
         if (!key || !playbackIntent.wanted || !state.discoveryEnabled || state.robotBlocked || playbackIntent.recoveryInFlight) return;
         if (playbackIntent.trackKey !== key) {
@@ -3786,10 +3831,20 @@
                 if (!playResult.success) {
                     outcome = errorName(playResult.error);
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(playResult.error) });
+                    if (!playResult.pending && outcome !== 'NotAllowedError' && playbackIntent.wanted && playbackTrackKey() === key) {
+                        const cycled = await recoverByTrackCycle();
+                        if (cycled.success) outcome = 'previous-next';
+                    }
                     return;
                 }
                 outcome = (await waitForLocalPlaying(true, 500)) ? 'playing' : 'not-playing';
-                if (outcome === 'not-playing') dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+                if (outcome === 'not-playing') {
+                    dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
+                    if (playbackIntent.wanted && playbackTrackKey() === key) {
+                        const cycled = await recoverByTrackCycle();
+                        if (cycled.success) outcome = 'previous-next';
+                    }
+                }
             } catch (e) {
                 outcome = errorName(e);
                 dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(e) });
@@ -4711,7 +4766,7 @@
 
     // ページ内のクリックが無いと PiP / ポップアップは開けない（拡張機能ポップアップからの操作は「ページのクリック」扱いにならない）
     // → ページ上に「ミニプレイヤーを開く」ボタンを出して、それを押してもらう
-    function showMiniPlayerLaunchPrompt(persistent) {
+    function showMiniPlayerLaunchPrompt() {
         const old = document.getElementById('sc-fresh-station-mp-launch');
         if (old) old.remove();
         const btn = document.createElement('button');
@@ -4724,7 +4779,7 @@
             openMiniPlayer();
         });
         document.body.appendChild(btn);
-        if (!persistent) setTimeout(function () { if (btn.isConnected) btn.remove(); }, 12000);
+        setTimeout(function () { if (btn.isConnected) btn.remove(); }, 12000);
     }
 
     async function openMiniPlayer(options) {
@@ -4778,61 +4833,6 @@
         }
     }
 
-    function prepareRecoveryWindow() {
-        if (!heardExtensionAvailable) return Promise.resolve(false);
-        return new Promise(function (resolve) {
-            const requestId = 'restore-' + TAB_ID + '-' + Date.now();
-            let timer;
-            const finish = function (ok) {
-                clearTimeout(timer); window.removeEventListener('message', receive); resolve(ok);
-            };
-            const receive = function (event) {
-                if (event.source !== window || !event.data || event.data.type !== 'SC_FRESH_STATION_ARM_RECOVERY_RESULT' || event.data.requestId !== requestId) return;
-                finish(!!(event.data.result && event.data.result.ok));
-            };
-            window.addEventListener('message', receive);
-            timer = setTimeout(function () { finish(false); }, 4000);
-            window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER', requestId: requestId }, window.location.origin);
-        });
-    }
-
-    function restoreMiniPlayerAfterReload() {
-        const initialPauseRevision = playbackIntent.pauseRevision || 0;
-        let marker = null;
-        try { marker = JSON.parse(sessionStorage.getItem(MINI_PLAYER_RESTORE_KEY) || 'null'); } catch (e) {}
-        if (!marker || !marker.at || Date.now() - Number(marker.at) > 60000) return;
-        // Wait for SoundCloud's player and document body to settle after reload.
-        const restore = async function () {
-            if (!document.body) { setTimeout(restore, 250); return; }
-            if (!heardExtensionAvailable && Date.now() - Number(marker.at) < 10000) { setTimeout(restore, 500); return; }
-            if (miniPlayerWindow && !miniPlayerWindow.closed) return;
-            // Do not spend transient activation on a timer-based PiP request:
-            // Chrome rejects it. Use the extension-owned window, then leave a
-            // persistent, real-click launcher for the user's preferred PiP.
-            // A prepared extension window survives navigation. Do not recreate
-            // it if the user deliberately closed it while the tab reloaded.
-            const ready = marker.recoveryWindowReady || await prepareRecoveryWindow();
-            dlog('miniplayer-restored', { recoveryWindow: ready });
-            showMiniPlayerLaunchPrompt(true);
-            try { sessionStorage.removeItem(MINI_PLAYER_RESTORE_KEY); } catch (e) {}
-            // One bounded resume attempt for this track only. Never toggle an
-            // already-playing track or reload again from this restore path.
-            const until = Date.now() + 15000;
-            const resume = async function () {
-                if (!marker.wanted || Date.now() > until) return;
-                if ((playbackIntent.pauseRevision || 0) !== initialPauseRevision || skipPacing.pendingPause) return;
-                if (!state.currentTrack || !getActiveMedia(true)) { setTimeout(resume, 500); return; }
-                if (playbackTrackKey() !== marker.trackKey || isLocalPlaying()) return;
-                playbackIntent.wanted = true;
-                const media = getActiveMedia(true);
-                const result = await invokeMediaPlay(media, 1500, false);
-                dlog('playback-reload-resume', { success: result.success, pending: !!result.pending });
-            };
-            resume();
-        };
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(restore, 900); }, { once: true });
-        else setTimeout(restore, 900);
-    }
 
     let isSeekingInMiniPlayer = false;
 
@@ -5675,6 +5675,8 @@
 
     // 前・次: 再生管理があればそれで、なければ画面のボタンを押す
     async function scTransport(method, selector, toast) {
+        cancelTrackCycle();
+        playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         let invoked = false;
         try {
             const pm = getScPlaybackManager();
@@ -5695,6 +5697,7 @@
 
     // 再生/一時停止: 一度だけネイティブ経路を選び、結果を検証して返す。
     async function scTogglePlay(toast) {
+        cancelTrackCycle();
         playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         const playing = isLocalPlaying();
         const media = getActiveMedia(true);
@@ -5728,8 +5731,12 @@
         let invoked = false;
         try {
             if (media && typeof media.play === 'function' && !media.ended) {
-                const playResult = await invokeMediaPlay(media, 700);
+                const playResult = await invokeMediaPlay(media, 700, false);
                 if (!playResult.success) {
+                    if (errorName(playResult.error) !== 'NotAllowedError' && playbackIntent.wanted) {
+                        const cycled = await recoverByTrackCycle();
+                        if (cycled.success || cycled.cancelled) return cycled;
+                    }
                     playbackIntent.wanted = false;
                     dlog('mini-play-blocked', errorName(playResult.error));
                     return fail(errorName(playResult.error));
@@ -5753,16 +5760,14 @@
             }
         }
         if (!(await waitForLocalPlaying(true, 700))) {
+            const cycled = await recoverByTrackCycle();
+            if (cycled.success || cycled.cancelled) return cycled;
             playbackIntent.wanted = false;
             return fail(tt('m_commErr'));
         }
         const verified = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
         if (!verified.success) {
             if (verified.cancelled) return { success: false, verified: false, cancelled: true };
-            if (verified.reloading) {
-                if (toast) toast(tt('reloadRequired'));
-                return { success: false, playing: false, verified: false, reloading: true, message: tt('reloadRequired') };
-            }
             playbackIntent.wanted = false;
             return fail(tt('m_commErr'));
         }
@@ -5775,6 +5780,7 @@
         play: function (a, toast) { return scTogglePlay(toast); },
         next: function (a, toast) { return scTransport('playNext', '.playControls__next', toast); },
         seek: function (a, toast) {
+            cancelTrackCycle();
             if (typeof a.ratio !== 'number') return { success: false, message: tt('m_commErr') };
             const ok = seekToSoundCloudRatio(a.ratio);
             if (!ok && toast) toast(tt('m_commErr'));
@@ -5941,7 +5947,6 @@
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
     registerAutoMiniPlayerHandler();
     registerExtraMediaSessionHandlers();
-    restoreMiniPlayerAfterReload();
 
 })();
 

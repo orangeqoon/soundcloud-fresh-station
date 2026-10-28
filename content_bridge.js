@@ -55,21 +55,6 @@
         // 同一ウィンドウ（MAIN world）以外（iframe等）からのメッセージは受け付けない
         if (event.source !== window || !event.data) return;
 
-        if (event.data.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER') {
-            const requestId = event.data.requestId;
-            if (typeof requestId !== 'string' || requestId.length > 120) return;
-            try {
-                chrome.runtime.sendMessage({ action: 'ARM_RECOVERY_PLAYER' }, function (result) {
-                    const error = chrome.runtime.lastError;
-                    window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_RESULT', requestId: requestId,
-                        result: error ? { ok: false, reason: 'unavailable' } : result }, window.location.origin);
-                });
-            } catch (e) {
-                window.postMessage({ type: 'SC_FRESH_STATION_ARM_RECOVERY_RESULT', requestId: requestId,
-                    result: { ok: false, reason: 'unavailable' } }, window.location.origin);
-            }
-            return;
-        }
 
         // Request storage from MAIN world
         if (event.data.type === 'SC_FRESH_STATION_REQUEST_STORAGE') {
