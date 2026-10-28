@@ -4,7 +4,7 @@
     "description": "Extension title"
   },
   "extensionDesc": {
-    "message": "Управляйте станциями SoundCloud в режиме Dig: пропускайте лайки, подписки, NoPlay и заблокированных артистов, открывая новых исполнителей.",
+    "message": "Управляйте станциями SoundCloud в Dig: пропускайте лайки, подписки, NoPlay и блокировки, открывая новых исполнителей.",
     "description": "Extension description"
   },
   "actionTitle": {
