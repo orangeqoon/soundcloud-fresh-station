@@ -4,7 +4,7 @@
     "description": "Extension title"
   },
   "extensionDesc": {
-    "message": "SoundCloudのDigモードでいいね・フォロー・除外をスキップ。作者保存と別ウィンドウのミニプレイヤーに対応",
+    "message": "SoundCloudのステーションをDigで整理。Like・Follow・不再生・除外をスキップし、未試聴曲と作者の分散を優先",
     "description": "Extension description"
   },
   "actionTitle": {

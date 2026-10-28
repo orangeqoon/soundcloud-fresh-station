@@ -2,7 +2,7 @@
 
 > 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md)
 
-FreshDig es una extensión para Edge / Chrome que ordena la reproducción de estaciones en SoundCloud. El modo Dig salta las canciones y artistas que ya te gustan, que sigues o que has excluido, y te permite guardar artistas interesantes al momento.
+FreshDig es una extensión para Chrome y Edge dirigida a oyentes, DJ y productores que descubren artistas mediante las estaciones de SoundCloud. Dig aplica tus reglas a los candidatos y a la cola que SoundCloud proporciona.
 
 ## Qué problema resuelve
 

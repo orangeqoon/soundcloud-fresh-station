@@ -111,6 +111,16 @@ test('Later artists are excluded in Dig except on their own intentional artist p
   assert.strictEqual(core.getSkipReasonKey(track, { ...c, onArtistPage: true }), null);
 });
 
+test('rankQueueAhead prefers a playable unseen candidate and keeps stable ties', () => {
+  const ranked = core.rankQueueAhead([
+    null,
+    { id: 1, artistId: 10 },
+    { id: 2, artistId: 20 },
+    { id: 3, artistId: 30 }
+  ], 0, (info, distance) => info.id === 1 ? 5 : (info.id === 2 ? 100 : 100), 30);
+  assert.equal(ranked.bestPos, 2);
+});
+
 test('Later exemption requires the matching saved author on the artist page', () => {
   const c = { ...base(), laterArtists: { '8': { name: 'Saved artist' } }, followingUserIds: new Set([9]) };
   assert.strictEqual(core.getSkipReasonKey({ id: 3, artistId: 8 }, { ...c, onArtistPage: true }), null);

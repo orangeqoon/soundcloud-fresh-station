@@ -4,7 +4,7 @@
     "description": "Nombre de la extensión"
   },
   "extensionDesc": {
-    "message": "Organiza el descubrimiento en SoundCloud con el modo Dig, artistas para escuchar después, exclusiones y un mini reproductor independiente.",
+    "message": "Organiza las estaciones de SoundCloud con Dig: omite Me gusta, seguidos, NoPlay y artistas bloqueados para descubrir nuevos artistas.",
     "description": "Descripción de la extensión"
   },
   "actionTitle": {

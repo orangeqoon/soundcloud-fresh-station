@@ -20,14 +20,14 @@ function instrumentHook() {
   const hooks = [
     'state', 'robotState', 'robotRecovery', 'apiBackoff', 'apiFetch',
     'probeRobotRecovery', 'filterStationTracks',
-    'getCoreSkipReason', 'getSkipReason', 'isOnLaterArtistPage', 'doAutoSkip', 'skipPacing', 'rememberPlaybackMedia', 'laterState', 'pendingInteractions',
+    'getCoreSkipReason', 'getSkipReason', 'isOnLaterArtistPage', 'doAutoSkip', 'skipPacing', 'rememberPlaybackMedia', 'laterState', 'pendingInteractions', 'prioritizeDigQueue',
     'beginInteraction', 'getPendingInteraction', 'endInteraction',
     'syncCurrentTrackInteractionsFromDom', 'toggleLikeFromNative', 'injectButtons',
     'fdRemote', 'TAB_ID', 'getAutoPipDiagnostics', 'registerAutoMiniPlayerHandler', 'setAutoMiniPlayer', 'mpRemoteCall',
     'schedulePlaybackRecovery', 'playbackIntent', 'scTogglePlay', 'scInternals',
     'getDiagLogEntries', 'getPlaybackDiagnostic',
     'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute',
-    'recoverByTrackCycle', 'cancelTrackCycle', 'verifyAndRecoverExplicitPlay',
+    'recoverByNextTrack', 'cancelNextRecovery', 'verifyAndRecoverExplicitPlay',
     'beginHeardSession', 'heardPlayback', 'heardTracker', 'heardCache', 'heardMisses', 'heardLookup', 'observeHeardPlayback'
   ];
   return hookSource.slice(0, at) + '\nwindow.__setTestMiniPlayer = function(w) { miniPlayerWindow = w; };\nwindow.__runtimeHooks = {' + hooks.map((name) => name + ': ' + name).join(', ') + '};\n' + hookSource.slice(at);
@@ -605,7 +605,7 @@ test('a user pause or track skip during progress verification must not reload th
 
 function makeCycleFixture(t, options = {}) {
   const steps = [];
-  let position = options.first ? 0 : 1;
+  let position = options.first ? 0 : options.last ? 2 : 1;
   let progressing = false;
   let reloads = 0;
   let closes = 0;
@@ -624,8 +624,8 @@ function makeCycleFixture(t, options = {}) {
     media.currentTime = 0;
     env.hooks.state.currentTrack = { id: item.sound.id };
     media.paused = false;
-    if (position === 1 && !options.frozen) progressing = true;
-    if (position === 0 && options.afterPrevious) options.afterPrevious(env, media);
+    if (!options.frozen) progressing = true;
+    if (options.afterNext && steps.length === 1) options.afterNext(env, media);
   }
   const pm = {
     playPrev() { change(items[0]); },
@@ -643,105 +643,101 @@ function makeCycleFixture(t, options = {}) {
   return { env, media, pm, steps, closed: () => closes, reloads: () => reloads };
 }
 
-test('stalled playback moves to the previous track then back without closing or reloading', async t => {
+test('stalled playback skips once to the next track without closing or reloading', async t => {
   const f = makeCycleFixture(t);
   const result = await f.env.hooks.verifyAndRecoverExplicitPlay(f.media, 0);
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.verified, true);
-  assert.strictEqual(result.method, 'previous-next');
-  assert.deepStrictEqual(f.steps, [101, 102]);
+  assert.strictEqual(result.method, 'next-track');
+  assert.deepStrictEqual(f.steps, [103]);
   assert.strictEqual(f.closed(), 0);
   assert.strictEqual(f.reloads(), 0);
-  assert.strictEqual(f.env.posted.some(m => m.type === 'SC_FRESH_STATION_ARM_RECOVERY_PLAYER'), false);
 });
 
-test('mini-player play action returns a verified previous-next recovery result', async t => {
+test('mini-player play action returns a verified next-track recovery result', async t => {
   const f = makeCycleFixture(t);
   f.media.paused = true;
   const result = await f.env.hooks.MP_ACTIONS.play({}, () => {});
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.verified, true);
   assert.strictEqual(result.recovered, true);
-  assert.deepStrictEqual(f.steps, [101, 102]);
-  assert.strictEqual(f.closed(), 0);
+  assert.deepStrictEqual(f.steps, [103]);
 });
 
-test('native previous-next controls are used when queue-item access is unavailable', async t => {
+test('native next works without queue access and never invokes previous', async t => {
   const f = makeCycleFixture(t);
   delete f.pm.getQueue;
   delete f.pm.getCurrentQueueItem;
   delete f.pm.setCurrentItem;
-  assert.strictEqual((await f.env.hooks.recoverByTrackCycle()).success, true);
-  assert.deepStrictEqual(f.steps, [101, 102]);
+  f.pm.playPrev = () => { throw new Error('previous must not run'); };
+  assert.strictEqual((await f.env.hooks.recoverByNextTrack()).success, true);
+  assert.deepStrictEqual(f.steps, [103]);
 });
 
-test('a previous button that only restarts the current track cannot skip forward', async t => {
+test('a next operation that does not change tracks stops without retrying', async t => {
   const f = makeCycleFixture(t);
-  delete f.pm.getQueue;
-  delete f.pm.getCurrentQueueItem;
-  delete f.pm.setCurrentItem;
-  f.pm.playPrev = () => { f.steps.push('restart'); f.media.currentTime = 0; };
-  const result = await f.env.hooks.recoverByTrackCycle();
+  f.pm.playNext = () => { f.steps.push('unchanged'); };
+  const result = await f.env.hooks.recoverByNextTrack();
   assert.strictEqual(result.success, false);
-  assert.strictEqual(result.reason, 'previous-not-changed');
-  assert.deepStrictEqual(f.steps, ['restart']);
+  assert.strictEqual(result.reason, 'next-not-changed');
+  assert.deepStrictEqual(f.steps, ['unchanged']);
 });
 
-test('track-cycle recovery deduplicates concurrent requests and applies a cooldown', async t => {
+test('next recovery deduplicates concurrent requests and applies a cooldown', async t => {
   const f = makeCycleFixture(t);
-  const first = f.env.hooks.recoverByTrackCycle();
-  const second = f.env.hooks.recoverByTrackCycle();
+  const first = f.env.hooks.recoverByNextTrack();
+  const second = f.env.hooks.recoverByNextTrack();
   assert.strictEqual(first, second);
   assert.strictEqual((await first).success, true);
-  assert.strictEqual((await f.env.hooks.recoverByTrackCycle()).reason, 'cooldown');
-  assert.deepStrictEqual(f.steps, [101, 102]);
+  assert.strictEqual((await f.env.hooks.recoverByNextTrack()).reason, 'cooldown');
+  assert.deepStrictEqual(f.steps, [103]);
 });
 
-test('a user pause between previous and next cancels recovery without returning or resuming', async t => {
-  const f = makeCycleFixture(t, { afterPrevious(env, media) {
+test('a user pause during next-track verification cancels without resuming', async t => {
+  const f = makeCycleFixture(t, { afterNext(env, media) {
     setTimeout(() => {
-      env.hooks.playbackIntent.pauseRevision = (env.hooks.playbackIntent.pauseRevision || 0) + 1;
+      env.hooks.playbackIntent.pauseRevision++;
       env.hooks.playbackIntent.wanted = false;
       media.paused = true;
     }, 50);
   } });
-  const result = await f.env.hooks.recoverByTrackCycle();
+  const result = await f.env.hooks.recoverByNextTrack();
   assert.strictEqual(result.cancelled, true);
-  assert.deepStrictEqual(f.steps, [101]);
+  assert.deepStrictEqual(f.steps, [103]);
   assert.strictEqual(f.media.paused, true);
 });
 
-test('a user choosing another track cancels the recovery return step', async t => {
-  const f = makeCycleFixture(t, { afterPrevious(env) {
-    setTimeout(() => { env.hooks.MP_ACTIONS.next({}, () => {}); }, 50);
+test('manual transport during recovery cancels its verification', async t => {
+  const f = makeCycleFixture(t, { afterNext(env) {
+    setTimeout(() => { env.hooks.MP_ACTIONS.prev({}, () => {}); }, 50);
   } });
-  const result = await f.env.hooks.recoverByTrackCycle();
+  const result = await f.env.hooks.recoverByNextTrack();
   assert.strictEqual(result.cancelled, true);
-  assert.deepStrictEqual(f.steps, [101, 102], 'only the manual next command runs after previous');
-  assert.strictEqual(f.env.hooks.playbackIntent.trackCycle, null);
+  assert.deepStrictEqual(f.steps, [103, 101]);
+  assert.strictEqual(f.env.hooks.playbackIntent.nextRecovery, null);
 });
 
 test('Dig skipping is suspended for the recovery transition only', async t => {
   const f = makeCycleFixture(t);
-  const recovery = f.env.hooks.recoverByTrackCycle();
-  assert.strictEqual(f.env.hooks.doAutoSkip('skipReasonFollowing', { id:101,artistId:601 }), false);
+  const recovery = f.env.hooks.recoverByNextTrack();
+  assert.strictEqual(f.env.hooks.doAutoSkip('skipReasonFollowing', { id:103,artistId:603 }), false);
   assert.strictEqual((await recovery).success, true);
-  assert.strictEqual(f.env.hooks.playbackIntent.trackCycle, null);
+  assert.strictEqual(f.env.hooks.playbackIntent.nextRecovery, null);
 });
 
-test('a queue without a previous track cannot advance to an unrelated next track', async t => {
+test('recovery works from the first track without needing a previous track', async t => {
   const f = makeCycleFixture(t, { first:true });
-  assert.strictEqual((await f.env.hooks.recoverByTrackCycle()).reason, 'no-previous-track');
-  assert.deepStrictEqual(f.steps, []);
+  assert.strictEqual((await f.env.hooks.recoverByNextTrack()).success, true);
+  assert.deepStrictEqual(f.steps, [102]);
 });
 
-test('a failed previous-next recovery stops after one cycle and keeps the mini player open', async t => {
+test('a failed next-track recovery stops after one skip and keeps the mini player open', async t => {
   const f = makeCycleFixture(t, { frozen:true });
-  const result = await f.env.hooks.recoverByTrackCycle();
+  const result = await f.env.hooks.recoverByNextTrack();
   assert.strictEqual(result.success, false);
   assert.strictEqual(result.reason, 'no-progress');
-  assert.deepStrictEqual(f.steps, [101, 102]);
-  assert.strictEqual(f.env.hooks.playbackIntent.trackCycle, null);
+  assert.deepStrictEqual(f.steps, [103]);
+  assert.strictEqual(f.env.hooks.playbackIntent.nextRecovery, null);
   assert.strictEqual(f.closed(), 0);
   assert.strictEqual(f.reloads(), 0);
 });

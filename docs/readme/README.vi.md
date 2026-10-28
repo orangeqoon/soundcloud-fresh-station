@@ -2,7 +2,7 @@
 
 > 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md)
 
-FreshDig là tiện ích Edge / Chrome giúp sắp xếp việc phát station trên SoundCloud. Dig mode tự bỏ qua bài hát và nghệ sĩ bạn đã thích, đang theo dõi hoặc đã loại trừ, đồng thời cho phép lưu nghệ sĩ thú vị ngay lập tức.
+FreshDig là tiện ích Chrome và Edge dành cho người nghe, DJ và nhà sản xuất muốn khám phá nghệ sĩ mới qua station SoundCloud. Dig áp dụng quy tắc của bạn lên các ứng viên và hàng đợi do SoundCloud cung cấp.
 
 ## Vấn đề được giải quyết
 

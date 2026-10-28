@@ -194,6 +194,25 @@
     return { remove: remove, firstKeep: firstKeep };
   }
 
+  // Select the best playable item from an existing queue without changing
+  // SoundCloud's candidate generation. Ties retain the original queue order.
+  function rankQueueAhead(infos, curPos, scoreFn, maxLook) {
+    const last = Math.min(infos.length - 1, curPos + (maxLook || 30));
+    let bestPos = -1;
+    let bestScore = -Infinity;
+    for (let i = curPos + 1; i <= last; i++) {
+      const info = infos[i];
+      if (!info) continue;
+      const score = Number(scoreFn(info, i - curPos));
+      if (!isFinite(score)) continue;
+      if (bestPos < 0 || score > bestScore) {
+        bestPos = i;
+        bestScore = score;
+      }
+    }
+    return { bestPos: bestPos, score: bestScore };
+  }
+
   // 作者のページ（/<作者>、/tracks など）か。予約パスと、reposts は除く
   const RESERVED_TOP = ['you', 'discover', 'stream', 'feed', 'search', 'upload', 'messages', 'notifications', 'charts',
     'settings', 'terms-of-use', 'pages', 'popular', 'tags', 'mobile', 'jobs', 'imprint', 'creator-pro', 'stations', 'people', 'logout'];
@@ -302,6 +321,7 @@
   return {
     createHeardTracker: createHeardTracker,
     planQueueAhead: planQueueAhead,
+    rankQueueAhead: rankQueueAhead,
     createRateLimiter: createRateLimiter,
     createBackoff: createBackoff,
     isRobotCheckResponse: isRobotCheckResponse,

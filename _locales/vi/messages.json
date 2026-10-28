@@ -4,7 +4,7 @@
     "description": "Tên tiện ích"
   },
   "extensionDesc": {
-    "message": "Sắp xếp việc khám phá SoundCloud bằng Dig mode, danh sách nghệ sĩ để nghe sau, bỏ qua mục đã loại trừ và mini player riêng.",
+    "message": "Sắp xếp station SoundCloud bằng Dig: bỏ qua bài đã thích, nghệ sĩ theo dõi, NoPlay và nghệ sĩ bị chặn để khám phá nghệ sĩ mới.",
     "description": "Mô tả tiện ích"
   },
   "actionTitle": {

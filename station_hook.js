@@ -2,8 +2,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.14.0)');
-    const RUNTIME_VERSION = '2.14.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.14.4)');
+    const RUNTIME_VERSION = '2.14.4';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -642,13 +642,13 @@
         lastRecoveryAt: 0,
         recoveryInFlight: false,
         suppressPauseUntil: 0,
-        trackCycle: null,
-        lastTrackCycleAt: 0
+        nextRecovery: null,
+        lastNextRecoveryAt: 0
     };
 
     function notePausedMedia(media) {
         if (media.ended) return;
-        const cycle = playbackIntent.trackCycle;
+        const cycle = playbackIntent.nextRecovery;
         if (cycle && !cycle.cancelled && cycle.expectedPauseMedia === media && cycle.expectedPause) {
             cycle.expectedPause = false;
             return;
@@ -700,18 +700,18 @@
     // clock remains frozen after a long-idle tab. Probe native clicks too, so
     // recovery also works when the user starts playback outside the mini player.
     document.addEventListener('click', function (ev) {
-        if (ev.isTrusted && playbackIntent.trackCycle) {
+        if (ev.isTrusted && playbackIntent.nextRecovery) {
             let transport = null;
             try { transport = ev.target && ev.target.closest && ev.target.closest('.playControls__play, .playControls__prev, .playControls__next'); } catch (e) {}
             if (transport) {
-                playbackIntent.trackCycle.cancelled = true;
+                playbackIntent.nextRecovery.cancelled = true;
                 playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
                 if (transport.classList.contains('playing')) playbackIntent.wanted = false;
             }
         }
         let button = null;
         try { button = ev.target && ev.target.closest ? ev.target.closest('.playControls__play') : null; } catch (e) {}
-        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight || playbackIntent.trackCycle) return;
+        if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight || playbackIntent.nextRecovery) return;
         playbackIntent.wanted = true;
         const media = getActiveMedia(true);
         const initialPosition = readPlaybackPosition(media);
@@ -1669,7 +1669,7 @@
         });
     }
     function observeHeardPlayback(endingMedia) {
-        if (playbackIntent.trackCycle) return;
+        if (playbackIntent.nextRecovery) return;
         if (!state.heardSkipEnabled || !state.currentTrack || !toNumId(state.currentTrack.id)) { heardTracker.reset(); return; }
         const key = String(toNumId(state.currentTrack.id));
         if (heardPlayback.key !== key) beginHeardSession(key);
@@ -1946,7 +1946,7 @@
     }
 
     function pruneQueueAhead(source) {
-        if (playbackIntent.trackCycle) return 0;
+        if (playbackIntent.nextRecovery) return 0;
         if (state.robotBlocked || !state.discoveryEnabled || state.playbackMode !== 'DISCOVERY' || !state.isUserDataLoaded) return 0;
         const pm = getScPlaybackManager();
         if (!pm || typeof pm.removeItem !== 'function') return 0;
@@ -1991,11 +1991,37 @@
         } catch (e) { return false; }
     }
 
+    // Dig ON のステーションでは、SoundCloud が既に返したキューだけを
+    // 対象に、未試聴・作者分散を優先する。候補生成や外部推薦APIは変更しない。
+    function prioritizeDigQueue(source) {
+        if (playbackIntent.nextRecovery || state.robotBlocked || !state.discoveryEnabled ||
+            state.playbackMode !== 'DISCOVERY' || !state.isUserDataLoaded) return false;
+        const pm = getScPlaybackManager();
+        const qi = readScQueue(pm);
+        if (!qi || !pm || typeof pm.setCurrentItem !== 'function') return false;
+        const currentArtist = state.currentTrack && toNumId(state.currentTrack.artistId);
+        const plan = FreshDigCore.planQueueAhead(qi.infos, qi.curPos, getSkipReason, QUEUE_LOOKAHEAD);
+        const ranked = FreshDigCore.rankQueueAhead(qi.infos, qi.curPos, function (info, distance) {
+            if (getSkipReason(info)) return -Infinity;
+            let score = 0;
+            if (!(state.heardTrackIds && state.heardTrackIds.has(toNumId(info.id)))) score += 100;
+            if (currentArtist && toNumId(info.artistId) !== currentArtist) score += 35;
+            if (distance === 1) score += 5;
+            return score;
+        }, QUEUE_LOOKAHEAD);
+        if (ranked.bestPos < 0 || ranked.bestPos === qi.curPos + 1 || ranked.bestPos === plan.firstKeep) return false;
+        try {
+            pm.setCurrentItem(qi.models[ranked.bestPos], { seek: 0, userInitiated: false });
+            dlog('dig-queue-prioritize', { source: source, from: qi.curPos, to: ranked.bestPos, score: ranked.score });
+            return true;
+        } catch (e) { return false; }
+    }
+
     function scheduleQueuePrune() {
         if (queueWatch.timer) return;
         queueWatch.timer = setTimeout(function () {
             queueWatch.timer = null;
-            try { pruneQueueAhead('queue-change'); } catch (e) {}
+            try { pruneQueueAhead('queue-change'); prioritizeDigQueue('queue-change'); } catch (e) {}
         }, 150);
     }
 
@@ -2017,7 +2043,7 @@
     const SKIP_MIN_GAP_MS = 750;
     const skipPacing = { nextAt: 0, pendingPause: null };
     function doAutoSkip(reason, info) {
-        if (playbackIntent.trackCycle) return false;
+        if (playbackIntent.nextRecovery) return false;
         if (state.robotBlocked || shouldKeepTrackOnArtistPage(reason, info)) return false;
         const skipKey = String((info && info.id) || (info && info.href) || (info && info.title) || 'unknown');
         if (state.lastSkippedTrackKey === skipKey && Date.now() - marginGuard.lastSkipTime < 10000) return false;
@@ -3628,8 +3654,7 @@
         });
     }
 
-    // Recovery never navigates the page or replaces the mini-player window.
-    // Switch to the previous queue item once, then return to the original item.
+    // Recovery keeps the mini player open and advances once to the next track.
     function cycleTrackKey() {
         try {
             const pm = getScPlaybackManager();
@@ -3640,95 +3665,69 @@
         return playbackTrackKey();
     }
 
-    function cancelTrackCycle() {
-        if (playbackIntent.trackCycle) playbackIntent.trackCycle.cancelled = true;
+    function cancelNextRecovery() {
+        if (playbackIntent.nextRecovery) playbackIntent.nextRecovery.cancelled = true;
     }
 
-    function recoverByTrackCycle() {
-        if (playbackIntent.trackCycle) return playbackIntent.trackCycle.promise || Promise.resolve({ success: false, cancelled: true });
+    function recoverByNextTrack() {
+        if (playbackIntent.nextRecovery) return playbackIntent.nextRecovery.promise || Promise.resolve({ success: false, cancelled: true });
         if (!playbackIntent.wanted || state.robotBlocked || skipPacing.pendingPause) return Promise.resolve({ success: false, cancelled: true });
-        if (Date.now() - playbackIntent.lastTrackCycleAt < 15000) return Promise.resolve({ success: false, verified: false, reason: 'cooldown' });
+        if (Date.now() - playbackIntent.lastNextRecoveryAt < 15000) return Promise.resolve({ success: false, verified: false, reason: 'cooldown' });
         const originalKey = cycleTrackKey();
         if (!originalKey) return Promise.resolve({ success: false, verified: false, reason: 'no-track' });
         const pm = getScPlaybackManager();
-        const queue = readScQueue(pm);
-        if (queue && queue.curPos === 0) return Promise.resolve({ success: false, verified: false, reason: 'no-previous-track' });
-        const direct = !!(queue && pm && typeof pm.setCurrentItem === 'function' && queue.infos[queue.curPos] &&
-            String(queue.infos[queue.curPos].id) === originalKey && queue.infos[queue.curPos - 1]);
-        const previousKey = direct ? String(queue.infos[queue.curPos - 1].id) : null;
-        const previousItem = direct ? queue.models[queue.curPos - 1] : null;
-        const originalItem = direct ? queue.models[queue.curPos] : null;
-        if (previousKey === originalKey) return Promise.resolve({ success: false, verified: false, reason: 'same-previous-track' });
-        const cycle = {
-            originalKey: originalKey, previousKey: previousKey,
+        const recovery = {
             revision: playbackIntent.pauseRevision || 0, cancelled: false,
             expectedPauseMedia: null, expectedPause: false, promise: null
         };
         const invalid = function () {
-            return cycle.cancelled || !playbackIntent.wanted || state.robotBlocked || !!skipPacing.pendingPause ||
-                (playbackIntent.pauseRevision || 0) !== cycle.revision;
+            return recovery.cancelled || !playbackIntent.wanted || state.robotBlocked || !!skipPacing.pendingPause ||
+                (playbackIntent.pauseRevision || 0) !== recovery.revision;
         };
-        const waitForTrack = async function (expected, leaving) {
-            const until = Date.now() + 1500;
-            do {
-                if (invalid()) return false;
-                const key = cycleTrackKey();
-                if (expected ? key === expected : !!key && key !== leaving) return true;
-                if (expected && key && key !== leaving) { cycle.cancelled = true; return false; }
-                await sleepMs(50);
-            } while (Date.now() < until);
-            return false;
-        };
-        const step = function (direction) {
-            cycle.expectedPauseMedia = getActiveMedia(true);
-            cycle.expectedPause = true;
-            if (direct) {
-                // A direct queue item avoids the native "previous" button merely
-                // seeking to 0:00, and returns to the same item even with shuffle.
-                pm.setCurrentItem(direction === 'prev' ? previousItem : originalItem,
-                    { seek: 0, userInitiated: false });
-                return true;
-            }
-            const method = direction === 'prev' ? 'playPrev' : 'playNext';
-            if (pm && typeof pm[method] === 'function') { pm[method]({ userInitiated: false }); return true; }
-            const button = document.querySelector(direction === 'prev' ? '.playControls__prev' : '.playControls__next');
+        const advance = function () {
+            recovery.expectedPauseMedia = getActiveMedia(true);
+            recovery.expectedPause = true;
+            // Use SoundCloud's next operation so its queue/shuffle policy is kept.
+            if (pm && typeof pm.playNext === 'function') { pm.playNext({ userInitiated: false }); return true; }
+            const button = document.querySelector('.playControls__next');
             if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return false;
             button.click();
             return true;
         };
-        playbackIntent.trackCycle = cycle;
-        playbackIntent.lastTrackCycleAt = Date.now();
-        cycle.promise = (async function () {
-            dlog('playback-track-cycle-start', { trackKey: originalKey });
+        playbackIntent.nextRecovery = recovery;
+        playbackIntent.lastNextRecoveryAt = Date.now();
+        // Defer execution until the shared promise is assigned (also covers reentry).
+        recovery.promise = Promise.resolve().then(async function () {
+            dlog('playback-next-recovery-start', { trackKey: originalKey });
             try {
-                if (!step('prev')) return { success: false, verified: false, reason: 'no-previous-control' };
-                if (!(await waitForTrack(previousKey, originalKey))) {
-                    return { success: false, verified: false, cancelled: invalid(), reason: 'previous-not-changed' };
+                if (invalid()) return { success: false, verified: false, cancelled: true };
+                if (!advance()) return { success: false, verified: false, reason: 'no-next-control' };
+                const until = Date.now() + 1500;
+                let nextKey = cycleTrackKey();
+                while (!invalid() && (!nextKey || nextKey === originalKey) && Date.now() < until) {
+                    await sleepMs(50);
+                    nextKey = cycleTrackKey();
                 }
-                cycle.previousKey = cycleTrackKey();
-                // Let SoundCloud complete its own transition before returning.
-                await sleepMs(200);
-                if (invalid() || cycleTrackKey() !== cycle.previousKey) return { success: false, cancelled: true, verified: false };
-                if (!step('next')) return { success: false, verified: false, reason: 'no-next-control' };
-                if (!(await waitForTrack(originalKey, cycle.previousKey))) return { success: false, verified: false, cancelled: invalid(), reason: 'original-not-restored' };
+                if (invalid()) return { success: false, verified: false, cancelled: true };
+                if (!nextKey || nextKey === originalKey) return { success: false, verified: false, reason: 'next-not-changed' };
                 const active = getActiveMedia(true);
                 const baseline = readPlaybackPosition(active);
-                if (active && active.paused && !active.ended && !invalid()) {
+                if (active && active.paused && !active.ended) {
                     const played = await invokeMediaPlay(active, 700, false);
                     if (!played.success) return { success: false, verified: false, reason: 'play-failed' };
                 }
                 const progressed = await waitForPlaybackProgress(getActiveMedia(true), baseline, 1800);
-                if (invalid() || cycleTrackKey() !== originalKey) return { success: false, cancelled: true, verified: false };
-                return { success: progressed, verified: progressed, recovered: progressed, method: 'previous-next', reason: progressed ? '' : 'no-progress' };
+                if (invalid() || cycleTrackKey() !== nextKey) return { success: false, cancelled: true, verified: false };
+                return { success: progressed, verified: progressed, recovered: progressed, method: 'next-track', reason: progressed ? '' : 'no-progress' };
             } catch (e) {
-                dlog('playback-track-cycle-error', errorName(e));
+                dlog('playback-next-recovery-error', errorName(e));
                 return { success: false, verified: false, reason: errorName(e) };
             } finally {
-                if (playbackIntent.trackCycle === cycle) playbackIntent.trackCycle = null;
-                dlog('playback-track-cycle-end', { trackKey: originalKey, cancelled: cycle.cancelled });
+                if (playbackIntent.nextRecovery === recovery) playbackIntent.nextRecovery = null;
+                dlog('playback-next-recovery-end', { trackKey: originalKey, cancelled: recovery.cancelled });
             }
-        })();
-        return cycle.promise;
+        });
+        return recovery.promise;
     }
 
     async function verifyAndRecoverExplicitPlay(media, initialPosition) {
@@ -3739,7 +3738,7 @@
         if (obsolete()) return { success: false, verified: false, cancelled: true };
         if (progressed) return { success: true, verified: true };
         dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
-        return recoverByTrackCycle();
+        return recoverByNextTrack();
     }
 
     // HTMLMediaElement.play() can reject or remain pending when the browser's
@@ -3799,7 +3798,7 @@
     }
 
     function schedulePlaybackRecovery(media, reason) {
-        if (playbackIntent.trackCycle) return;
+        if (playbackIntent.nextRecovery) return;
         const key = playbackTrackKey();
         if (!key || !playbackIntent.wanted || !state.discoveryEnabled || state.robotBlocked || playbackIntent.recoveryInFlight) return;
         if (playbackIntent.trackKey !== key) {
@@ -3832,8 +3831,8 @@
                     outcome = errorName(playResult.error);
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(playResult.error) });
                     if (!playResult.pending && outcome !== 'NotAllowedError' && playbackIntent.wanted && playbackTrackKey() === key) {
-                        const cycled = await recoverByTrackCycle();
-                        if (cycled.success) outcome = 'previous-next';
+                        const cycled = await recoverByNextTrack();
+                        if (cycled.success) outcome = 'next-track';
                     }
                     return;
                 }
@@ -3841,8 +3840,8 @@
                 if (outcome === 'not-playing') {
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
                     if (playbackIntent.wanted && playbackTrackKey() === key) {
-                        const cycled = await recoverByTrackCycle();
-                        if (cycled.success) outcome = 'previous-next';
+                        const cycled = await recoverByNextTrack();
+                        if (cycled.success) outcome = 'next-track';
                     }
                 }
             } catch (e) {
@@ -5675,7 +5674,7 @@
 
     // 前・次: 再生管理があればそれで、なければ画面のボタンを押す
     async function scTransport(method, selector, toast) {
-        cancelTrackCycle();
+        cancelNextRecovery();
         playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         let invoked = false;
         try {
@@ -5697,7 +5696,7 @@
 
     // 再生/一時停止: 一度だけネイティブ経路を選び、結果を検証して返す。
     async function scTogglePlay(toast) {
-        cancelTrackCycle();
+        cancelNextRecovery();
         playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         const playing = isLocalPlaying();
         const media = getActiveMedia(true);
@@ -5734,7 +5733,7 @@
                 const playResult = await invokeMediaPlay(media, 700, false);
                 if (!playResult.success) {
                     if (errorName(playResult.error) !== 'NotAllowedError' && playbackIntent.wanted) {
-                        const cycled = await recoverByTrackCycle();
+                        const cycled = await recoverByNextTrack();
                         if (cycled.success || cycled.cancelled) return cycled;
                     }
                     playbackIntent.wanted = false;
@@ -5760,7 +5759,7 @@
             }
         }
         if (!(await waitForLocalPlaying(true, 700))) {
-            const cycled = await recoverByTrackCycle();
+            const cycled = await recoverByNextTrack();
             if (cycled.success || cycled.cancelled) return cycled;
             playbackIntent.wanted = false;
             return fail(tt('m_commErr'));
@@ -5780,7 +5779,7 @@
         play: function (a, toast) { return scTogglePlay(toast); },
         next: function (a, toast) { return scTransport('playNext', '.playControls__next', toast); },
         seek: function (a, toast) {
-            cancelTrackCycle();
+            cancelNextRecovery();
             if (typeof a.ratio !== 'number') return { success: false, message: tt('m_commErr') };
             const ok = seekToSoundCloudRatio(a.ratio);
             if (!ok && toast) toast(tt('m_commErr'));
