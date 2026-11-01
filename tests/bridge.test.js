@@ -5,6 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
+const document = { addEventListener() {}, removeEventListener() {} };
+
 test('storage changes propagate Dig settings and Later removals to the MAIN world', () => {
   const posted = [];
   let onChange;
@@ -15,7 +17,7 @@ test('storage changes propagate Dig settings and Later removals to the MAIN worl
     storage: { local: { get(keys, cb) { cb({}); }, set() { writes++; } }, onChanged: { addListener(fn) { onChange = fn; } } }
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../content_bridge.js'), 'utf8'), {
-    window, chrome, console: { log() {} }, setTimeout() {}, clearTimeout() {}, Map
+    window, document, chrome, console: { log() {} }, setTimeout() {}, clearTimeout() {}, Map
   });
   posted.length = 0;
   onChange({ discoveryEnabled: { newValue: false }, laterArtists: { newValue: [] }, onboardingPending: { newValue: true } }, 'local');
@@ -52,7 +54,7 @@ test('Later bridge maps openList exactly and rejects unknown operations', () => 
     }
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../content_bridge.js'), 'utf8'), {
-    window, chrome, console: { log() {} }, setTimeout() {}, clearTimeout() {}, Map
+    window, document, chrome, console: { log() {} }, setTimeout() {}, clearTimeout() {}, Map
   });
   calls.length = 0;
   posted.length = 0;
@@ -83,7 +85,7 @@ test('page history bridge cannot export or delete history, and old recovery ARM 
     storage: {local:{get(keys, cb){cb({});},set(){}},onChanged:{addListener(){}}}
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../content_bridge.js'),'utf8'), {
-    window,chrome,console:{log(){}},setTimeout(){},clearTimeout(){},Map
+    window,document,chrome,console:{log(){}},setTimeout(){},clearTimeout(){},Map
   });
   calls.length = 0; posted.length = 0;
   for (const op of ['clear','deleteAll','page','stats']) {

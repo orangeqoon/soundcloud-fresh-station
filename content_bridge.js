@@ -14,6 +14,23 @@
     let requestSeq = 0;
     const pendingResponses = new Map(); // requestId -> { sendResponse, timer }
 
+    let shortcutKeys = {};
+    chrome.storage.local.get(['shortcutKeys'], function (items) {
+        if (!chrome.runtime.lastError && items && items.shortcutKeys) shortcutKeys = items.shortcutKeys;
+    });
+    document.addEventListener('keydown', function (event) {
+        if (!event.isTrusted || event.repeat || event.isComposing || event.defaultPrevented) return;
+        const target = event.target;
+        if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+        if (!event.altKey || event.ctrlKey || event.metaKey || !/^Key[A-Z]$/.test(event.code)) return;
+        const binding = (event.shiftKey ? 'Alt+Shift+' : 'Alt+') + event.code.slice(3);
+        const action = Object.keys(shortcutKeys).find(function (key) { return shortcutKeys[key] === binding; });
+        if (!action || ['play', 'next', 'prev', 'like', 'later', 'dislike', 'hate'].indexOf(action) < 0) return;
+        event.preventDefault();
+        event.stopPropagation();
+        window.postMessage({ type: 'SC_FRESH_STATION_SHORTCUT', action: action }, window.location.origin);
+    }, true);
+
     function sendStoredSettingsToMainWorld() {
         if (!chrome.storage || !chrome.storage.local) return;
         chrome.storage.local.get(READ_KEYS, function (items) {
@@ -184,6 +201,7 @@
     try {
         chrome.storage.onChanged.addListener(function (changes, area) {
             if (area !== 'local') return;
+            if (changes.shortcutKeys) shortcutKeys = changes.shortcutKeys.newValue || {};
             if (changes.laterArtists) {
                 window.postMessage({ type: 'SC_FRESH_STATION_LATER_CHANGED', list: changes.laterArtists.newValue || [] }, window.location.origin);
             }

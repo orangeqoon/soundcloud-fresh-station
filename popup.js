@@ -2,6 +2,53 @@ document.addEventListener('DOMContentLoaded', async function () {
   let currentLang = 'auto';
   let t = FreshDigI18n.getTexts(currentLang);
   let cachedData = null;
+  let shortcutKeys = {};
+  let shortcutEditing = null;
+  const shortcutCopy = {
+    ja: ['⌨ ショートカット設定', 'SoundCloudページで使用。登録は Alt＋英字（Shift併用可）。', '未設定', 'キーを押す（Escで取消）', '解除', '再生 / 一時停止', '次の曲', '前の曲', 'いいね', '後で聴く人に追加', '不再生', '作者を除外'],
+    en: ['⌨ Keyboard shortcuts', 'On SoundCloud: Alt + letter, optionally with Shift.', 'Not set', 'Press a key (Esc cancels)', 'Clear', 'Play / Pause', 'Next', 'Previous', 'Like', 'Save artist for later', 'NoPlay', 'Exclude artist'],
+    de: ['⌨ Tastenkürzel', 'Auf SoundCloud: Alt + Buchstabe, optional mit Shift.', 'Nicht belegt', 'Taste drücken (Esc beendet)', 'Löschen', 'Wiedergabe / Pause', 'Weiter', 'Zurück', 'Gefällt mir', 'Für später merken', 'Nicht abspielen', 'Künstler ausschließen'],
+    ru: ['⌨ Горячие клавиши', 'На SoundCloud: Alt + буква, можно с Shift.', 'Не назначено', 'Нажмите клавишу (Esc — отмена)', 'Очистить', 'Играть / пауза', 'Следующий', 'Предыдущий', 'Нравится', 'Сохранить автора', 'Не воспроизводить', 'Исключить автора'],
+    vi: ['⌨ Phím tắt', 'Trên SoundCloud: Alt + chữ cái, có thể thêm Shift.', 'Chưa đặt', 'Nhấn phím (Esc để hủy)', 'Xóa', 'Phát / Tạm dừng', 'Bài tiếp', 'Bài trước', 'Thích', 'Lưu nghệ sĩ', 'Không phát', 'Loại nghệ sĩ'],
+    es: ['⌨ Atajos de teclado', 'En SoundCloud: Alt + letra, opcionalmente con Shift.', 'Sin asignar', 'Pulsa una tecla (Esc cancela)', 'Borrar', 'Reproducir / Pausar', 'Siguiente', 'Anterior', 'Me gusta', 'Guardar artista', 'No reproducir', 'Excluir artista']
+  };
+  const shortcutActions = ['play', 'next', 'prev', 'like', 'later', 'dislike', 'hate'];
+  function renderShortcuts() {
+    const words = shortcutCopy[FreshDigI18n.resolveLanguage(currentLang)] || shortcutCopy.en;
+    document.getElementById('shortcut-title').textContent = words[0];
+    document.getElementById('shortcut-hint').textContent = words[1];
+    const rows = document.getElementById('shortcut-rows');
+    rows.replaceChildren();
+    shortcutActions.forEach(function (action, index) {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px;margin:5px 0';
+      const label = document.createElement('span');
+      label.textContent = words[index + 5];
+      label.style.flex = '1';
+      const assign = document.createElement('button');
+      assign.type = 'button';
+      assign.textContent = shortcutEditing === action ? words[3] : (shortcutKeys[action] || words[2]);
+      assign.addEventListener('click', function () { shortcutEditing = action; renderShortcuts(); document.getElementById('shortcut-rows').querySelector('[data-editing="true"]').focus(); });
+      if (shortcutEditing === action) assign.dataset.editing = 'true';
+      const clear = document.createElement('button');
+      clear.type = 'button'; clear.textContent = words[4];
+      clear.addEventListener('click', function () { delete shortcutKeys[action]; shortcutEditing = null; chrome.storage.local.set({ shortcutKeys }); renderShortcuts(); });
+      row.append(label, assign, clear); rows.appendChild(row);
+    });
+  }
+  document.addEventListener('keydown', function (event) {
+    if (!shortcutEditing) return;
+    event.preventDefault(); event.stopPropagation();
+    if (event.key === 'Escape') { shortcutEditing = null; renderShortcuts(); return; }
+    if (!event.altKey || event.ctrlKey || event.metaKey || !/^Key[A-Z]$/.test(event.code)) return;
+    const binding = (event.shiftKey ? 'Alt+Shift+' : 'Alt+') + event.code.slice(3);
+    shortcutActions.forEach(function (action) { if (shortcutKeys[action] === binding) delete shortcutKeys[action]; });
+    shortcutKeys[shortcutEditing] = binding;
+    shortcutEditing = null;
+    chrome.storage.local.set({ shortcutKeys });
+    renderShortcuts();
+  }, true);
+  chrome.storage.local.get(['shortcutKeys'], function (stored) { shortcutKeys = stored && stored.shortcutKeys || {}; renderShortcuts(); });
   const heardEntryTexts = {
     ja: '🎧 既聴曲履歴 / バックアップ',
     en: '🎧 Heard history / Backup',
@@ -60,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
   function applyStaticTranslations() {
+    renderShortcuts();
     document.documentElement.lang = FreshDigI18n.resolveLanguage(currentLang);
     document.getElementById('btn-miniplayer').textContent = t.btnMiniPlayer;
 
@@ -424,7 +472,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   const guideButton = document.getElementById('btn-open-guide');
   if (guideButton) {
     guideButton.addEventListener('click', function () {
-      chrome.tabs.create({ url: chrome.runtime.getURL('guide.html') }, function () {
+      // Reopen the same first-use guide inside the SoundCloud page. Keeping
+      // this in storage lets onboarding.js show it in the already-open tab
+      // without opening a separate guide page.
+      chrome.storage.local.set({ onboardingPending: true }, function () {
         if (!chrome.runtime.lastError) window.close();
       });
     });

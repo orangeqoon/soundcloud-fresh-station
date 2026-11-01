@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         FreshDig for SoundCloud - 新アーティスト自動発掘
-// @version      2.14.4
+// @version      2.14.11
 // @description  知ってる曲ゼロ！未試聴の新アーティストだけを連続再生・ワンクリック追加・Dislike除外・浮遊ミニプレイヤー
 // @author       Antigravity
 // @match        https://soundcloud.com/*
@@ -2094,8 +2094,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.14.4)');
-    const RUNTIME_VERSION = '2.14.4';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.14.11)');
+    const RUNTIME_VERSION = '2.14.11';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -2740,6 +2740,7 @@
 
     function notePausedMedia(media) {
         if (media.ended) return;
+        if (playbackIntent.explicitPlayUntil > Date.now()) return;
         const cycle = playbackIntent.nextRecovery;
         if (cycle && !cycle.cancelled && cycle.expectedPauseMedia === media && cycle.expectedPause) {
             cycle.expectedPause = false;
@@ -2792,6 +2793,14 @@
     // clock remains frozen after a long-idle tab. Probe native clicks too, so
     // recovery also works when the user starts playback outside the mini player.
     document.addEventListener('click', function (ev) {
+        if (ev.isTrusted) {
+            let control = null;
+            try { control = ev.target && ev.target.closest && ev.target.closest('.playControls__play, .playControls__prev, .playControls__next'); } catch (e) {}
+            if (control) {
+                playbackIntent.explicitPlayUntil = 0;
+                playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
+            }
+        }
         if (ev.isTrusted && playbackIntent.nextRecovery) {
             let transport = null;
             try { transport = ev.target && ev.target.closest && ev.target.closest('.playControls__play, .playControls__prev, .playControls__next'); } catch (e) {}
@@ -2805,6 +2814,7 @@
         try { button = ev.target && ev.target.closest ? ev.target.closest('.playControls__play') : null; } catch (e) {}
         if (!button || button.classList.contains('playing') || playbackIntent.recoveryInFlight || playbackIntent.nextRecovery) return;
         playbackIntent.wanted = true;
+        playbackIntent.explicitPlayUntil = Date.now() + 3000;
         const media = getActiveMedia(true);
         const initialPosition = readPlaybackPosition(media);
         setTimeout(async function () {
@@ -5761,12 +5771,11 @@
         if (playbackIntent.nextRecovery) playbackIntent.nextRecovery.cancelled = true;
     }
 
-    function recoverByNextTrack() {
+    function recoverByNextTrack(forceFromExplicitPlay) {
         if (playbackIntent.nextRecovery) return playbackIntent.nextRecovery.promise || Promise.resolve({ success: false, cancelled: true });
-        if (!playbackIntent.wanted || state.robotBlocked || skipPacing.pendingPause) return Promise.resolve({ success: false, cancelled: true });
+        if ((!forceFromExplicitPlay && !playbackIntent.wanted) || state.robotBlocked || skipPacing.pendingPause) return Promise.resolve({ success: false, cancelled: true });
         if (Date.now() - playbackIntent.lastNextRecoveryAt < 15000) return Promise.resolve({ success: false, verified: false, reason: 'cooldown' });
         const originalKey = cycleTrackKey();
-        if (!originalKey) return Promise.resolve({ success: false, verified: false, reason: 'no-track' });
         const pm = getScPlaybackManager();
         const recovery = {
             revision: playbackIntent.pauseRevision || 0, cancelled: false,
@@ -5776,15 +5785,21 @@
             return recovery.cancelled || !playbackIntent.wanted || state.robotBlocked || !!skipPacing.pendingPause ||
                 (playbackIntent.pauseRevision || 0) !== recovery.revision;
         };
-        const advance = function () {
-            recovery.expectedPauseMedia = getActiveMedia(true);
-            recovery.expectedPause = true;
-            // Use SoundCloud's next operation so its queue/shuffle policy is kept.
-            if (pm && typeof pm.playNext === 'function') { pm.playNext({ userInitiated: false }); return true; }
+        const clickNext = function () {
             const button = document.querySelector('.playControls__next');
             if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return false;
             button.click();
             return true;
+        };
+        const advance = function () {
+            recovery.expectedPauseMedia = getActiveMedia(true);
+            recovery.expectedPause = true;
+            // Use SoundCloud's next operation so its queue/shuffle policy is kept.
+            if (clickNext()) return true;
+            if (pm && typeof pm.playNext === 'function') {
+                try { pm.playNext({ userInitiated: false }); return true; } catch (e) { dlog('playback-next-manager-error', errorName(e)); }
+            }
+            return false;
         };
         playbackIntent.nextRecovery = recovery;
         playbackIntent.lastNextRecoveryAt = Date.now();
@@ -5826,11 +5841,11 @@
         const key = playbackTrackKey();
         const revision = playbackIntent.pauseRevision || 0;
         const obsolete = function () { return !playbackIntent.wanted || playbackTrackKey() !== key || (playbackIntent.pauseRevision || 0) !== revision || !!skipPacing.pendingPause; };
-        const progressed = await waitForPlaybackProgress(media, initialPosition, 1000);
+        const progressed = await waitForPlaybackProgress(media, initialPosition, 2000);
         if (obsolete()) return { success: false, verified: false, cancelled: true };
         if (progressed) return { success: true, verified: true };
         dlog('playback-progress-stalled', { playback: getPlaybackDiagnostic(media) });
-        return recoverByNextTrack();
+        return recoverByNextTrack(true);
     }
 
     // HTMLMediaElement.play() can reject or remain pending when the browser's
@@ -5923,7 +5938,7 @@
                     outcome = errorName(playResult.error);
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries, error: errorName(playResult.error) });
                     if (!playResult.pending && outcome !== 'NotAllowedError' && playbackIntent.wanted && playbackTrackKey() === key) {
-                        const cycled = await recoverByNextTrack();
+                        const cycled = await recoverByNextTrack(true);
                         if (cycled.success) outcome = 'next-track';
                     }
                     return;
@@ -5932,7 +5947,7 @@
                 if (outcome === 'not-playing') {
                     dlog('playback-recovery-failed', { reason: reason, n: playbackIntent.recoveries });
                     if (playbackIntent.wanted && playbackTrackKey() === key) {
-                        const cycled = await recoverByNextTrack();
+                        const cycled = await recoverByNextTrack(true);
                         if (cycled.success) outcome = 'next-track';
                     }
                 }
@@ -7588,7 +7603,7 @@
         if (!r) return false;
         if (isLocalPlaying()) return false;
         // 他タブが再生中なら 5秒、一時停止中等でも最大 30 秒以内の心拍のみ有効とする（眠り・切断対策）
-        return r.d.playing ? (Date.now() - r.at < 5000) : (Date.now() - r.at < 30000);
+        return r.d.playing ? (Date.now() - r.at < 5000) : true;
     }
 
     function mpCurrentData() {
@@ -7767,6 +7782,7 @@
     // 前・次: 再生管理があればそれで、なければ画面のボタンを押す
     async function scTransport(method, selector, toast) {
         cancelNextRecovery();
+        playbackIntent.explicitPlayUntil = 0;
         playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         let invoked = false;
         try {
@@ -7789,6 +7805,7 @@
     // 再生/一時停止: 一度だけネイティブ経路を選び、結果を検証して返す。
     async function scTogglePlay(toast) {
         cancelNextRecovery();
+        playbackIntent.explicitPlayUntil = 0;
         playbackIntent.pauseRevision = (playbackIntent.pauseRevision || 0) + 1;
         const playing = isLocalPlaying();
         const media = getActiveMedia(true);
@@ -7818,14 +7835,16 @@
         }
 
         playbackIntent.wanted = true;
+        playbackIntent.explicitPlayUntil = Date.now() + 5000;
         const initialPosition = readPlaybackPosition(media);
+        const progressCheck = verifyAndRecoverExplicitPlay(media, initialPosition);
         let invoked = false;
         try {
             if (media && typeof media.play === 'function' && !media.ended) {
                 const playResult = await invokeMediaPlay(media, 700, false);
                 if (!playResult.success) {
                     if (errorName(playResult.error) !== 'NotAllowedError' && playbackIntent.wanted) {
-                        const cycled = await recoverByNextTrack();
+                        const cycled = await progressCheck;
                         if (cycled.success || cycled.cancelled) return cycled;
                     }
                     playbackIntent.wanted = false;
@@ -7850,13 +7869,7 @@
                 return fail(errorName(e));
             }
         }
-        if (!(await waitForLocalPlaying(true, 700))) {
-            const cycled = await recoverByNextTrack();
-            if (cycled.success || cycled.cancelled) return cycled;
-            playbackIntent.wanted = false;
-            return fail(tt('m_commErr'));
-        }
-        const verified = await verifyAndRecoverExplicitPlay(getActiveMedia(true) || media, initialPosition);
+        const verified = await progressCheck;
         if (!verified.success) {
             if (verified.cancelled) return { success: false, verified: false, cancelled: true };
             playbackIntent.wanted = false;
@@ -8034,6 +8047,14 @@
         // 音量UIの同期
         syncMiniPlayerVolumeUI(typeof d.vol === 'number' ? d.vol : getSoundCloudVolume());
     }
+
+    window.addEventListener('message', function (event) {
+        if (event.source !== window || !event.data || event.data.type !== 'SC_FRESH_STATION_SHORTCUT') return;
+        const action = event.data.action;
+        if (['play', 'next', 'prev', 'like', 'later', 'dislike', 'hate'].indexOf(action) < 0) return;
+        const fn = MP_ACTIONS[action];
+        if (fn) Promise.resolve().then(function () { return fn({}, mpToast, null); }).catch(function (e) { dlog('shortcut-error', errorName(e)); });
+    });
 
     // 初期化実行: Windows メディア操作パネル用の追加ハンドラー登録
     registerAutoMiniPlayerHandler();

@@ -2,7 +2,7 @@
 
 - Track: next-track playback recovery.
 - Status: DONE (automated verification; live audible SoundCloud recovery not tested).
-- Version: 2.14.4.
+- Version: 2.14.11.
 - Scope: Dig ON station queue prioritization using deterministic, local scoring.
 - Status: DONE (automated verification; live SoundCloud station acceptance remains).
 - Verification: 97 Node tests pass; UserScript build and portability checks pass.

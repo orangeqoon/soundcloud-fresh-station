@@ -23,7 +23,7 @@ function instrumentHook() {
     'getCoreSkipReason', 'getSkipReason', 'isOnLaterArtistPage', 'doAutoSkip', 'skipPacing', 'rememberPlaybackMedia', 'laterState', 'pendingInteractions', 'prioritizeDigQueue',
     'beginInteraction', 'getPendingInteraction', 'endInteraction',
     'syncCurrentTrackInteractionsFromDom', 'toggleLikeFromNative', 'injectButtons',
-    'fdRemote', 'TAB_ID', 'getAutoPipDiagnostics', 'registerAutoMiniPlayerHandler', 'setAutoMiniPlayer', 'mpRemoteCall',
+    'fdRemote', 'TAB_ID', 'getAutoPipDiagnostics', 'registerAutoMiniPlayerHandler', 'setAutoMiniPlayer', 'mpRemoteCall', 'mpUseRemote',
     'schedulePlaybackRecovery', 'playbackIntent', 'scTogglePlay', 'scInternals',
     'getDiagLogEntries', 'getPlaybackDiagnostic',
     'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute',
@@ -645,7 +645,9 @@ function makeCycleFixture(t, options = {}) {
 
 test('stalled playback skips once to the next track without closing or reloading', async t => {
   const f = makeCycleFixture(t);
+  const started = Date.now();
   const result = await f.env.hooks.verifyAndRecoverExplicitPlay(f.media, 0);
+  assert.ok(Date.now() - started >= 1900, 'do not skip before the two-second progress check');
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.verified, true);
   assert.strictEqual(result.method, 'next-track');
@@ -664,6 +666,18 @@ test('mini-player play action returns a verified next-track recovery result', as
   assert.deepStrictEqual(f.steps, [103]);
 });
 
+test('pause event from a failed play attempt still allows next-track recovery', async t => {
+  const f = makeCycleFixture(t);
+  f.media.paused = true;
+  f.media.play = function () {
+    f.env.win.document.dispatchEvent({ type: 'pause', target: f.media });
+    return Promise.reject(new Error('play failed'));
+  };
+  const result = await f.env.hooks.MP_ACTIONS.play({}, () => {});
+  assert.deepStrictEqual(f.steps, [103]);
+  assert.strictEqual(result.success, true);
+});
+
 test('native next works without queue access and never invokes previous', async t => {
   const f = makeCycleFixture(t);
   delete f.pm.getQueue;
@@ -672,6 +686,25 @@ test('native next works without queue access and never invokes previous', async 
   f.pm.playPrev = () => { throw new Error('previous must not run'); };
   assert.strictEqual((await f.env.hooks.recoverByNextTrack()).success, true);
   assert.deepStrictEqual(f.steps, [103]);
+});
+
+test('paused remote player remains the command target after its heartbeat becomes stale', () => {
+  const env = makeEnv({ media: [] });
+  env.hooks.fdRemote.now = { tabId: 'remote', at: Date.now() - 60000, d: { playing: false } };
+  assert.strictEqual(env.hooks.mpUseRemote(), true);
+});
+
+test('next recovery issues a next command even when the current track id is unavailable', async () => {
+  const media = makeMedia({ paused: true });
+  const env = makeEnv({ media: [media] });
+  let calls = 0;
+  env.hooks.playbackIntent.wanted = true;
+  env.hooks.scInternals.req = { c: { playback: { exports: {
+    playNext() { calls++; }, playPrev() {}, getCurrentSound() { return null; }, pauseCurrent() {}
+  } } } };
+  const result = await env.hooks.recoverByNextTrack(true);
+  assert.strictEqual(calls, 1);
+  assert.strictEqual(result.success, false);
 });
 
 test('a next operation that does not change tracks stops without retrying', async t => {

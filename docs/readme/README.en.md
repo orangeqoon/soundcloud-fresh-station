@@ -11,7 +11,7 @@ While listening to a station, familiar tracks and unwanted artists can keep retu
 ## Main features
 
 - **Dig mode**: detects and skips liked, followed, and excluded tracks, artists, and genres
-- **Skip tracks you have heard once**: only when enabled in Dig settings, records tracks that actually played for 10 seconds and skips them next time (off by default)
+- **Optional heard history**: only when enabled in Dig settings, records tracks that actually played for 10 seconds and skips them next time (off by default)
 - **Dislike / Hate**: exclude a single track or a whole artist
 - **Listen-later list**: save artists and open their tracks page from the extension icon
 - **Mini player**: a separate window to play, skip, adjust volume, add to playlist, Like, Repost, Follow, and exclude
