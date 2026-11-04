@@ -197,11 +197,13 @@ test('i18n: all supported languages have the same keys, and skip reasons exist',
   const ru = Object.keys(i18n.translations.ru).sort();
   const vi = Object.keys(i18n.translations.vi).sort();
   const es = Object.keys(i18n.translations.es).sort();
+  const ro = Object.keys(i18n.translations.ro).sort();
   assert.deepStrictEqual(ja, en);
   assert.deepStrictEqual(ja, de);
   assert.deepStrictEqual(ja, ru);
   assert.deepStrictEqual(ja, vi);
   assert.deepStrictEqual(ja, es);
+  assert.deepStrictEqual(ja, ro);
   for (const k of ['skipReasonDisliked', 'skipReasonHated', 'skipReasonGenre', 'skipReasonOwn', 'skipReasonLiked', 'skipReasonFollowing']) {
     assert.ok(ja.includes(k), k);
   }
@@ -235,6 +237,7 @@ test('i18n: {placeholders} match across all supported languages', () => {
     assert.strictEqual(ph(i18n.translations.ru[k]), expected, 'ru placeholders differ: ' + k);
     assert.strictEqual(ph(i18n.translations.vi[k]), expected, 'vi placeholders differ: ' + k);
     assert.strictEqual(ph(i18n.translations.es[k]), expected, 'es placeholders differ: ' + k);
+    assert.strictEqual(ph(i18n.translations.ro[k]), expected, 'ro placeholders differ: ' + k);
   }
 });
 
@@ -245,8 +248,9 @@ test('i18n: resolveLanguage resolves all supported languages properly', () => {
   assert.strictEqual(i18n.resolveLanguage('ru'), 'ru');
   assert.strictEqual(i18n.resolveLanguage('vi'), 'vi');
   assert.strictEqual(i18n.resolveLanguage('es'), 'es');
+  assert.strictEqual(i18n.resolveLanguage('ro'), 'ro');
   const autoResolved = i18n.resolveLanguage('auto');
-  assert.ok(['ja', 'en', 'de', 'ru', 'vi', 'es'].includes(autoResolved));
+  assert.ok(['ja', 'en', 'de', 'ru', 'vi', 'es', 'ro'].includes(autoResolved));
 });
 
 test('rate limiter: min gap and per-minute cap', () => {

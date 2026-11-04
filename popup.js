@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     de: ['⌨ Tastenkürzel', 'Auf SoundCloud: Alt + Buchstabe, optional mit Shift.', 'Nicht belegt', 'Taste drücken (Esc beendet)', 'Löschen', 'Wiedergabe / Pause', 'Weiter', 'Zurück', 'Gefällt mir', 'Für später merken', 'Nicht abspielen', 'Künstler ausschließen'],
     ru: ['⌨ Горячие клавиши', 'На SoundCloud: Alt + буква, можно с Shift.', 'Не назначено', 'Нажмите клавишу (Esc — отмена)', 'Очистить', 'Играть / пауза', 'Следующий', 'Предыдущий', 'Нравится', 'Сохранить автора', 'Не воспроизводить', 'Исключить автора'],
     vi: ['⌨ Phím tắt', 'Trên SoundCloud: Alt + chữ cái, có thể thêm Shift.', 'Chưa đặt', 'Nhấn phím (Esc để hủy)', 'Xóa', 'Phát / Tạm dừng', 'Bài tiếp', 'Bài trước', 'Thích', 'Lưu nghệ sĩ', 'Không phát', 'Loại nghệ sĩ'],
-    es: ['⌨ Atajos de teclado', 'En SoundCloud: Alt + letra, opcionalmente con Shift.', 'Sin asignar', 'Pulsa una tecla (Esc cancela)', 'Borrar', 'Reproducir / Pausar', 'Siguiente', 'Anterior', 'Me gusta', 'Guardar artista', 'No reproducir', 'Excluir artista']
+    es: ['⌨ Atajos de teclado', 'En SoundCloud: Alt + letra, opcionalmente con Shift.', 'Sin asignar', 'Pulsa una tecla (Esc cancela)', 'Borrar', 'Reproducir / Pausar', 'Siguiente', 'Anterior', 'Me gusta', 'Guardar artista', 'No reproducir', 'Excluir artista'],
+    ro: ['⌨ Scurtături', 'Pe SoundCloud: Alt + literă (± Shift).', 'Nesetat', 'Apasă o tastă (Esc = anulare)', 'Șterge', 'Play / Pauză', 'Înainte', 'Înapoi', 'Like', 'Mai târziu', 'NoPlay', 'Exclude artist']
   };
   const shortcutActions = ['play', 'next', 'prev', 'like', 'later', 'dislike', 'hate'];
   function renderShortcuts() {

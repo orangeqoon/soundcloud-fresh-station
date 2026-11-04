@@ -1,6 +1,6 @@
 # FreshDig for SoundCloud
 
-> 🌐 日本語 | [English](docs/readme/README.en.md) | [Deutsch](docs/readme/README.de.md) | [Русский](docs/readme/README.ru.md) | [Español](docs/readme/README.es.md) | [Tiếng Việt](docs/readme/README.vi.md)
+> 🌐 日本語 | [English](docs/readme/README.en.md) | [Deutsch](docs/readme/README.de.md) | [Русский](docs/readme/README.ru.md) | [Español](docs/readme/README.es.md) | [Tiếng Việt](docs/readme/README.vi.md) | [Română](docs/readme/README.ro.md)
 
 FreshDigは、SoundCloudのステーションを自分の発掘ルールで整理するEdge / Chrome拡張機能です。Dig ONにすると、Like済み曲、Follow中作者、不再生曲、除外作者などをスキップし、残ったキューから未試聴曲と作者の分散を優先します。
 

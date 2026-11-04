@@ -168,7 +168,127 @@ FreshDig превращает радиостанции SoundCloud в идеал�
 
 ---
 
-## 5. Chrome Web Store デベロッパーダッシュボードでの登録手順
+## 5. スペイン語 (Spanish - es)
+
+### 拡張機能の名前 (Extension Name) [最大45文字]
+```text
+FreshDig para SoundCloud - Artistas nuevos
+```
+
+### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
+```text
+Organiza estaciones de SoundCloud con Dig: omite Me gusta, seguidos, NoPlay y bloqueados para descubrir artistas nuevos.
+```
+
+### 詳細な説明 (Detailed Description)
+```text
+FreshDig organiza las estaciones de SoundCloud según tus reglas de descubrimiento. Con Dig ACTIVADO, omite canciones con Me gusta, artistas que sigues, canciones NoPlay, artistas guardados y artistas bloqueados, y prioriza canciones nuevas y variedad de artistas en la cola que ofrece SoundCloud.
+
+Funciones principales:
+1. Motor de descubrimiento (modo Dig):
+Omite canciones que ya te gustaron y artistas que ya sigues. Las estaciones siguen siendo de SoundCloud; FreshDig solo filtra y prioriza candidatos en local.
+
+2. Filtro rápido (Dislike y Hate):
+- Dislike: omite y excluye solo esta canción.
+- Hate: omite y bloquea todas las canciones de este artista.
+
+3. Acciones en un clic:
+- Añade a tu playlist favorita configurada.
+- Like, Repost y Follow al instante.
+- Guarda el artista para más tarde desde el icono de la extensión.
+
+4. Mini player flotante (Picture-in-Picture):
+Ventana compacta para reproducir, omitir, volumen, Like, Repost, Follow y excluir mientras navegas.
+
+5. Integración con la barra de tareas de Windows:
+Controla la reproducción y ve la portada desde la miniatura de la barra de tareas.
+
+Ajustes, listas e historial (opcional, desactivado por defecto) se guardan en el navegador. FreshDig no tiene servidor propio de analítica. Like, Follow, Repost y añadir a playlist se comunican con SoundCloud porque usan tu cuenta.
+```
+
+---
+
+## 6. ベトナム語 (Vietnamese - vi)
+
+### 拡張機能の名前 (Extension Name) [最大45文字]
+```text
+FreshDig cho SoundCloud - Nghệ sĩ mới
+```
+
+### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
+```text
+Sắp xếp station SoundCloud bằng Dig: bỏ qua bài đã thích, nghệ sĩ theo dõi, NoPlay và nghệ sĩ bị chặn để khám phá nghệ sĩ mới.
+```
+
+### 詳細な説明 (Detailed Description)
+```text
+FreshDig sắp xếp các station SoundCloud theo quy tắc khám phá của bạn. Khi Dig BẬT, tiện ích bỏ qua bài đã thích (Like), nghệ sĩ đang theo dõi, bài NoPlay, nghệ sĩ đã lưu và nghệ sĩ bị chặn, rồi ưu tiên bài chưa nghe và sự đa dạng nghệ sĩ trong hàng đợi mà SoundCloud cung cấp.
+
+Tính năng chính:
+1. Bộ lọc khám phá (chế độ Dig):
+Tự động bỏ qua bài bạn đã thích và nghệ sĩ bạn đang theo dõi. Station vẫn là của SoundCloud — FreshDig chỉ lọc và ưu tiên ứng viên trên máy.
+
+2. Lọc nhanh (Dislike & Hate):
+- Dislike: bỏ qua và loại trừ chỉ bài này.
+- Hate: bỏ qua và chặn mọi bài của nghệ sĩ này.
+
+3. Thao tác một chạm:
+- Thêm nhanh vào playlist yêu thích đã cấu hình.
+- Like, Repost, Follow ngay tại chỗ.
+- Lưu nghệ sĩ để nghe sau từ biểu tượng tiện ích.
+
+4. Mini player nổi (Picture-in-Picture):
+Cửa sổ nhỏ để phát, bỏ qua, chỉnh âm lượng, Like, Repost, Follow và loại trừ khi đang duyệt web.
+
+5. Tích hợp thanh tác vụ Windows:
+Điều khiển phát lại và xem ảnh bìa từ thumbnail thanh tác vụ.
+
+Cài đặt, danh sách và lịch sử (tùy chọn, mặc định tắt) được lưu cục bộ trong trình duyệt. FreshDig không có máy chủ phân tích riêng. Like, Follow, Repost và thêm vào playlist giao tiếp với SoundCloud vì dùng tài khoản của bạn.
+```
+
+---
+
+## 7. ルーマニア語 (Romanian - ro)
+
+### 拡張機能の名前 (Extension Name) [最大45文字]
+```text
+FreshDig for SoundCloud - Artiști noi
+```
+
+### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
+```text
+Organizează station-urile SC cu Dig: omite Like, urmăriți, NoPlay și blocați.
+```
+
+### 詳細な説明 (Detailed Description)
+```text
+FreshDig organizează stațiile SoundCloud după regulile tale de descoperire. Cu Dig ACTIVAT, omite piesele apreciate (Like), artiștii urmăriți, piesele NoPlay, artiștii salvați și artiștii blocați, apoi prioritizează piesele nevăzute și diversitatea artiștilor în coada pe care o oferă SoundCloud.
+
+Funcții principale:
+1. Motor de descoperire (modul Dig):
+Omite automat piesele pe care le-ai apreciat și artiștii pe care îi urmărești. Stațiile SoundCloud rămân ale SoundCloud — FreshDig doar filtrează și prioritizează candidații locali.
+
+2. Filtrare rapidă (Dislike & Hate):
+- Dislike: omite și exclude doar această piesă.
+- Hate: omite și blochează toate piesele acestui artist.
+
+3. Acțiuni dintr-un clic:
+- Adaugă rapid în playlistul preferat configurat.
+- Like, Repost, Follow artistul pe loc.
+- Salvează artistul pentru mai târziu din pictograma extensiei.
+
+4. Mini player plutitor (Picture-in-Picture):
+Fereastră compactă pentru redare, omitere, volum, Like, Repost, Follow și excludere în timp ce navighezi.
+
+5. Integrare cu bara de activități Windows:
+Controlează redarea și vezi coperta din miniatura barei de activități.
+
+Setările, listele și istoricul (opțional, dezactivat implicit) sunt stocate local în browser. FreshDig nu are server propriu de analiză. Like, Follow, Repost și adăugarea în playlist comunică cu SoundCloud, deoarece folosesc contul tău.
+```
+
+---
+
+## 8. Chrome Web Store デベロッパーダッシュボードでの登録手順
 
 1. **[Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole/)** にアクセスします。
 2. 対象の拡張機能（FreshDig for SoundCloud）をクリックします。
@@ -180,7 +300,7 @@ FreshDig превращает радиостанции SoundCloud в идеал�
 
 ---
 
-## 6. 各言語別 ストア画像アセット一覧 (Visual Assets)
+## 9. 各言語別 ストア画像アセット一覧 (Visual Assets)
 
 各言語ディレクトリ（`dist/{lang}/`）に Chrome Web Store 推奨仕様のスクリーンショットおよびプロモーション タイルが配置されています。
 

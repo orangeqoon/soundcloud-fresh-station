@@ -1,6 +1,6 @@
 # FreshDig for SoundCloud
 
-> 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md)
+> 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md) | [Română](README.ro.md)
 
 FreshDig is an Edge / Chrome extension that organizes SoundCloud Stations around your discovery rules. With Dig ON, it skips liked tracks, followed artists, NoPlay tracks, saved artists, and blocked artists, then prioritizes unseen tracks and artist variety within SoundCloud's existing queue.
 

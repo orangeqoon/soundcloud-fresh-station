@@ -1,6 +1,6 @@
 # FreshDig for SoundCloud
 
-> 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md)
+> 🌐 [日本語](../../README.md) | [English](README.en.md) | [Deutsch](README.de.md) | [Русский](README.ru.md) | [Español](README.es.md) | [Tiếng Việt](README.vi.md) | [Română](README.ro.md)
 
 FreshDig — расширение Chrome и Edge для слушателей, диджеев и продюсеров, которые ищут новых исполнителей через станции SoundCloud. Режим Dig применяет собственные правила к кандидатам и очереди, полученным от SoundCloud.
 

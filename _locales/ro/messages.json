@@ -1,0 +1,14 @@
+{
+  "extensionName": {
+    "message": "FreshDig for SoundCloud - Artiști noi",
+    "description": "Extension title"
+  },
+  "extensionDesc": {
+    "message": "Organizează station-urile SC cu Dig: omite Like, urmăriți, NoPlay și blocați.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "Setări FreshDig",
+    "description": "Extension action icon tooltip"
+  }
+}

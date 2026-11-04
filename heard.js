@@ -92,6 +92,36 @@
             exportDone: 'Se guardaron {count} canciones en {parts} archivos JSON.', importProgress: 'Importando {file}…',
             importDone: 'Se añadieron {added} canciones ({skipped} existentes o duplicadas).', invalidFile: 'El formato de copia no es válido o el archivo es demasiado grande.',
             operationFailed: 'La operación falló.', deleteDone: 'Se eliminó el historial de canciones escuchadas.', noRecords: 'No hay canciones escuchadas.'
+        },
+        ro: {
+            title: '🎧 Istoric auzit',
+            subtitle: 'FreshDig salvează local piesele auzite.',
+            languageLabel: 'Limbă',
+            statsTitle: 'Statistici',
+            countLabel: 'Piese',
+            oldestLabel: 'Cea mai veche',
+            newestLabel: 'Cea mai nouă',
+            localOnly: 'Doar local în extensie.',
+            backupTitle: 'Backup',
+            backupDescription: 'Exportă/importă istoricul (import aditiv).',
+            exportButton: 'Exportă',
+            importLabel: 'Importă',
+            importHint: 'Aditiv: ID-urile existente rămân.',
+            deleteTitle: 'Șterge istoricul',
+            deleteDescription: 'Șterge toate înregistrările locale.',
+            deleteButton: 'Șterge tot',
+            confirmDelete: 'Ștergi tot istoricul?',
+            loading: 'Se încarcă…',
+            ready: 'Gata.',
+            unavailable: 'Indisponibil.',
+            exportProgress: 'Export…',
+            exportDone: 'Export gata.',
+            importProgress: 'Import…',
+            importDone: 'Import gata.',
+            invalidFile: 'Fișier invalid.',
+            operationFailed: 'Operație eșuată.',
+            deleteDone: 'Istoric șters.',
+            noRecords: 'Nicio înregistrare.'
         }
     };
 
