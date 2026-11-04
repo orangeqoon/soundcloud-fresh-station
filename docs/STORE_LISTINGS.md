@@ -84,11 +84,15 @@ Control playback, skip tracks, and view high-resolution album artwork directly f
 
 ## 3. ドイツ語 (German - de)
 
-### 拡張機能の名前 (Extension Name) [最大45文字]
+### 拡張機能の名前 (Extension Name) [Chrome上限75文字 / Edge推奨45〜50文字]
+- **推奨短縮版 (41文字・Edge/Chrome共通)**:
 ```text
 FreshDig für SoundCloud - Musik entdecken
 ```
-*(※48文字版の `FreshDig für SoundCloud - Neue Künstler entdecken` も使用可能です)*
+- **フル版 (49文字・Chrome Web Store用)**:
+```text
+FreshDig für SoundCloud - Neue Künstler entdecken
+```
 
 ### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
 ```text
@@ -127,11 +131,15 @@ Titelsteuerung und hochauflösende Cover-Anzeige direkt über das Vorschaufenste
 
 ## 4. ロシア語 (Russian - ru)
 
-### 拡張機能の名前 (Extension Name) [最大45文字]
+### 拡張機能の名前 (Extension Name) [Chrome上限75文字 / Edge推奨45〜50文字]
+- **標準版 (46文字・Chrome/Edge対応)**:
 ```text
 FreshDig для SoundCloud - Поиск новых артистов
 ```
-*(45文字 / ぴったり上限45文字)*
+- **短縮版 (39文字・短め希望時)**:
+```text
+FreshDig для SoundCloud - Новые артисты
+```
 
 ### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
 ```text
@@ -170,9 +178,14 @@ FreshDig превращает радиостанции SoundCloud в идеал�
 
 ## 5. スペイン語 (Spanish - es)
 
-### 拡張機能の名前 (Extension Name) [最大45文字]
+### 拡張機能の名前 (Extension Name) [Chrome上限75文字 / Edge推奨45〜50文字]
+- **推奨短縮版 (42文字・Edge/Chrome共通)**:
 ```text
 FreshDig para SoundCloud - Artistas nuevos
+```
+- **フル版 (51文字・Chrome Web Store用)**:
+```text
+FreshDig para SoundCloud - Descubre nuevos artistas
 ```
 
 ### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
@@ -210,9 +223,14 @@ Ajustes, listas e historial (opcional, desactivado por defecto) se guardan en el
 
 ## 6. ベトナム語 (Vietnamese - vi)
 
-### 拡張機能の名前 (Extension Name) [最大45文字]
+### 拡張機能の名前 (Extension Name) [Chrome上限75文字 / Edge推奨45〜50文字]
+- **推奨短縮版 (37文字・Edge/Chrome共通)**:
 ```text
 FreshDig cho SoundCloud - Nghệ sĩ mới
+```
+- **フル版 (46文字・Chrome Web Store用)**:
+```text
+FreshDig cho SoundCloud - Khám phá nghệ sĩ mới
 ```
 
 ### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
@@ -250,9 +268,14 @@ Cài đặt, danh sách và lịch sử (tùy chọn, mặc định tắt) đư�
 
 ## 7. ルーマニア語 (Romanian - ro)
 
-### 拡張機能の名前 (Extension Name) [最大45文字]
+### 拡張機能の名前 (Extension Name) [Chrome上限75文字 / Edge推奨45〜50文字]
+- **推奨短縮版 (37文字・Edge/Chrome共通)**:
 ```text
 FreshDig for SoundCloud - Artiști noi
+```
+- **フル版 (49文字・Chrome Web Store用)**:
+```text
+FreshDig for SoundCloud - Descoperă artiști noi
 ```
 
 ### 簡単な説明 / 概要 (Summary / Short Description) [最大132文字]
@@ -294,9 +317,14 @@ Setările, listele și istoricul (opțional, dezactivat implicit) sunt stocate l
 2. 対象の拡張機能（FreshDig for SoundCloud）をクリックします。
 3. 左メニューの **「ストアの掲載情報 (Store Listing)」** を選択します。
 4. 画面上部の **「言語を追加 (Add language)」** をクリックします。
-5. ドロップダウンから **「ドイツ語 (German)」** を選択し、上記「3. ドイツ語」の各項目を貼り付けます。
-6. 再度 **「言語を追加」** をクリックし、**「ロシア語 (Russian)」** を選択して、上記「4. ロシア語」の各項目を貼り付けます。
-7. 画面右上の **「下書きを保存 (Save draft)」** を押し、**「審査に送信 (Submit for review)」** をクリックして完了です。
+5. 登録したい言語をドロップダウンから選択し、対応するセクションの「拡張機能の名前」「簡単な説明」「詳細な説明」を貼り付けます：
+   - **ドイツ語 (German - de)**: 上記「3. ドイツ語」
+   - **ロシア語 (Russian - ru)**: 上記「4. ロシア語」
+   - **スペイン語 (Spanish - es)**: 上記「5. スペイン語」
+   - **ベトナム語 (Vietnamese - vi)**: 上記「6. ベトナム語」
+   - **ルーマニア語 (Romanian - ro)**: 上記「7. ルーマニア語」
+6. 各言語のスクリーンショット（`dist/{lang}/store_screenshot_1_features.png` 等）が必要な場合はアップロードします（省略時はデフォルト英語の画像が使用されます）。
+7. 画面右上の **「下書きを保存 (Save draft)」** を押し、すべての言語の入力が完了したら **「審査に送信 (Submit for review)」** をクリックして完了です。
 
 ---
 
