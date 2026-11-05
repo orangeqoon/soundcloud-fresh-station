@@ -62,8 +62,8 @@ test('station_hook.js loads without throwing and answers GET_DIAG_LOG', async ()
   assert.strictEqual(typeof reply.result.playback.wanted, 'boolean');
 });
 
-test('icons/flags contains all required SVG files for F1', () => {
-  const flags = ['auto.svg', 'jp.svg', 'us.svg', 'de.svg', 'ru.svg'];
+test('icons/flags contains all required SVG files for supported languages', () => {
+  const flags = ['auto.svg', 'jp.svg', 'us.svg', 'de.svg', 'ru.svg', 'es.svg', 'vi.svg', 'ro.svg'];
   for (const f of flags) {
     const p = path.join(__dirname, '..', 'icons', 'flags', f);
     assert.ok(fs.existsSync(p), 'missing flag svg: ' + f);

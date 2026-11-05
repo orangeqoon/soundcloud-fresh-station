@@ -22,6 +22,11 @@
     });
   }
   document.querySelectorAll('[data-lang]').forEach(function (button) {
-    button.addEventListener('click', function () { render(button.dataset.lang); });
+    button.addEventListener('click', function () {
+      render(button.dataset.lang);
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ preferredLanguage: button.dataset.lang });
+      }
+    });
   });
 })();

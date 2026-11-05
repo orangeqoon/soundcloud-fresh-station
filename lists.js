@@ -618,7 +618,12 @@
         if (apply) apply.addEventListener('click', applyImport);
         if (retry) retry.addEventListener('click', retryLater);
         if (languageSelect) languageSelect.addEventListener('change', function () {
-            if (TEXTS[languageSelect.value]) language = languageSelect.value;
+            if (TEXTS[languageSelect.value]) {
+                language = languageSelect.value;
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ preferredLanguage: language });
+                }
+            }
             applyLanguage();
             if (pending) renderPreview(pending.source, pending.envelope.lists, pending.merged);
         });

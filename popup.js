@@ -56,7 +56,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     de: '🎧 Verlauf gehörter Titel / Backup',
     ru: '🎧 История прослушанных / Копия',
     vi: '🎧 Lịch sử đã nghe / Sao lưu',
-    es: '🎧 Historial escuchadas / Copia'
+    es: '🎧 Historial escuchadas / Copia',
+    ro: '🎧 Istoric auzit / Backup'
   };
 
   function heardEntryText() {
@@ -72,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
   t = FreshDigI18n.getTexts(currentLang);
+  applyStaticTranslations();
 
   function setActiveFlag(lang) {
     const flagBtns = document.querySelectorAll('#lang-flags .lang-flag-btn');

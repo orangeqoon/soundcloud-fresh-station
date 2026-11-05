@@ -2,8 +2,8 @@
 (function () {
     'use strict';
 
-    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.15.0)');
-    const RUNTIME_VERSION = '2.15.0';
+    console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.15.1)');
+    const RUNTIME_VERSION = '2.15.1';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -825,8 +825,8 @@
             if (d && d.preferredLanguage && d.preferredLanguage !== state.preferredLanguage) {
                 state.preferredLanguage = d.preferredLanguage;
                 try { localStorage.setItem(PREFERRED_LANGUAGE_KEY, state.preferredLanguage); } catch (e) {}
-                updatePlayerBarTitles();
-                syncMiniPlayerUI();
+                applyLanguage();
+                fdBus.post('lang', { language: state.preferredLanguage });
             }
             if (d && typeof d.discoveryEnabled === 'boolean' && d.discoveryEnabled !== state.discoveryEnabled) {
                 state.discoveryEnabled = d.discoveryEnabled;

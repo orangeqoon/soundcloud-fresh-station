@@ -15,13 +15,18 @@
     }
     .header {
       display: flex;
-      flex-wrap: wrap;
-      row-gap: 6px;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 6px;
       margin-bottom: 10px;
       padding-bottom: 6px;
       border-bottom: 1px solid #2e2e2e;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      width: 100%;
     }
     .header-title {
       font-size: 14px;
@@ -30,18 +35,18 @@
       display: flex;
       align-items: center;
       gap: 5px;
+      flex-shrink: 0;
     }
     .header-right {
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex: 1 1 100%;
-      min-width: 0;
+      width: 100%;
     }
     .lang-flags {
       display: flex;
       align-items: center;
-      gap: 3px;
+      gap: 4px;
+      flex-wrap: wrap;
     }
     .lang-flag-btn {
       background: #1e1e1e;
@@ -427,8 +432,11 @@
 </head>
 <body>
   <div class="header">
-    <div class="header-title">
-      🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.15.0</span>
+    <div class="header-top">
+      <div class="header-title">
+        🎧 FreshDig <span style="font-size:10px; color:#ff7700; font-weight:normal;">v2.15.1</span>
+      </div>
+      <div class="badge" id="conn-badge">SoundCloud未接続</div>
     </div>
     <div class="header-right">
       <div class="lang-flags" id="lang-flags" title="Language / 言語">
@@ -447,11 +455,16 @@
         <button type="button" class="lang-flag-btn" data-lang="ru" title="Русский">
           <img src="icons/flags/ru.svg" alt="RU">
         </button>
-        <button type="button" class="lang-flag-btn" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">🇻🇳</button>
-        <button type="button" class="lang-flag-btn" data-lang="es" title="Español" aria-label="Español">🇪🇸</button>
-        <button type="button" class="lang-flag-btn" data-lang="ro" title="Română" aria-label="Română">🇷🇴</button>
+        <button type="button" class="lang-flag-btn" data-lang="es" title="Español" aria-label="Español">
+          <img src="icons/flags/es.svg" alt="ES">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+          <img src="icons/flags/vi.svg" alt="VI">
+        </button>
+        <button type="button" class="lang-flag-btn" data-lang="ro" title="Română" aria-label="Română">
+          <img src="icons/flags/ro.svg" alt="RO">
+        </button>
       </div>
-      <div class="badge" id="conn-badge">SoundCloud未接続</div>
     </div>
   </div>
 
