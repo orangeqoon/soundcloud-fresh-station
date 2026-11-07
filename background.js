@@ -191,6 +191,30 @@
         return null;
     }
 
+    async function openLaterArtist(url) {
+        // Never let a popup's _blank navigation choose another popup-sized tab.
+        if (typeof url !== 'string' || !/^https:\/\/soundcloud\.com\/[^\s/?#\\]+\/tracks$/.test(url)) {
+            return { ok: false, reason: 'invalid-url' };
+        }
+        const all = await chromeCall(chrome.windows.getAll, [{ populate: true, windowTypes: ['normal'] }], chrome.windows);
+        const normal = (Array.isArray(all) ? all : []).filter(function (w) { return w.type === 'normal'; });
+        const score = function (w) {
+            const hasSoundCloud = (w.tabs || []).some(function (tab) { return /^https:\/\/soundcloud\.com\//.test(tab.url || ''); });
+            return (hasSoundCloud ? 2 : 0) + (w.focused ? 1 : 0);
+        };
+        normal.sort(function (a, b) { return score(b) - score(a); });
+        if (!normal.length) {
+            await chromeCall(chrome.windows.create, [{ url: url, type: 'normal', state: 'maximized', focused: true }], chrome.windows);
+        } else {
+            const target = normal[0];
+            await chromeCall(chrome.tabs.create, [{ windowId: target.id, url: url, active: true }], chrome.tabs);
+            const focus = { focused: true };
+            if (target.state === 'minimized') focus.state = 'normal';
+            await chromeCall(chrome.windows.update, [target.id, focus], chrome.windows);
+        }
+        return { ok: true };
+    }
+
     async function openLaterWindow() {
         if (laterWindowOpen) return laterWindowOpen;
         laterWindowOpen = (async function () {
@@ -457,6 +481,14 @@
         }
         if (request && request.action === 'OPEN_LATER_WINDOW') {
             openLaterWindow().catch(function () { return { ok: false, reason: 'error' }; }).then(function (res) { try { sendResponse(res); } catch (e) {} });
+            return true;
+        }
+        if (request && request.action === 'OPEN_LATER_ARTIST') {
+            if (!sender || sender.url !== laterWindowPageUrl()) {
+                sendResponse({ ok: false, reason: 'forbidden' });
+                return false;
+            }
+            openLaterArtist(request.url).catch(function () { return { ok: false, reason: 'error' }; }).then(sendResponse);
             return true;
         }
         if (request && request.action === 'GET_AUTH_TOKEN') {

@@ -73,7 +73,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   }
   t = FreshDigI18n.getTexts(currentLang);
-  applyStaticTranslations();
+  // Render only after list and Dig state below has been initialized. Calling
+  // the hoisted render functions here throws on their let/const bindings and
+  // aborts the popup before it can load lists or contact the SoundCloud tab.
 
   function setActiveFlag(lang) {
     const flagBtns = document.querySelectorAll('#lang-flags .lang-flag-btn');

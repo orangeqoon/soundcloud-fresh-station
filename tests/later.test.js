@@ -7,7 +7,7 @@ const vm = require('vm');
 const FreshDigLists = require('../list_backup.js');
 const FreshDigLater = require('../later.js');
 
-function loadBackground() {
+function loadBackground(options = {}) {
   const store = {};
   let listener = null;
   let installed = null;
@@ -16,12 +16,15 @@ function loadBackground() {
   let nextWindowId = 21;
   let createCount = 0;
   let focusCount = 0;
+  const openedTabs = [];
+  const createdWindows = [];
   const windows = {
     onRemoved: { addListener(fn) { removedListener = fn; } },
     get(id, cb) { cb(activeWindow && activeWindow.id === id ? activeWindow : undefined); },
-    getAll(opts, cb) { cb(activeWindow ? [activeWindow] : []); },
+    getAll(opts, cb) { cb(options.browserWindows || (activeWindow ? [activeWindow] : [])); },
     create(opts, cb) {
       createCount += 1;
+      createdWindows.push(opts);
       activeWindow = { id: nextWindowId++, tabs: [{ url: opts.url }] };
       cb(activeWindow);
     },
@@ -32,7 +35,8 @@ function loadBackground() {
   };
   const chrome = {
     cookies: null,
-    tabs: { onUpdated: { addListener() {} }, query() {}, sendMessage() { return Promise.resolve(); } },
+    tabs: { onUpdated: { addListener() {} }, query() {}, sendMessage() { return Promise.resolve(); },
+      create(opts, cb) { openedTabs.push(opts); cb({ id: 99 }); } },
     windows,
     runtime: { lastError: null, getURL(file) { return 'chrome-extension://test/' + file; }, onMessage: { addListener(fn) { listener = fn; } }, onInstalled: { addListener(fn) { installed = fn; } } },
     storage: {
@@ -44,17 +48,44 @@ function loadBackground() {
   };
   const code = fs.readFileSync(path.join(__dirname, '..', 'background.js'), 'utf8');
   vm.runInNewContext(code, { chrome, FreshDigLists, console: { log() {}, warn() {} }, Promise, JSON, Date, String, Array, Set, Number, RegExp, Error });
-  const send = (req) => new Promise((resolve) => { listener(req, {}, resolve); });
+  const send = (req, sender = {}) => new Promise((resolve) => { listener(req, sender, resolve); });
   return {
     store,
     send,
     windows,
+    openedTabs,
+    createdWindows,
     install: (reason) => installed({ reason }),
     get createCount() { return createCount; },
     get focusCount() { return focusCount; },
     closeWindow() { activeWindow = null; if (removedListener) removedListener(21); }
   };
 }
+
+test('Later author opens in the existing normal SoundCloud window rather than the small popup', async () => {
+  const env = loadBackground({ browserWindows: [
+    { id: 1, type: 'popup', focused: true, tabs: [{ url: 'https://soundcloud.com/small' }] },
+    { id: 2, type: 'normal', focused: false, tabs: [{ url: 'https://soundcloud.com/discover' }] },
+    { id: 3, type: 'normal', focused: true, tabs: [] }
+  ] });
+  const result = await env.send({ action: 'OPEN_LATER_ARTIST', url: 'https://soundcloud.com/artist/tracks' }, { url: 'chrome-extension://test/later.html' });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(env.openedTabs[0].windowId, 2);
+  assert.strictEqual(env.openedTabs[0].url, 'https://soundcloud.com/artist/tracks');
+  assert.strictEqual(env.createdWindows.length, 0);
+});
+
+test('Later author creates a large normal window if only popups remain', async () => {
+  const env = loadBackground({ browserWindows: [{ id: 1, type: 'popup', tabs: [] }] });
+  const sender = { url: 'chrome-extension://test/later.html' };
+  const result = await env.send({ action: 'OPEN_LATER_ARTIST', url: 'https://soundcloud.com/artist/tracks' }, sender);
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(env.createdWindows[0].type, 'normal');
+  assert.strictEqual(env.createdWindows[0].state, 'maximized');
+  assert.strictEqual(env.openedTabs.length, 0);
+  assert.strictEqual((await env.send({ action: 'OPEN_LATER_ARTIST', url: 'https://evil.example/artist/tracks' }, sender)).reason, 'invalid-url');
+  assert.strictEqual((await env.send({ action: 'OPEN_LATER_ARTIST', url: 'https://soundcloud.com/artist/tracks' })).reason, 'forbidden');
+});
 
 test('onboarding is scheduled on install, not on an extension update', () => {
   const { store, install } = loadBackground();
@@ -178,7 +209,7 @@ test('later window opens once, focuses on duplicate requests, and recovers after
   assert.strictEqual(state.createCount, 2);
 });
 
-test('later page closes through its window for the button and Escape key', async () => {
+test('later page routes author clicks through the background and retains close controls', async () => {
   class Element {
     constructor() {
       this.dataset = {};
@@ -209,9 +240,11 @@ test('later page closes through its window for the button and Escape key', async
     createElement() { return new Element(); },
     addEventListener(type, fn) { documentHandlers[type] = fn; }
   };
+  const messages = [];
   const chrome = {
+    runtime: { sendMessage(request, callback) { messages.push(request); callback({ ok: true }); } },
     storage: {
-      local: { get() { return Promise.resolve({ laterArtists: [], preferredLanguage: 'en' }); } },
+      local: { get() { return Promise.resolve({ laterArtists: [{ artistId: '1', permalink: 'artist', name: 'Artist' }], preferredLanguage: 'en' }); } },
       onChanged: { addListener() {} }
     }
   };
@@ -220,6 +253,18 @@ test('later page closes through its window for the button and Escape key', async
     getTexts() { return { mpLaterListLabel: 'Listen later', listSearch: 'Search', listEmpty: '(empty)', listLaterDelete: 'Delete', onboardingClose: 'Close' }; }
   };
   FreshDigLater.mount(doc, chrome, i18n);
+  await new Promise(resolve => setImmediate(resolve));
+  const row = elements['later-items'].children.find(item => item.children.some(child => child.href));
+  const author = row.children.find(child => child.href);
+  let prevented = 0;
+  author.handlers.click({ type: 'click', button: 0, preventDefault() { prevented++; } });
+  author.handlers.auxclick({ type: 'auxclick', button: 1, preventDefault() { prevented++; } });
+  author.handlers.auxclick({ type: 'auxclick', button: 2, preventDefault() { prevented++; } });
+  assert.strictEqual(prevented, 2);
+  assert.deepStrictEqual(messages, [
+    { action: 'OPEN_LATER_ARTIST', url: 'https://soundcloud.com/artist/tracks' },
+    { action: 'OPEN_LATER_ARTIST', url: 'https://soundcloud.com/artist/tracks' }
+  ]);
   elements['later-close'].handlers.click();
   documentHandlers.keydown({ key: 'Escape' });
   await Promise.resolve();

@@ -27,7 +27,7 @@ function instrumentHook() {
     'schedulePlaybackRecovery', 'playbackIntent', 'scTogglePlay', 'scInternals',
     'getDiagLogEntries', 'getPlaybackDiagnostic',
     'MP_ACTIONS', 'setSoundCloudVolume', 'toggleSoundCloudMute',
-    'recoverByNextTrack', 'cancelNextRecovery', 'verifyAndRecoverExplicitPlay',
+    'recoverByNextTrack', 'recoverOriginalTrack', 'cancelNextRecovery', 'verifyAndRecoverExplicitPlay', 'waitForPlaybackProgress', 'miniPlaybackPlaying',
     'beginHeardSession', 'heardPlayback', 'heardTracker', 'heardCache', 'heardMisses', 'heardLookup', 'observeHeardPlayback'
   ];
   return hookSource.slice(0, at) + '\nwindow.__setTestMiniPlayer = function(w) { miniPlayerWindow = w; };\nwindow.__runtimeHooks = {' + hooks.map((name) => name + ': ' + name).join(', ') + '};\n' + hookSource.slice(at);
@@ -613,7 +613,8 @@ function makeCycleFixture(t, options = {}) {
   const env = makeEnv({ media: [media], onReload: () => { reloads++; } });
   const sounds = [101, 102, 103].map(id => ({
     id, attributes: { id, title: 'Track ' + id, user: { id: 500 + id } },
-    currentTime: () => media.currentTime * 1000, duration: () => 100000, seek() {}
+    currentTime: () => media.currentTime * 1000, duration: () => 100000,
+    seek(ms) { media.currentTime = ms / 1000; }
   }));
   const items = sounds.map(sound => ({ sound }));
   function change(item) {
@@ -629,7 +630,7 @@ function makeCycleFixture(t, options = {}) {
   }
   const pm = {
     playPrev() { change(items[0]); },
-    playNext() { change(items[Math.min(2, position + 1)]); },
+    playNext() { change(items[options.mismatch ? 2 : Math.min(2, position + 1)]); },
     getCurrentSound: () => sounds[position], pauseCurrent() { media.paused = true; },
     getQueue: () => ({ models: items }), getCurrentQueueItem: () => items[position],
     setCurrentItem: change
@@ -643,10 +644,11 @@ function makeCycleFixture(t, options = {}) {
   return { env, media, pm, steps, closed: () => closes, reloads: () => reloads };
 }
 
-test('stalled playback skips once to the next track without closing or reloading', async t => {
+test('stalled playback advances once to the next track without closing or reloading', async t => {
   const f = makeCycleFixture(t);
+  f.media.currentTime = 8;
   const started = Date.now();
-  const result = await f.env.hooks.verifyAndRecoverExplicitPlay(f.media, 0);
+  const result = await f.env.hooks.verifyAndRecoverExplicitPlay(f.media, 8);
   assert.ok(Date.now() - started >= 1900, 'do not skip before the two-second progress check');
   assert.strictEqual(result.success, true);
   assert.strictEqual(result.verified, true);
@@ -676,6 +678,166 @@ test('pause event from a failed play attempt still allows next-track recovery', 
   const result = await f.env.hooks.MP_ACTIONS.play({}, () => {});
   assert.deepStrictEqual(f.steps, [103]);
   assert.strictEqual(result.success, true);
+});
+
+test('previous restarting the first track restores position without pressing next', async t => {
+  const f = makeCycleFixture(t, { first: true });
+  f.media.currentTime = 6;
+  const result = await f.env.hooks.recoverOriginalTrack(true, 6);
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.method, 'previous-next-original');
+  assert.deepStrictEqual(f.steps, [101]);
+  assert.ok(f.media.currentTime > 6);
+});
+
+test('original-track recovery cancels on an explicit user pause', async t => {
+  const f = makeCycleFixture(t, { afterNext(env, media) {
+    env.hooks.playbackIntent.pauseRevision++;
+    env.hooks.playbackIntent.wanted = false;
+    media.paused = true;
+  } });
+  f.media.currentTime = 6;
+  const result = await f.env.hooks.recoverOriginalTrack(true, 6);
+  assert.strictEqual(result.cancelled, true);
+  assert.deepStrictEqual(f.steps, [101]);
+  assert.strictEqual(f.media.paused, true);
+});
+
+test('mismatched next track fails safely without seeking the wrong song', async t => {
+  const f = makeCycleFixture(t, { mismatch: true, frozen: true });
+  f.media.currentTime = 7;
+  const result = await f.env.hooks.recoverOriginalTrack(true, 7);
+  assert.strictEqual(result.success, false);
+  assert.strictEqual(result.reason, 'original-not-restored');
+  assert.deepStrictEqual(f.steps, [101, 103]);
+  assert.ok(f.media.currentTime < 1, 'wrong track must not receive the saved seek position');
+});
+
+test('a delayed previous transition at zero still returns to the original song', async t => {
+  const f = makeCycleFixture(t);
+  f.pm.playPrev = () => {
+    setTimeout(() => f.pm.setCurrentItem(f.pm.getQueue().models[0]), 80);
+  };
+  const result = await f.env.hooks.recoverOriginalTrack(true, 0);
+  assert.strictEqual(result.success, true);
+  assert.deepStrictEqual(f.steps, [101, 102]);
+});
+
+test('a missing return control stops the recovery-selected previous song', async t => {
+  const f = makeCycleFixture(t);
+  f.media.currentTime = 7;
+  f.pm.playNext = () => { throw new Error('unavailable'); };
+  const result = await f.env.hooks.recoverOriginalTrack(true, 7);
+  assert.strictEqual(result.reason, 'no-next-control');
+  assert.deepStrictEqual(f.steps, [101]);
+  assert.strictEqual(f.media.paused, true);
+});
+
+test('an OS pause during position restoration cancels even inside the explicit-play window', async t => {
+  const f = makeCycleFixture(t);
+  f.media.currentTime = 7;
+  f.env.hooks.playbackIntent.explicitPlayUntil = Date.now() + 5000;
+  const sound = f.pm.getCurrentSound();
+  sound.seek = ms => {
+    f.media.currentTime = ms / 1000;
+    setTimeout(() => {
+      f.media.paused = true;
+      f.env.win.document.dispatchEvent({ type: 'pause', target: f.media });
+    }, 30);
+  };
+  const result = await f.env.hooks.recoverOriginalTrack(true, 7);
+  assert.strictEqual(result.cancelled, true);
+  assert.strictEqual(f.media.paused, true);
+});
+
+test('waiting during the native play delay does not pre-empt its progress verification', async t => {
+  const f = makeCycleFixture(t);
+  f.media.paused = true;
+  const button = element();
+  f.env.win.document.dispatchEvent({
+    type: 'click', isTrusted: true, target: { closest: () => button }
+  });
+  f.env.win.document.dispatchEvent({ type: 'waiting', target: f.media });
+  assert.strictEqual(f.env.hooks.playbackIntent.recoveryInFlight, false);
+  await tick(2700);
+  assert.deepStrictEqual(f.steps, [103]);
+});
+
+test('a frozen playing flag shows Play and explicit Play skips once through the manual manager path', async t => {
+  const f = makeCycleFixture(t);
+  f.media.currentTime = 8;
+  assert.strictEqual(f.env.hooks.miniPlaybackPlaying(1000), true);
+  assert.strictEqual(f.env.hooks.miniPlaybackPlaying(3100), false);
+  f.env.selectors['.playControls__next'] = element({ onClick() { throw new Error('must prefer manual manager'); } });
+  f.pm.playPrev = () => { throw new Error('previous must not run'); };
+  const result = await f.env.hooks.MP_ACTIONS.play({ desiredPlaying: true }, () => {});
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.recovered, true);
+  assert.deepStrictEqual(f.steps, [103]);
+  assert.strictEqual(f.closed(), 0);
+});
+
+test('explicit Pause remains immediate while a play verification is pending', async t => {
+  const f = makeCycleFixture(t);
+  f.media.paused = true;
+  const pending = f.env.hooks.MP_ACTIONS.play({ desiredPlaying: true }, () => {});
+  await tick(30);
+  assert.strictEqual(f.env.hooks.miniPlaybackPlaying(), true);
+  const paused = await f.env.hooks.MP_ACTIONS.play({ desiredPlaying: false }, () => {});
+  assert.strictEqual(paused.playing, false);
+  assert.strictEqual((await pending).cancelled, true);
+  assert.deepStrictEqual(f.steps, []);
+});
+
+test('original-track recovery reports bounded no-progress after a successful seek', async t => {
+  const f = makeCycleFixture(t, { frozen: true });
+  f.media.currentTime = 7;
+  const result = await f.env.hooks.recoverOriginalTrack(true, 7);
+  assert.strictEqual(result.success, false);
+  assert.strictEqual(result.reason, 'no-progress');
+  assert.deepStrictEqual(f.steps, [101, 102]);
+  assert.strictEqual(f.closed(), 0);
+  assert.strictEqual(f.reloads(), 0);
+});
+
+test('mini-player play treats paused media as play despite stale playing UI', async t => {
+  let playCalls = 0;
+  const media = makeMedia({ paused: true, play() { playCalls++; this.paused = false; return Promise.resolve(); } });
+  const playButton = element({ classes: ['playing'] });
+  const env = makeEnv({ media: [media], selectors: { '.playControls__play': playButton } });
+  env.hooks.state.currentTrack = { id: 97 };
+  const stopClock = advanceWhilePlaying(media);
+  const result = await env.hooks.MP_ACTIONS.play({}, () => {});
+  stopClock();
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.recovered, false);
+  assert.strictEqual(playCalls, 1);
+  assert.strictEqual(media.paused, false);
+});
+
+test('a seek jump without repeated clock advancement is not playback progress', async () => {
+  const media = makeMedia({ paused: false, currentTime: 0 });
+  const env = makeEnv({ media: [media] });
+  env.hooks.state.currentTrack = { id: 95 };
+  const progress = env.hooks.waitForPlaybackProgress(media, 0, 280);
+  setTimeout(() => { media.currentTime = 5; }, 30);
+  assert.strictEqual(await progress, false);
+});
+
+test('active media clock wins over a stale SoundCloud internal position', async t => {
+  const media = makeMedia({ paused: false, currentTime: 2 });
+  const env = makeEnv({ media: [media] });
+  env.hooks.state.currentTrack = { id: 96 };
+  env.hooks.playbackIntent.wanted = true;
+  const staleSound = { id: 96, attributes: { id: 96 }, currentTime: () => 0, duration: () => 100000, seek() {} };
+  env.hooks.scInternals.req = { c: { playback: { exports: {
+    playNext() {}, playPrev() {}, getCurrentSound() { return staleSound; }, pauseCurrent() {}
+  } } } };
+  const stopClock = advanceWhilePlaying(media);
+  const result = await env.hooks.verifyAndRecoverExplicitPlay(media, 2);
+  stopClock();
+  assert.strictEqual(result.success, true);
+  assert.strictEqual(result.recovered, undefined);
 });
 
 test('native next works without queue access and never invokes previous', async t => {

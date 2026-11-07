@@ -87,7 +87,7 @@
     });
   }
 
-  function removeRecord(chromeApi, artistId) {
+  function sendRequest(chromeApi, request) {
     return new Promise(function (resolve) {
       if (!chromeApi || !chromeApi.runtime || typeof chromeApi.runtime.sendMessage !== 'function') {
         resolve({ ok: false, reason: 'error' });
@@ -100,7 +100,7 @@
         resolve(result && typeof result === 'object' ? result : { ok: false, reason: 'error' });
       };
       try {
-        const result = chromeApi.runtime.sendMessage({ action: 'LATER_REMOVE', artistId: artistId }, function (response) {
+        const result = chromeApi.runtime.sendMessage(request, function (response) {
           if (chromeApi.runtime.lastError) finish({ ok: false, reason: 'error' });
           else finish(response);
         });
@@ -109,6 +109,10 @@
         finish({ ok: false, reason: 'error' });
       }
     });
+  }
+
+  function removeRecord(chromeApi, artistId) {
+    return sendRequest(chromeApi, { action: 'LATER_REMOVE', artistId: artistId });
   }
 
   function mount(doc, chromeApi, i18n) {
@@ -210,6 +214,15 @@
           label.href = href;
           label.target = '_blank';
           label.rel = 'noopener noreferrer';
+          const openArtist = function (event) {
+            if (event.type === 'auxclick' && event.button !== 1) return;
+            event.preventDefault();
+            sendRequest(chromeApi, { action: 'OPEN_LATER_ARTIST', url: href }).then(function (result) {
+              if (!result.ok && statusEl) statusEl.textContent = texts.m_commErr || 'Could not open SoundCloud';
+            });
+          };
+          label.addEventListener('click', openArtist);
+          label.addEventListener('auxclick', openArtist);
         }
         if (record.fromTrackTitle) label.title = String(texts.listFrom || 'From') + ': ' + String(record.fromTrackTitle);
         row.appendChild(label);
