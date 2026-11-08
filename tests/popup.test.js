@@ -43,8 +43,14 @@ async function openPopup(language, connected) {
   };
   const data = {
     loggedIn: true, accountName: 'popup-test', isReady: true,
-    dislikedArtists: { '8': { name: 'Excluded Author' } },
-    dislikedTracks: { '9': { title: 'NoPlay Track' } },
+    dislikedArtists: {
+      '8': { name: 'Older Excluded Author', ts: 100 },
+      '9': { name: 'Excluded Author', ts: 200 }
+    },
+    dislikedTracks: {
+      '9': { title: 'Older NoPlay Track', ts: 100 },
+      '10': { title: 'NoPlay Track', ts: 200 }
+    },
     digSkipRules: stored.digSkipRules, myPlaylists: [], stats: {}
   };
   const requests = [];
@@ -93,8 +99,10 @@ for (const language of ['ja', 'en', 'de', 'ru', 'vi', 'es', 'ro']) {
     assert.ok(names().includes('Saved Author'));
     elements['tab-hated'].handlers.click();
     assert.ok(names().includes('Excluded Author'));
+    assert.equal(names()[0], 'Excluded Author');
     elements['tab-noplay'].handlers.click();
     assert.ok(names().includes('NoPlay Track'));
+    assert.equal(names()[0], 'NoPlay Track');
   });
 }
 

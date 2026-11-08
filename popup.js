@@ -231,6 +231,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     return 0;
   }
 
+  function exclusionTimestamp(record) {
+    if (!record || typeof record !== 'object') return 0;
+    const numeric = Number(record.ts || record.addedAt || 0);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    const parsed = record.date ? new Date(record.date).getTime() : 0;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+
   function renderLists() {
     const body = document.getElementById('list-body');
     if (!body) return;
@@ -262,7 +270,10 @@ document.addEventListener('DOMContentLoaded', async function () {
       } else {
         const da = cachedData.dislikedArtists || {};
         const items = Object.keys(da).map(function (k) { return { key: k, rec: da[k] || {} }; });
-        items.sort(function (a, b) { return (b.rec.ts || 0) - (a.rec.ts || 0); });
+        items.sort(function (a, b) {
+          const diff = exclusionTimestamp(b.rec) - exclusionTimestamp(a.rec);
+          return diff || String(a.key).localeCompare(String(b.key));
+        });
         rows = items.filter(function (it) { return !q || String(it.rec.name || '').toLowerCase().indexOf(q) !== -1; }).map(function (it) {
           return function () {
             const href = it.rec.permalink ? 'https://soundcloud.com/' + encodeURIComponent(it.rec.permalink) : '';
@@ -283,6 +294,10 @@ document.addEventListener('DOMContentLoaded', async function () {
       } else {
         const dt = cachedData.dislikedTracks || {};
         const items = Object.keys(dt).map(function (k) { return { key: k, rec: dt[k] || {} }; });
+        items.sort(function (a, b) {
+          const diff = exclusionTimestamp(b.rec) - exclusionTimestamp(a.rec);
+          return diff || String(a.key).localeCompare(String(b.key));
+        });
         rows = items.filter(function (it) {
           const rec = it.rec || {};
           const searchText = [rec.title, rec.artist, it.key].filter(Boolean).join(' ').toLowerCase();
