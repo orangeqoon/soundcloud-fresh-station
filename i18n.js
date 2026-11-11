@@ -1575,10 +1575,40 @@
     m_repostHead:'🔁 Republicar',m_repostPh:'Comentario de la pista (opcional, hasta {n} caracteres)',m_send:'Enviar',m_reposting:'🔁 Republicando…',m_repostFail:'⚠️ Falló la republicación ({s})',m_repostCapFail:'⚠️ Republicada, pero falló el comentario ({s})',m_repostedCap:'🔁 ¡Republicada y comentario publicado!',m_reposted:'🔁 ¡Republicada!',m_commErr:'⚠️ Se produjo un error de comunicación',m_tabNoReply:'⚠️ La pestaña que reproduce no responde',m_actionPending:'La acción se recibió y puede seguir procesándose. Comprueba el resultado en SoundCloud.',m_volumeUnavailable:'No se pudo confirmar el volumen. Usa el control de volumen de SoundCloud.',m_noLikeBtn:'⚠️ No se encontró el botón Me gusta',m_trackLoading:'⚠️ Obteniendo información de la pista…',m_loginPlease:'⚠️ Inicia sesión en SoundCloud',m_unreposting:'🔁 Quitando la republicación…',m_unrepostFail:'⚠️ No se pudo quitar la republicación ({s})',m_artistDefault:'el artista',m_artistLoading:'⚠️ Comprobando el ID del artista…',m_unfollowing:'👤 Dejando de seguir…',m_following:'👤 Siguiendo…',m_unfollowed:'👤 Dejaste de seguir a {name}',m_followed:'👤 ¡Sigues a {name}!',m_followFail:'⚠️ Falló el seguimiento ({s})',m_notPlaying:'No se está reproduciendo',m_repostedTip:'Republicada (pulsa para quitar)',m_repostTip:'Republicar',m_repostUnverified:'⚠️ No se pudo verificar la republicación en SoundCloud',m_followingLbl:'👤✓ Siguiendo',m_untitled:'(sin título)',m_hateOff:'🤬 “{name}” eliminado de las exclusiones',m_hateOnTip:'🤬 Excluido (pulsa para quitar)',m_laterLimit:'⚠️ La lista para después admite hasta 500 artistas',m_laterFail:'⚠️ No se pudo guardar la lista para después',m_profileTag:'🤬 Excluido por FreshDig',m_profileUnban:'Quitar exclusión',
     freshTitle:'✨ Omitir por antigüedad (modo Dig)',freshFollowersPre:'Omitir artistas con más de',freshFollowersPost:'seguidores',freshTracksPre:'Omitir artistas con más de',freshTracksPost:'pistas',freshPlaysPre:'Omitir pistas reproducidas más de',freshPlaysPost:'veces',freshAgePre:'Omitir pistas de más de',freshAgePost:'días',freshHint:'No se omite nada cuando se desconoce el número. Los datos del artista se conservan 7 días.',ratePromptTitle:'🌟 ¿Has descubierto música nueva con FreshDig?',ratePromptDesc:'Si esta extensión te ayuda a descubrir música en SoundCloud, deja una valoración o reseña en Chrome Web Store. Ayuda a mejorar FreshDig y anima a nuevos artistas.',btnRateNow:'⭐ Escribir reseña',btnRateLater:'Más tarde',btnRateDismiss:'Descartar',onboardingProgress:'{n} / 3'
   });
+  // 端的な短縮訳（アイコン幅・ボタン枠に収まるコンパクトな意訳）
+  Object.assign(translations.ja, {
+    m_stOff: '⏸ 発掘OFF',
+    m_stOn: '⛏️ 発掘ON'
+  });
+
   Object.assign(translations.de, {
-    advancedSettings:'⚙ Dig-Einstellungen',statLikes:'Likes überspringen',statFollow:'Gefolgte überspringen',statDislike:'NoPlay',mpStationBtn:'📡 Station',mpRepostTitle:'Repost',m_repostHead:'🔁 Repost',m_repostTip:'Repost',onboardingProgress:'{n} / 3'
+    advancedSettings:'⚙ Dig-Einstellungen',statLikes:'Likes überspringen',statFollow:'Gefolgte überspringen',statDislike:'NoPlay',mpStationBtn:'📡 Sender',mpRepostTitle:'Reposten',m_repostHead:'🔁 Reposten',m_repostTip:'Reposten',onboardingProgress:'{n} / 3'
   });
   Object.assign(translations.ru, { advancedSettings:'⚙ Настройки Dig', onboardingProgress:'{n} / 3' });
+  Object.assign(translations.vi, {
+    mpStationBtn: '📡 Trạm'
+  });
+  Object.assign(translations.es, {
+    mpStationBtn: '📡 Radio',
+    mpRepostTitle: 'Repostear',
+    m_repostHead: '🔁 Repostear',
+    m_repostTip: 'Repostear',
+    m_error: '❌ Fallo: {msg}'
+  });
+  Object.assign(translations.ro, {
+    btnMiniPlayer: '📻 MiniPlayer',
+    btnSync: '🔄 Sincro',
+    mpStatusWaiting: 'Așteaptă',
+    mpFollowBtn: '👤 Urmărește',
+    mpLikeTitle: 'Îmi place',
+    mpRepostTitle: 'Repostează',
+    m_unmute: 'Sunet',
+    m_stOff: '⏸ Oprit',
+    m_stOn: '⛏️ Pornit',
+    m_repostHead: '🔁 Repostează',
+    m_repostTip: 'Repostează',
+    btnRateLater: 'Mai târziu'
+  });
   const digRuleLabels = {
     ja: { digRulesTitle: 'Digモードで飛ばす条件', digRulesHint: '選択した条件だけをDig ON中にスキップします。初期状態はすべてONです。', digRuleFollowing: 'フォロー中の作者', digRuleHated: 'BANした作者', digRuleLater: '後で聴く人リストの作者', digRuleLiked: 'Like済みの曲', digRuleNoplay: 'NoPlayに入っている曲' },
     en: { digRulesTitle: 'Skip conditions in Dig mode', digRulesHint: 'Only selected conditions are skipped while Dig is ON. All are enabled by default.', digRuleFollowing: 'Followed artists', digRuleHated: 'Banned artists', digRuleLater: 'Artists in Saved artists', digRuleLiked: 'Liked tracks', digRuleNoplay: 'Tracks in NoPlay' },
@@ -1600,6 +1630,26 @@
     ro: '⚠️ Istoric nesalvat. Vezi pagina de istoric.'
   };
   Object.keys(heardSaveLabels).forEach(function (lang) { translations[lang].heardSaveFailed = heardSaveLabels[lang]; });
+
+  const shortcutCopy = {
+    ja: ['⌨ ショートカット設定', 'SoundCloudページで使用。登録は Alt＋英字（Shift併用可）。', '未設定', 'キーを押す（Escで取消）', '解除', '再生 / 一時停止', '次の曲', '前の曲', 'いいね', '後で聴く人に追加', '不再生', '作者を除外'],
+    en: ['⌨ Keyboard shortcuts', 'On SoundCloud: Alt + letter, optionally with Shift.', 'Not set', 'Press a key (Esc cancels)', 'Clear', 'Play / Pause', 'Next', 'Previous', 'Like', 'Save artist for later', 'NoPlay', 'Exclude artist'],
+    de: ['⌨ Tastenkürzel', 'Auf SoundCloud: Alt + Buchstabe, optional mit Shift.', 'Nicht belegt', 'Taste drücken (Esc beendet)', 'Löschen', 'Wiedergabe / Pause', 'Weiter', 'Zurück', 'Gefällt mir', 'Für später merken', 'Nicht abspielen', 'Künstler ausschließen'],
+    ru: ['⌨ Горячие клавиши', 'На SoundCloud: Alt + буква, можно с Shift.', 'Не назначено', 'Нажмите клавишу (Esc — отмена)', 'Очистить', 'Играть / пауза', 'Следующий', 'Предыдущий', 'Нравится', 'Сохранить автора', 'Не воспроизводить', 'Исключить автора'],
+    vi: ['⌨ Phím tắt', 'Trên SoundCloud: Alt + chữ cái, có thể thêm Shift.', 'Chưa đặt', 'Nhấn phím (Esc để hủy)', 'Xóa', 'Phát / Tạm dừng', 'Bài tiếp', 'Bài trước', 'Thích', 'Lưu nghệ sĩ', 'Không phát', 'Loại nghệ sĩ'],
+    es: ['⌨ Atajos de teclado', 'En SoundCloud: Alt + letra, opcionalmente con Shift.', 'Sin asignar', 'Pulsa una tecla (Esc cancela)', 'Borrar', 'Reproducir / Pausar', 'Siguiente', 'Anterior', 'Me gusta', 'Guardar artista', 'No reproducir', 'Excluir artista'],
+    ro: ['⌨ Scurtături', 'Pe SoundCloud: Alt + literă (± Shift).', 'Nesetat', 'Apasă o tastă (Esc = anulare)', 'Șterge', 'Play / Pauză', 'Înainte', 'Înapoi', 'Like', 'Mai târziu', 'NoPlay', 'Exclude artist']
+  };
+
+  const heardEntryTexts = {
+    ja: '🎧 既聴曲履歴 / バックアップ',
+    en: '🎧 Heard history / Backup',
+    de: '🎧 Verlauf gehörter Titel / Backup',
+    ru: '🎧 История прослушанных / Копия',
+    vi: '🎧 Lịch sử đã nghe / Sao lưu',
+    es: '🎧 Historial escuchadas / Copia',
+    ro: '🎧 Istoric auzit / Backup'
+  };
 
   function resolveLanguage(langPref) {
     if (langPref === 'ja' || langPref === 'en' || langPref === 'de' || langPref === 'ru' || langPref === 'vi' || langPref === 'es' || langPref === 'ro') return langPref;
@@ -1626,7 +1676,9 @@
   return {
     translations: translations,
     resolveLanguage: resolveLanguage,
-    getTexts: getTexts
+    getTexts: getTexts,
+    shortcutCopy: shortcutCopy,
+    heardEntryTexts: heardEntryTexts
   };
 });
 

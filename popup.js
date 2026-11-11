@@ -4,14 +4,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   let cachedData = null;
   let shortcutKeys = {};
   let shortcutEditing = null;
-  const shortcutCopy = {
+  const shortcutCopy = FreshDigI18n.shortcutCopy || {
     ja: ['⌨ ショートカット設定', 'SoundCloudページで使用。登録は Alt＋英字（Shift併用可）。', '未設定', 'キーを押す（Escで取消）', '解除', '再生 / 一時停止', '次の曲', '前の曲', 'いいね', '後で聴く人に追加', '不再生', '作者を除外'],
-    en: ['⌨ Keyboard shortcuts', 'On SoundCloud: Alt + letter, optionally with Shift.', 'Not set', 'Press a key (Esc cancels)', 'Clear', 'Play / Pause', 'Next', 'Previous', 'Like', 'Save artist for later', 'NoPlay', 'Exclude artist'],
-    de: ['⌨ Tastenkürzel', 'Auf SoundCloud: Alt + Buchstabe, optional mit Shift.', 'Nicht belegt', 'Taste drücken (Esc beendet)', 'Löschen', 'Wiedergabe / Pause', 'Weiter', 'Zurück', 'Gefällt mir', 'Für später merken', 'Nicht abspielen', 'Künstler ausschließen'],
-    ru: ['⌨ Горячие клавиши', 'На SoundCloud: Alt + буква, можно с Shift.', 'Не назначено', 'Нажмите клавишу (Esc — отмена)', 'Очистить', 'Играть / пауза', 'Следующий', 'Предыдущий', 'Нравится', 'Сохранить автора', 'Не воспроизводить', 'Исключить автора'],
-    vi: ['⌨ Phím tắt', 'Trên SoundCloud: Alt + chữ cái, có thể thêm Shift.', 'Chưa đặt', 'Nhấn phím (Esc để hủy)', 'Xóa', 'Phát / Tạm dừng', 'Bài tiếp', 'Bài trước', 'Thích', 'Lưu nghệ sĩ', 'Không phát', 'Loại nghệ sĩ'],
-    es: ['⌨ Atajos de teclado', 'En SoundCloud: Alt + letra, opcionalmente con Shift.', 'Sin asignar', 'Pulsa una tecla (Esc cancela)', 'Borrar', 'Reproducir / Pausar', 'Siguiente', 'Anterior', 'Me gusta', 'Guardar artista', 'No reproducir', 'Excluir artista'],
-    ro: ['⌨ Scurtături', 'Pe SoundCloud: Alt + literă (± Shift).', 'Nesetat', 'Apasă o tastă (Esc = anulare)', 'Șterge', 'Play / Pauză', 'Înainte', 'Înapoi', 'Like', 'Mai târziu', 'NoPlay', 'Exclude artist']
+    en: ['⌨ Keyboard shortcuts', 'On SoundCloud: Alt + letter, optionally with Shift.', 'Not set', 'Press a key (Esc cancels)', 'Clear', 'Play / Pause', 'Next', 'Previous', 'Like', 'Save artist for later', 'NoPlay', 'Exclude artist']
   };
   const shortcutActions = ['play', 'next', 'prev', 'like', 'later', 'dislike', 'hate'];
   function renderShortcuts() {
@@ -50,14 +45,9 @@ document.addEventListener('DOMContentLoaded', async function () {
     renderShortcuts();
   }, true);
   chrome.storage.local.get(['shortcutKeys'], function (stored) { shortcutKeys = stored && stored.shortcutKeys || {}; renderShortcuts(); });
-  const heardEntryTexts = {
+  const heardEntryTexts = FreshDigI18n.heardEntryTexts || {
     ja: '🎧 既聴曲履歴 / バックアップ',
-    en: '🎧 Heard history / Backup',
-    de: '🎧 Verlauf gehörter Titel / Backup',
-    ru: '🎧 История прослушанных / Копия',
-    vi: '🎧 Lịch sử đã nghe / Sao lưu',
-    es: '🎧 Historial escuchadas / Copia',
-    ro: '🎧 Istoric auzit / Backup'
+    en: '🎧 Heard history / Backup'
   };
 
   function heardEntryText() {
@@ -140,6 +130,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('sync-btn').textContent = t.btnSync;
 
     document.getElementById('label-advanced').textContent = t.advancedSettings;
+    const tabLater = document.getElementById('tab-later');
+    if (tabLater && t.tabLater) tabLater.textContent = t.tabLater;
+    const tabHated = document.getElementById('tab-hated');
+    if (tabHated && t.tabHated) {
+      tabHated.title = t.tabHated;
+      tabHated.setAttribute('aria-label', t.tabHated);
+    }
+    const langFlags = document.getElementById('lang-flags');
+    if (langFlags && t.langLabel) langFlags.title = t.langLabel;
     const btnReport = document.getElementById('btn-download-report');
     if (btnReport) btnReport.textContent = t.btnDownloadReport;
     document.getElementById('btn-export-lists').textContent = t.btnExportLists;
