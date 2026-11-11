@@ -3,7 +3,7 @@
     'use strict';
 
     console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.15.6)');
-    const RUNTIME_VERSION = '2.15.6';
+    const RUNTIME_VERSION = '2.15.7';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
