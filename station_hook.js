@@ -3,7 +3,7 @@
     'use strict';
 
     console.log('[SC-FreshStation] Hook loaded in MAIN world (FreshDig v2.15.6)');
-    const RUNTIME_VERSION = '2.15.7';
+    const RUNTIME_VERSION = '2.15.8';
 
     const STORAGE_KEY = 'sc_fresh_station_data_v1';
     const TARGET_PLAYLIST_KEY = 'sc_fresh_station_target_playlist_id';
@@ -36,7 +36,7 @@
         }
         return {
             barStationTitle: '📡 この曲のステーションを開始',
-            barDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
+            barDislikeTitle: '👎 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
             barHateTitle: '🤬 作者除外 (この作者の曲すべてを今後再生せずスキップ)',
             barMiniPlayerTitle: '📻 ミニプレイヤー (最前面ウィンドウで浮遊操作)',
             barDiscoveryOffTitle: '⛏️ 発掘モード OFF（クリックで ON：知っている曲を自動スキップ）',
@@ -57,9 +57,9 @@
             mpLikeTitle: 'いいね (Like)',
             mpRepostTitle: 'リポスト (Repost)',
             mpAddPlTitle: 'プレイリストに追加',
-            mpDislikeTitle: '⏭️ 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
+            mpDislikeTitle: '👎 不再生：この曲を今後は流さず、すぐ次へ（嫌いではなく「もう十分聴いた」曲に）',
             mpHateTitle: '作者除外 & スキップ',
-            mpToastDislike: '⏭️ 不再生に登録してスキップ',
+            mpToastDislike: '👎 不再生に登録してスキップ',
             mpToastHate: '🤬 作者を除外してスキップ',
             mpToastAddedPl: '➕ プレイリストに追加しました',
             mpToastRemovedPl: '➖ プレイリストから解除しました',
@@ -2439,7 +2439,7 @@
             menuGroup.appendChild(stBtn);
         }
 
-        // 2. Never Playボタン (アイコン1個: ⏭️) - この曲だけ除外
+        // 2. Never Playボタン (アイコン1個: 👎) - この曲だけ除外
         if (!document.getElementById('sc-fresh-station-dislike-btn')) {
             const btn = document.createElement('button');
             btn.id = 'sc-fresh-station-dislike-btn';
@@ -2447,7 +2447,7 @@
             btn.className = 'sc-button sc-button-small sc-button-icon sc-button-responsive';
             btn.title = getI18nTexts().barDislikeTitle;
             btn.style.cssText = 'margin-left: 5px; width: 26px; height: 26px; min-width: 26px; padding: 0; display: inline-flex; justify-content: center; align-items: center; border-radius: 4px; border: 1px solid #ff5500; color: #ff5500; background: transparent; font-size: 13px; cursor: pointer; line-height: 1; vertical-align: middle;';
-            btn.innerHTML = '⏭️';
+            btn.innerHTML = '👎';
             btn.addEventListener('click', function (e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -5613,7 +5613,7 @@
             <div class="controls-row">
                 <button id="mp-prev" title="${tx.mpPrevTitle}">⏮</button>
                 <button class="btn-play" id="mp-play" title="${tx.mpPlayTitle}">⏯</button>
-                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">⏭️</button>
+                <button class="btn-dislike" id="mp-dislike" title="${tx.mpDislikeTitle}">👎</button>
                 <button class="btn-like" id="mp-like" title="${tx.mpLikeTitle}">🤍</button>
                 <button class="btn-repost" id="mp-repost" title="${tx.mpRepostTitle}">🔁</button>
                 <button class="btn-pl" id="mp-add-pl" title="${tx.mpAddPlTitle}">➕</button>
